@@ -1,0 +1,57 @@
+2025/03/04-21:53:35.364 1c289 Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/03/04-21:53:35.379 1c289 Recovering log #2093
+2025/03/04-21:53:35.406 1c289 Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/002093.log 
+2025/03/04-21:53:37.278 1c28a Level-0 table #2117: started
+2025/03/04-21:53:37.286 1c28a Level-0 table #2117: 181473 bytes OK
+2025/03/04-21:53:37.293 1c28a Delete type=0 #2093
+2025/03/04-21:53:37.295 1c28a Manual compaction at level-0 from '\x00i\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00j\x00\x00\x00' @ 0 : 0; will stop at '\x00i\x00\x00\x05' @ 3202615 : 1
+2025/03/04-21:53:37.295 1c28a Compacting 1@0 + 0@1 files
+2025/03/04-21:53:37.305 1c28a Generated table #2118@0: 3899 keys, 80723 bytes
+2025/03/04-21:53:37.308 1c28a Generated table #2119@0: 139 keys, 9974 bytes
+2025/03/04-21:53:37.309 1c28a Compacted 1@0 + 0@1 files => 90697 bytes
+2025/03/04-21:53:37.311 1c28a compacted to: files[ 0 2 35 0 0 0 0 ]
+2025/03/04-21:53:37.313 1c28a Delete type=2 #2117
+2025/03/04-21:53:37.315 1c28a Manual compaction at level-0 from '\x00i\x00\x00\x05' @ 3202615 : 1 .. '\x00j\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/03/04-21:53:40.501 1c28a Compacting 1@1 + 7@2 files
+2025/03/04-21:53:40.577 1c28a Generated table #2120@1: 17630 keys, 2166168 bytes
+2025/03/04-21:53:40.649 1c28a Generated table #2121@1: 8015 keys, 2129646 bytes
+2025/03/04-21:53:40.795 1c28a Generated table #2122@1: 89417 keys, 2234875 bytes
+2025/03/04-21:53:40.946 1c28a Generated table #2123@1: 112847 keys, 2265633 bytes
+2025/03/04-21:53:41.061 1c28a Generated table #2124@1: 112457 keys, 2263472 bytes
+2025/03/04-21:53:41.164 1c28a Generated table #2125@1: 112399 keys, 2264255 bytes
+2025/03/04-21:53:41.227 1c28a Generated table #2126@1: 65164 keys, 1314304 bytes
+2025/03/04-21:53:41.227 1c28a Compacted 1@1 + 7@2 files => 14638353 bytes
+2025/03/04-21:53:41.229 1c28a compacted to: files[ 0 1 35 0 0 0 0 ]
+2025/03/04-21:53:41.231 1c28a Delete type=2 #2097
+2025/03/04-21:53:41.231 1c28a Delete type=2 #2100
+2025/03/04-21:53:41.231 1c28a Delete type=2 #2119
+2025/03/04-21:53:41.231 1c28a Delete type=2 #2103
+2025/03/04-21:53:41.231 1c28a Delete type=2 #2101
+2025/03/04-21:53:41.231 1c28a Delete type=2 #2102
+2025/03/04-21:53:41.231 1c28a Delete type=2 #2099
+2025/03/04-21:53:41.231 1c28a Delete type=2 #2098
+2025/03/04-21:53:41.799 1c28a Compacting 1@1 + 10@2 files
+2025/03/04-21:53:41.895 1c28a Generated table #2127@1: 88014 keys, 2237485 bytes
+2025/03/04-21:53:41.974 1c28a Generated table #2128@1: 29741 keys, 2223531 bytes
+2025/03/04-21:53:42.025 1c28a Generated table #2129@1: 3136 keys, 2163662 bytes
+2025/03/04-21:53:42.068 1c28a Generated table #2130@1: 1847 keys, 2145887 bytes
+2025/03/04-21:53:42.144 1c28a Generated table #2131@1: 3027 keys, 2171942 bytes
+2025/03/04-21:53:42.198 1c28a Generated table #2132@1: 2180 keys, 2151378 bytes
+2025/03/04-21:53:42.237 1c28a Generated table #2133@1: 1960 keys, 2157852 bytes
+2025/03/04-21:53:42.277 1c28a Generated table #2134@1: 1394 keys, 2130134 bytes
+2025/03/04-21:53:42.352 1c28a Generated table #2135@1: 24477 keys, 2221732 bytes
+2025/03/04-21:53:42.445 1c28a Generated table #2136@1: 24582 keys, 2272694 bytes
+2025/03/04-21:53:42.447 1c28a Generated table #2137@1: 202 keys, 19834 bytes
+2025/03/04-21:53:42.447 1c28a Compacted 1@1 + 10@2 files => 21896131 bytes
+2025/03/04-21:53:42.448 1c28a compacted to: files[ 0 0 36 0 0 0 0 ]
+2025/03/04-21:53:42.450 1c28a Delete type=2 #2112
+2025/03/04-21:53:42.450 1c28a Delete type=2 #2113
+2025/03/04-21:53:42.450 1c28a Delete type=2 #2111
+2025/03/04-21:53:42.451 1c28a Delete type=2 #2109
+2025/03/04-21:53:42.451 1c28a Delete type=2 #2106
+2025/03/04-21:53:42.451 1c28a Delete type=2 #2118
+2025/03/04-21:53:42.451 1c28a Delete type=2 #2105
+2025/03/04-21:53:42.451 1c28a Delete type=2 #2107
+2025/03/04-21:53:42.451 1c28a Delete type=2 #2108
+2025/03/04-21:53:42.451 1c28a Delete type=2 #2104
+2025/03/04-21:53:42.451 1c28a Delete type=2 #2110

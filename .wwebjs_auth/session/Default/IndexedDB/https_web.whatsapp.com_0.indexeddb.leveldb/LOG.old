@@ -1,0 +1,57 @@
+2025/03/04-21:50:40.007 1c0d3 Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/03/04-21:50:40.010 1c0d3 Recovering log #2070
+2025/03/04-21:50:40.018 1c0d3 Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/002070.log 
+2025/03/04-21:50:42.016 1c0d4 Level-0 table #2094: started
+2025/03/04-21:50:42.025 1c0d4 Level-0 table #2094: 153461 bytes OK
+2025/03/04-21:50:42.029 1c0d4 Delete type=0 #2070
+2025/03/04-21:50:42.029 1c0d4 Manual compaction at level-0 from '\x00h\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00i\x00\x00\x00' @ 0 : 0; will stop at '\x00h\x00\x00\x05' @ 3195695 : 1
+2025/03/04-21:50:42.029 1c0d4 Compacting 1@0 + 0@1 files
+2025/03/04-21:50:42.038 1c0d4 Generated table #2095@0: 3337 keys, 67039 bytes
+2025/03/04-21:50:42.041 1c0d4 Generated table #2096@0: 77 keys, 5180 bytes
+2025/03/04-21:50:42.041 1c0d4 Compacted 1@0 + 0@1 files => 72219 bytes
+2025/03/04-21:50:42.043 1c0d4 compacted to: files[ 0 2 34 0 0 0 0 ]
+2025/03/04-21:50:42.044 1c0d4 Manual compaction at level-0 from '\x00h\x00\x00\x05' @ 3195695 : 1 .. '\x00i\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/03/04-21:50:45.211 1c0d4 Compacting 1@1 + 7@2 files
+2025/03/04-21:50:45.295 1c0d4 Generated table #2097@1: 17626 keys, 2168004 bytes
+2025/03/04-21:50:45.388 1c0d4 Generated table #2098@1: 8025 keys, 2131071 bytes
+2025/03/04-21:50:45.553 1c0d4 Generated table #2099@1: 89684 keys, 2235489 bytes
+2025/03/04-21:50:45.710 1c0d4 Generated table #2100@1: 112857 keys, 2266384 bytes
+2025/03/04-21:50:45.823 1c0d4 Generated table #2101@1: 112467 keys, 2265217 bytes
+2025/03/04-21:50:45.922 1c0d4 Generated table #2102@1: 112390 keys, 2262863 bytes
+2025/03/04-21:50:45.981 1c0d4 Generated table #2103@1: 64805 keys, 1305087 bytes
+2025/03/04-21:50:45.981 1c0d4 Compacted 1@1 + 7@2 files => 14634115 bytes
+2025/03/04-21:50:45.982 1c0d4 compacted to: files[ 0 1 34 0 0 0 0 ]
+2025/03/04-21:50:45.983 1c0d4 Delete type=2 #2094
+2025/03/04-21:50:45.983 1c0d4 Delete type=2 #2074
+2025/03/04-21:50:45.984 1c0d4 Delete type=2 #2076
+2025/03/04-21:50:45.984 1c0d4 Delete type=2 #2096
+2025/03/04-21:50:45.984 1c0d4 Delete type=2 #2078
+2025/03/04-21:50:45.984 1c0d4 Delete type=2 #2077
+2025/03/04-21:50:45.984 1c0d4 Delete type=2 #2080
+2025/03/04-21:50:45.984 1c0d4 Delete type=2 #2079
+2025/03/04-21:50:45.984 1c0d4 Delete type=2 #2075
+2025/03/04-21:50:46.586 1c0d4 Compacting 1@1 + 10@2 files
+2025/03/04-21:50:46.680 1c0d4 Generated table #2104@1: 88021 keys, 2236912 bytes
+2025/03/04-21:50:46.762 1c0d4 Generated table #2105@1: 29000 keys, 2223135 bytes
+2025/03/04-21:50:46.802 1c0d4 Generated table #2106@1: 3124 keys, 2161467 bytes
+2025/03/04-21:50:46.850 1c0d4 Generated table #2107@1: 1860 keys, 2146312 bytes
+2025/03/04-21:50:46.907 1c0d4 Generated table #2108@1: 3025 keys, 2172115 bytes
+2025/03/04-21:50:46.980 1c0d4 Generated table #2109@1: 2179 keys, 2149754 bytes
+2025/03/04-21:50:47.023 1c0d4 Generated table #2110@1: 1940 keys, 2156966 bytes
+2025/03/04-21:50:47.055 1c0d4 Generated table #2111@1: 1397 keys, 2129499 bytes
+2025/03/04-21:50:47.130 1c0d4 Generated table #2112@1: 24675 keys, 2223733 bytes
+2025/03/04-21:50:47.220 1c0d4 Generated table #2113@1: 24574 keys, 2272632 bytes
+2025/03/04-21:50:47.222 1c0d4 Generated table #2114@1: 160 keys, 15983 bytes
+2025/03/04-21:50:47.222 1c0d4 Compacted 1@1 + 10@2 files => 21888508 bytes
+2025/03/04-21:50:47.224 1c0d4 compacted to: files[ 0 0 35 0 0 0 0 ]
+2025/03/04-21:50:47.225 1c0d4 Delete type=2 #2088
+2025/03/04-21:50:47.225 1c0d4 Delete type=2 #2086
+2025/03/04-21:50:47.226 1c0d4 Delete type=2 #2090
+2025/03/04-21:50:47.226 1c0d4 Delete type=2 #2083
+2025/03/04-21:50:47.226 1c0d4 Delete type=2 #2089
+2025/03/04-21:50:47.226 1c0d4 Delete type=2 #2082
+2025/03/04-21:50:47.226 1c0d4 Delete type=2 #2084
+2025/03/04-21:50:47.226 1c0d4 Delete type=2 #2085
+2025/03/04-21:50:47.226 1c0d4 Delete type=2 #2087
+2025/03/04-21:50:47.227 1c0d4 Delete type=2 #2081
+2025/03/04-21:50:47.227 1c0d4 Delete type=2 #2095

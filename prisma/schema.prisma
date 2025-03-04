@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id    Int    @id @default(autoincrement()) 
+  nama  String
+  phone String // Nomor WhatsApp
+  role  Role  
+  kelas Kelas  
+  guruTugas Assignment[] @relation("GuruTugas") 
+  tugas AssignmentStatus[] // Menyimpan status tugas siswa
+  submissions AssignmentSubmission[] // Relasi ke tugas yang dikumpulkan siswa
+}
+
+model Assignment {
+  id          Int      @id @default(autoincrement()) 
+  kode        String   @unique 
+  guru        User     @relation("GuruTugas", fields: [guruId], references: [id]) 
+  guruId      Int
+  judul       String
+  deskripsi   String
+  pdfUrl      String?  // Bisa null jika guru tidak melampirkan PDF
+  lampirkanPDF Boolean @default(false) // Apakah tugas memerlukan PDF?
+  createdAt   DateTime @default(now()) 
+  status      AssignmentStatus[] // Relasi ke status tugas siswa
+  submissions AssignmentSubmission[] // Relasi ke tugas yang dikumpulkan siswa
+}
+
+// Model untuk menyimpan status tugas siswa (apakah selesai atau belum)
+model AssignmentStatus {
+  id        Int      @id @default(autoincrement())
+  siswa     User     @relation(fields: [siswaId], references: [id])
+  siswaId   Int
+  tugas     Assignment @relation(fields: [tugasId], references: [id])
+  tugasId   Int
+  status    TugasStatus @default(BELUM_SELESAI)
+}
+
+// Model baru untuk menyimpan tugas yang dikumpulkan siswa
+model AssignmentSubmission {
+  id        Int      @id @default(autoincrement())
+  siswa     User     @relation(fields: [siswaId], references: [id])
+  siswaId   Int
+  tugas     Assignment @relation(fields: [tugasId], references: [id])
+  tugasId   Int
+  pdfUrl    String?  // Bisa null jika tidak ada lampiran
+  status    TugasStatus @default(SELESAI) // Status tugas (opsional)
+  createdAt DateTime @default(now()) 
+}
+
+
+enum Role {
+  guru
+  siswa
+}
+
+enum Kelas {
+  guru
+  XTKJ1
+  XTKJ2
+  XITKJ1
+  XITKJ2
+  XIITKJ1
+  XIITKJ2
+}
+
+enum TugasStatus {
+  BELUM_SELESAI
+  SELESAI
+}
