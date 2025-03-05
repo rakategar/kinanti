@@ -1,3 +1,3 @@
-2025/03/05-14:25:05.859 1dd49 Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Sync Data/LevelDB/MANIFEST-000001
-2025/03/05-14:25:05.867 1dd49 Recovering log #3
-2025/03/05-14:25:05.867 1dd49 Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Sync Data/LevelDB/000003.log 
+2025/03/05-14:53:48.988 1f15f Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Sync Data/LevelDB/MANIFEST-000001
+2025/03/05-14:53:48.994 1f15f Recovering log #3
+2025/03/05-14:53:48.994 1f15f Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Sync Data/LevelDB/000003.log 

@@ -140,6 +140,15 @@ client.on("message", async (message) => {
           pdfUrl: null, // Tidak ada file PDF
         },
       });
+      // Cari siswa berdasarkan kelas (atau semua siswa jika kelasTarget tidak ditentukan)
+      const siswaList = await prisma.user.findMany({
+        where: {
+          role: "siswa",
+          ...(pendingAssignment[sender].kelasTarget
+            ? { kelas: pendingAssignment[sender].kelasTarget }
+            : {}),
+        },
+      });
       // Tambahkan tugas ke daftar siswa (belum selesai)
       await prisma.assignmentStatus.createMany({
         data: siswaList.map((siswa) => ({
@@ -150,7 +159,7 @@ client.on("message", async (message) => {
       });
 
       await message.reply(
-        `✅ Tugas berhasil dibuat ! \n Gunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan\natau *kirim [kode_tugas]* untuk mengirim ke semua kelas\n\nContoh: *kirim mtk24 XTKJ1* `
+        `✅ Tugas berhasil dibuat ! \n Gunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan\n\nContoh: *kirim mtk24 XTKJ1* `
       );
       delete pendingAssignment[sender];
     }
@@ -482,14 +491,20 @@ client.on("message", async (message) => {
           pdfUrl: null,
         },
       });
-
-      await message.reply("✅ Tugas berhasil dikumpulkan tanpa lampiran PDF!");
+      const tugasSiswa = await prisma.assignmentStatus.findFirst({
+        where: {
+          siswa: { phone: sender.replace("@c.us", "") },
+          tugas: { kode: kodeTugas },
+          status: "BELUM_SELESAI",
+        },
+      });
       // Perbarui status tugas menjadi selesai
       await prisma.assignmentStatus.update({
         where: { id: tugasSiswa.id },
         data: { status: "SELESAI" },
       });
 
+      await message.reply("✅ Tugas berhasil dikumpulkan tanpa lampiran PDF!");
       await message.reply(
         `✅ Tugas *${kodeTugas}* telah ditandai sebagai selesai.`
       );
@@ -499,6 +514,14 @@ client.on("message", async (message) => {
 
   // Siswa mengirimkan file PDF sebagai tugas
   else if (pendingAssignment[sender]?.step === 1 && message.hasMedia) {
+    const kodeTugas = pendingAssignment[sender]?.kodeTugas; // Ambil kode tugas dari pendingAssignment
+
+    if (!kodeTugas) {
+      return await message.reply(
+        "⚠️ Terjadi kesalahan, kode tugas tidak ditemukan."
+      );
+    }
+
     const media = await message.downloadMedia();
     if (!media.mimetype.includes("pdf")) {
       return await message.reply("⚠️ Hanya file PDF yang diperbolehkan!");
@@ -529,17 +552,30 @@ client.on("message", async (message) => {
     await message.reply(
       `✅ Tugas berhasil dikumpulkan!\n📎 PDF Anda: ${pdfUrl}`
     );
-    // Perbarui status tugas menjadi selesai
-    await prisma.assignmentStatus.update({
-      where: { id: tugasSiswa.id },
-      data: { status: "SELESAI" },
+
+    // Cari siswa dengan status belum selesai
+    const tugasSiswa = await prisma.assignmentStatus.findFirst({
+      where: {
+        siswa: { phone: sender.replace("@c.us", "") },
+        tugas: { kode: kodeTugas }, // ✅ kodeTugas sudah didefinisikan di awal
+        status: "BELUM_SELESAI",
+      },
     });
+
+    if (tugasSiswa) {
+      // Perbarui status tugas menjadi selesai
+      await prisma.assignmentStatus.update({
+        where: { id: tugasSiswa.id },
+        data: { status: "SELESAI" },
+      });
+    }
 
     await message.reply(
       `✅ Tugas *${kodeTugas}* telah ditandai sebagai selesai.`
     );
     delete pendingAssignment[sender];
   }
+
 
   if (message.body.toLowerCase().startsWith("rekap")) {
     const guru = await prisma.user.findFirst({
