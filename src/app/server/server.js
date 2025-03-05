@@ -85,7 +85,7 @@ client.on("message", async (message) => {
     }
     console.log(pendingAssignment[sender]);
     await message.reply(
-      "📌 Silakan kirimkan tugas dalam format berikut:\n\n- Kode:\n- Judul:\n- Deskripsi:\n\nContoh:\n- Kode: MTK24\n- Judul: Matematika Dasar\n- Deskripsi: Kerjakan soal halaman 45"
+      "📌 Silakan kirimkan tugas dalam format berikut:\n\n- Kode:\n- Judul:\n- Deskripsi:\n- Lampirkan PDF: ya/tidak\n\nContoh:\n- Kode: MTK24\n- Judul: Matematika Dasar\n- Deskripsi: Kerjakan soal halaman 45\n- Lampirkan PDF: ya"
     );
   }
 
@@ -140,11 +140,20 @@ client.on("message", async (message) => {
           pdfUrl: null, // Tidak ada file PDF
         },
       });
-    }
+      // Tambahkan tugas ke daftar siswa (belum selesai)
+      await prisma.assignmentStatus.createMany({
+        data: siswaList.map((siswa) => ({
+          siswaId: siswa.id,
+          tugasId: newTugas.id,
+          status: "BELUM_SELESAI",
+        })),
+      });
 
-    await message.reply(
-      `📎Silakan kirimkan file PDF tugas.\nKode tugas: *${kodeTugas}*`
-    );
+      await message.reply(
+        `✅ Tugas berhasil dibuat ! \n Gunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan\natau *kirim [kode_tugas]* untuk mengirim ke semua kelas\n\nContoh: *kirim mtk24 XTKJ1* `
+      );
+      delete pendingAssignment[sender];
+    }
   }
 
   // 3. Mengunggah PDF ke Supabase
@@ -475,6 +484,15 @@ client.on("message", async (message) => {
       });
 
       await message.reply("✅ Tugas berhasil dikumpulkan tanpa lampiran PDF!");
+      // Perbarui status tugas menjadi selesai
+      await prisma.assignmentStatus.update({
+        where: { id: tugasSiswa.id },
+        data: { status: "SELESAI" },
+      });
+
+      await message.reply(
+        `✅ Tugas *${kodeTugas}* telah ditandai sebagai selesai.`
+      );
       delete pendingAssignment[sender];
     }
   }
@@ -510,6 +528,15 @@ client.on("message", async (message) => {
 
     await message.reply(
       `✅ Tugas berhasil dikumpulkan!\n📎 PDF Anda: ${pdfUrl}`
+    );
+    // Perbarui status tugas menjadi selesai
+    await prisma.assignmentStatus.update({
+      where: { id: tugasSiswa.id },
+      data: { status: "SELESAI" },
+    });
+
+    await message.reply(
+      `✅ Tugas *${kodeTugas}* telah ditandai sebagai selesai.`
     );
     delete pendingAssignment[sender];
   }
