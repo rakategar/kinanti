@@ -1,4 +1,91 @@
-2025/03/05-14:58:37.455 1f41e Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/03/05-14:58:37.458 1f41e Recovering log #2432
-2025/03/05-14:58:37.478 1f41e Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/002432.log 
-2025/03/05-14:58:39.511 1f428 Manual compaction at level-0 from '\x00u\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00v\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/03/06-11:54:02.664 68cb Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/03/06-11:54:02.670 68cb Recovering log #2479
+2025/03/06-11:54:02.675 68cb Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/002479.log 
+2025/03/06-11:54:02.676 68cb Delete type=2 #2486
+2025/03/06-11:54:02.677 68cb Delete type=2 #2487
+2025/03/06-11:54:02.677 68cb Delete type=2 #2489
+2025/03/06-11:54:02.677 68cb Delete type=2 #2485
+2025/03/06-11:54:02.677 68cb Delete type=2 #2483
+2025/03/06-11:54:02.678 68cb Delete type=2 #2484
+2025/03/06-11:54:02.678 68cb Delete type=2 #2488
+2025/03/06-11:54:04.764 68cc Compacting 1@1 + 10@2 files
+2025/03/06-11:54:04.888 68cc Generated table #2484@1: 85102 keys, 2234021 bytes
+2025/03/06-11:54:04.957 68cc Level-0 table #2487: started
+2025/03/06-11:54:04.961 68cc Level-0 table #2487: 68648 bytes OK
+2025/03/06-11:54:04.964 68cc Delete type=0 #2479
+2025/03/06-11:54:04.990 68cc Generated table #2485@1: 54960 keys, 2258276 bytes
+2025/03/06-11:54:05.040 68cc Generated table #2488@1: 3394 keys, 2168986 bytes
+2025/03/06-11:54:05.077 68cc Generated table #2489@1: 1659 keys, 2140945 bytes
+2025/03/06-11:54:05.128 68cc Generated table #2490@1: 2954 keys, 2169921 bytes
+2025/03/06-11:54:05.175 68cc Generated table #2491@1: 2325 keys, 2155703 bytes
+2025/03/06-11:54:05.218 68cc Generated table #2492@1: 2665 keys, 2163791 bytes
+2025/03/06-11:54:05.261 68cc Generated table #2493@1: 822 keys, 2120493 bytes
+2025/03/06-11:54:05.305 68cc Generated table #2494@1: 13341 keys, 2160180 bytes
+2025/03/06-11:54:05.386 68cc Generated table #2495@1: 25410 keys, 2272507 bytes
+2025/03/06-11:54:05.391 68cc Generated table #2496@1: 1233 keys, 120064 bytes
+2025/03/06-11:54:05.392 68cc Compacted 1@1 + 10@2 files => 21964887 bytes
+2025/03/06-11:54:05.393 68cc compacted to: files[ 1 1 24 0 0 0 0 ]
+2025/03/06-11:54:05.394 68ca Manual compaction at level-0 from '\x00w\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00x\x00\x00\x00' @ 0 : 0; will stop at '\x00w\x00\x00\x05' @ 3678881 : 1
+2025/03/06-11:54:05.394 68ca Compacting 1@0 + 1@1 files
+2025/03/06-11:54:05.399 68ca Generated table #2497@0: 1726 keys, 28547 bytes
+2025/03/06-11:54:05.406 68ca Generated table #2498@0: 1725 keys, 107474 bytes
+2025/03/06-11:54:05.406 68ca Compacted 1@0 + 1@1 files => 136021 bytes
+2025/03/06-11:54:05.407 68ca compacted to: files[ 0 2 24 0 0 0 0 ]
+2025/03/06-11:54:05.409 68ca Delete type=2 #2487
+2025/03/06-11:54:05.409 68ca Manual compaction at level-0 from '\x00w\x00\x00\x05' @ 3678881 : 1 .. '\x00x\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/03/06-11:54:07.958 68cb Compacting 1@1 + 8@2 files
+2025/03/06-11:54:08.125 68cb Generated table #2499@1: 28372 keys, 2252079 bytes
+2025/03/06-11:54:08.173 68cb Generated table #2500@1: 8192 keys, 2131169 bytes
+2025/03/06-11:54:08.218 68cb Generated table #2501@1: 6889 keys, 2127796 bytes
+2025/03/06-11:54:08.369 68cb Generated table #2502@1: 116668 keys, 2268404 bytes
+2025/03/06-11:54:08.515 68cb Generated table #2503@1: 112923 keys, 2264761 bytes
+2025/03/06-11:54:08.620 68cb Generated table #2504@1: 112689 keys, 2265554 bytes
+2025/03/06-11:54:08.734 68cb Generated table #2505@1: 112802 keys, 2265801 bytes
+2025/03/06-11:54:08.800 68cb Generated table #2506@1: 52194 keys, 1053286 bytes
+2025/03/06-11:54:08.802 68cb Compacted 1@1 + 8@2 files => 16628850 bytes
+2025/03/06-11:54:08.803 68cb compacted to: files[ 0 1 24 0 0 0 0 ]
+2025/03/06-11:54:08.805 68cb Delete type=2 #2465
+2025/03/06-11:54:08.805 68cb Delete type=2 #2481
+2025/03/06-11:54:08.805 68cb Delete type=2 #2470
+2025/03/06-11:54:08.805 68cb Delete type=2 #2462
+2025/03/06-11:54:08.806 68cb Delete type=2 #2482
+2025/03/06-11:54:08.806 68cb Delete type=2 #2474
+2025/03/06-11:54:08.806 68cb Delete type=2 #2475
+2025/03/06-11:54:08.806 68cb Delete type=2 #2467
+2025/03/06-11:54:08.806 68cb Delete type=2 #2464
+2025/03/06-11:54:08.806 68cb Delete type=2 #2471
+2025/03/06-11:54:08.806 68cb Delete type=2 #2498
+2025/03/06-11:54:08.806 68cb Delete type=2 #2469
+2025/03/06-11:54:08.806 68cb Delete type=2 #2468
+2025/03/06-11:54:08.806 68cb Delete type=2 #2477
+2025/03/06-11:54:08.807 68cb Delete type=2 #2466
+2025/03/06-11:54:08.807 68cb Delete type=2 #2461
+2025/03/06-11:54:08.807 68cb Delete type=2 #2460
+2025/03/06-11:54:08.807 68cb Delete type=2 #2476
+2025/03/06-11:54:08.807 68cb Delete type=2 #2473
+2025/03/06-11:54:08.807 68cb Delete type=2 #2463
+2025/03/06-11:54:08.807 68cb Delete type=2 #2472
+2025/03/06-11:54:09.786 68ca Compacting 1@1 + 10@2 files
+2025/03/06-11:54:09.946 68ca Generated table #2507@1: 86375 keys, 2235718 bytes
+2025/03/06-11:54:10.030 68ca Generated table #2508@1: 53036 keys, 2255980 bytes
+2025/03/06-11:54:10.077 68ca Generated table #2509@1: 3412 keys, 2168310 bytes
+2025/03/06-11:54:10.113 68ca Generated table #2510@1: 1608 keys, 2141607 bytes
+2025/03/06-11:54:10.149 68ca Generated table #2511@1: 2983 keys, 2171307 bytes
+2025/03/06-11:54:10.186 68ca Generated table #2512@1: 2303 keys, 2155932 bytes
+2025/03/06-11:54:10.223 68ca Generated table #2513@1: 2642 keys, 2176639 bytes
+2025/03/06-11:54:10.253 68ca Generated table #2514@1: 956 keys, 2121537 bytes
+2025/03/06-11:54:10.295 68ca Generated table #2515@1: 14068 keys, 2160042 bytes
+2025/03/06-11:54:10.375 68ca Generated table #2516@1: 24558 keys, 2218590 bytes
+2025/03/06-11:54:10.375 68ca Compacted 1@1 + 10@2 files => 21805662 bytes
+2025/03/06-11:54:10.377 68ca compacted to: files[ 0 0 24 0 0 0 0 ]
+2025/03/06-11:54:10.378 68ca Delete type=2 #2493
+2025/03/06-11:54:10.378 68ca Delete type=2 #2494
+2025/03/06-11:54:10.378 68ca Delete type=2 #2489
+2025/03/06-11:54:10.379 68ca Delete type=2 #2485
+2025/03/06-11:54:10.379 68ca Delete type=2 #2491
+2025/03/06-11:54:10.379 68ca Delete type=2 #2484
+2025/03/06-11:54:10.379 68ca Delete type=2 #2495
+2025/03/06-11:54:10.379 68ca Delete type=2 #2497
+2025/03/06-11:54:10.379 68ca Delete type=2 #2488
+2025/03/06-11:54:10.379 68ca Delete type=2 #2492
+2025/03/06-11:54:10.379 68ca Delete type=2 #2490

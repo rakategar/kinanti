@@ -4,45 +4,39 @@ import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 
 export default function Home() {
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false); // State untuk loading
-
   const router = useRouter();
-  const { data: session } = useSession();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    setLoading(true); // Set loading ke true saat login dimulai
+    setLoading(true);
+    setError("");
 
     try {
       const res = await signIn("credentials", {
-        email,
+        phone,
         password,
         redirect: false,
       });
 
       if (res.error) {
-        setError("Invalid Credentials");
-        setLoading(false); // Set loading ke false jika terjadi error
+        setError(res.error);
+        setLoading(false);
         return;
       }
 
       router.replace("/dashboard");
-      console.log(session);
     } catch (error) {
-      console.log(error);
-      setLoading(false); // Set loading ke false jika terjadi exception
+      console.error("Login error:", error);
+      setError("Terjadi kesalahan saat login.");
+      setLoading(false);
     }
   };
-
   return (
     <div
       className="flex items-center justify-center min-h-screen"
@@ -94,20 +88,20 @@ export default function Home() {
         <form className="flex flex-col gap-[30px]" onSubmit={handleSubmit}>
           <div className="relative">
             <input
-              onChange={(e) => setEmail(e.target.value)}
               type="text"
-              id="email"
-              placeholder="Username / Email"
+              placeholder="62xxxxxxxxxxx"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
               disabled={loading} // Nonaktifkan input jika loading
             />
           </div>
           <div className="relative">
             <input
-              onChange={(e) => setPassword(e.target.value)}
               type="password"
-              id="password"
               placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
               disabled={loading} // Nonaktifkan input jika loading
             />

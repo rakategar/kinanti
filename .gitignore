@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/.wwebjs_auth
-/.wwebjs_cache
+.wwebjs_auth
+.wwebjs_cache

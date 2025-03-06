@@ -1,68 +1,50 @@
-"use client"
-import Image from 'next/image';
-import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+"use client";
+import Image from "next/image";
+import { useState } from "react";
 
+export default function Register() {
+  const [formData, setFormData] = useState({
+    nama: "",
+    phone: "",
+    password: "",
+    kelas: "",
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-export default function Home() {
-  const [email, setEmail] = useState(""); 
-  const [username, setUsername] = useState(""); 
-  const [phone, setPhone] = useState(""); 
-  const [password, setPassword] = useState(""); 
-  const [error, setError] = useState(""); 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!username || !email || !password) {
-      setError("All fields are necessary.");
-      return;
-    }
+    setLoading(true);
+    setError("");
 
     try {
-      const resUserExists = await fetch("api/userExists", {
+      const res = await fetch("/api/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
 
-      const { user } = await resUserExists.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
-      if (user) {
-        setError("User already exists.");
-        return;
-      }
-
-      const res = await fetch("api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username,
-          email,
-          password,
-          phone,
-        }),
-      });
-
-      if (res.ok) {
-        const form = e.target;
-        form.reset();
-        router.push("/");
-      } else {
-        console.log("User registration failed.");
-      }
-    } catch (error) {
-      console.log("Error during registration: ", error);
+      alert("Registrasi berhasil!");
+      setFormData({ nama: "", phone: "", password: "", kelas: "" });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#ECF2FA' }}>
-      
+    <div
+      className="flex items-center justify-center min-h-screen"
+      style={{ backgroundColor: "#ECF2FA" }}
+    >
       {/* Logo */}
       <div className="absolute top-10 left-10">
         <Image
@@ -89,7 +71,11 @@ export default function Home() {
             Elevate Your Messaging Efficiency with Our Innovative Admin Tools
           </h1>
           <p className="mt-[30px] text-gray-600">
-            Selamat datang di Forwardin! Pengelolaan pesan Anda menjadi lebih mudah dengan Admin Tools kami. Tingkatkan komunikasi Anda dan pelanggan dengan fitur pesan otomatis. Menyimpan kontak menjadi lebih praktis dengan fitur sinkronisasi Google Contact. Dapatkan kendali penuh pesan dengan manajemen konten yang praktis.
+            Selamat datang di Forwardin! Pengelolaan pesan Anda menjadi lebih
+            mudah dengan Admin Tools kami. Tingkatkan komunikasi Anda dan
+            pelanggan dengan fitur pesan otomatis. Menyimpan kontak menjadi
+            lebih praktis dengan fitur sinkronisasi Google Contact. Dapatkan
+            kendali penuh pesan dengan manajemen konten yang praktis.
           </p>
         </div>
       </div>
@@ -97,60 +83,78 @@ export default function Home() {
       {/* Login Form Section */}
       <div className="w-[466px] flex flex-col justify-center p-[40px] bg-white rounded-lg shadow-md">
         <div className="text-center mb-[40px]">
-          <h2 className="text-2xl font-bold text-black">Welcome to Forwardin</h2>
-          <p className="mt-2 text-sm text-gray-600">Revolutionize your communication</p>
+          <h2 className="text-2xl font-bold text-black">
+            Welcome to Forwardin
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Revolutionize your communication
+          </p>
           <p className="text-sm text-gray-600">journey with Forwardin today</p>
         </div>
-        
+
         <form className="flex flex-col gap-[20px]" onSubmit={handleSubmit}>
           <div className="relative">
             <input
-                onChange={e => setEmail(e.target.value)}
-                type="text"
-                id="email"
-                placeholder="Email"
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
-            />
-          </div>
-          
-          <div className="relative">
-            <input
-              onChange={e => setUsername(e.target.value)}
               type="text"
-              id="username"
-              placeholder="Username"
+              id="nama"
+              placeholder="Nama Lengkap"
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
+              value={formData.nama}
+              onChange={handleChange}
             />
           </div>
-          
+
+          <div className="relative">
+            <select
+              id="kelas"
+              value={formData.kelas}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500  placeholder-gray-500 placeholder-opacity-50 text-black"
+            >
+              <option value="" disabled defaultValue={""}>
+                Pilih Kelas
+              </option>
+              <option value="XTKJ1">X TKJ 1</option>
+              <option value="XTKJ2">X TKJ 2</option>
+              <option value="XITKJ1">XI TKJ 1</option>
+              <option value="XITKJ2">XI TKJ 2</option>
+              <option value="XIITKJ1">XII TKJ 1</option>
+              <option value="XIITKJ2">XII TKJ 2</option>
+            </select>
+          </div>
+
           <div className="relative flex gap-2">
             <select className="w-32 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-transparent text-black">
               <option value="+62">(ID) +62</option>
               {/* Add other country codes as needed */}
             </select>
             <input
-              onChange={e => setPhone(e.target.value)}
               type="text"
               id="phone"
+              value={formData.phone}
+              onChange={handleChange}
               placeholder="WhatsApp Phone Number"
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
             />
           </div>
-          
+
           <div className="relative">
             <input
-              onChange={e => setPassword(e.target.value)}
               type="password"
               id="password"
+              value={formData.password}
+              onChange={handleChange}
               placeholder="Password"
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
             />
           </div>
 
           <div className="flex items-center justify-between">
-            <a href="#" className="text-sm text-blue-500">Lupa Password?</a>
+            <a href="#" className="text-sm text-blue-500">
+              Lupa Password?
+            </a>
           </div>
-          
+
           <button
             type="submit"
             className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -158,14 +162,18 @@ export default function Home() {
             Register
           </button>
 
-        {/* Error Massage */}
-        { error &&
-          <p className='bg-red-500 rounded-lg flex justify-center items-center p-2'>{error}</p>
-        }
+          {/* Error Massage */}
+          {error && (
+            <p className="bg-red-500 rounded-lg flex justify-center items-center p-2">
+              {error}
+            </p>
+          )}
 
           <div className="text-center mt-4">
             <a className="text-sm text-black pr-2">Sudah punya akun?</a>
-            <a href="/login" className="text-sm text-blue-500">Masuk di sini</a>
+            <a href="/login" className="text-sm text-blue-500">
+              Masuk di sini
+            </a>
           </div>
         </form>
       </div>

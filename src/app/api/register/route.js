@@ -1,20 +1,54 @@
-import { NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { connectMongoDB } from "../../../../lib/mongodb";
-import User from "../../../../models/user";
+
+const prisma = new PrismaClient();
 
 export async function POST(req) {
   try {
-    const { username, email, password, phone } = await req.json();
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await connectMongoDB();
-    await User.create({ username, email, password: hashedPassword, phone });
+    const body = await req.json();
+    const { nama, kelas, phone, password } = body;
 
-    return NextResponse.json({ message: "User registered." }, { status: 201 });
+    // Cek apakah nomor WhatsApp sudah terdaftar
+    const existingUser = await prisma.user.findUnique({ where: { phone } });
+    if (existingUser) {
+      return new Response(
+        JSON.stringify({ message: "❌ Nomor WhatsApp sudah terdaftar." }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Enkripsi password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Simpan data ke database
+    const newUser = await prisma.user.create({
+      data: {
+        nama,
+        kelas,
+        phone,
+        password: hashedPassword,
+        role: "siswa", // Default role
+      },
+    });
+
+    return new Response(
+      JSON.stringify({ message: "✅ Registrasi berhasil!", user: newUser }),
+      {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   } catch (error) {
-    return NextResponse.json(
-      { message: "An error occurred while registering the user." },
-      { status: 500 }
+    console.error(error);
+    return new Response(
+      JSON.stringify({ message: "❌ Terjadi kesalahan saat registrasi." }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
     );
   }
 }

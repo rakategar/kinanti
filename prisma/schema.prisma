@@ -11,7 +11,8 @@ datasource db {
 model User {
   id    Int    @id @default(autoincrement()) 
   nama  String
-  phone String // Nomor WhatsApp
+  phone String  @unique // Nomor WhatsApp
+  password String @default("")
   role  Role  
   kelas Kelas  
   guruTugas Assignment[] @relation("GuruTugas") 
