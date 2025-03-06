@@ -57,7 +57,7 @@ export default function Register() {
 
       {/* Content Section */}
       <div className="w-[465px] mr-28">
-        <div className="w-[465px] h-[292.36px] rounded-tl-lg overflow-hidden">
+        {/* <div className="w-[465px] h-[292.36px] rounded-tl-lg overflow-hidden">
           <Image
             src="/gambarlogin.svg"
             alt="Admin Tools Screenshot"
@@ -65,17 +65,16 @@ export default function Register() {
             height={292.36}
             className="rounded-tl-lg"
           />
-        </div>
+        </div> */}
         <div className="mt-[45px] text-left">
           <h1 className="text-2xl font-bold text-gray-800">
-            Elevate Your Messaging Efficiency with Our Innovative Admin Tools
+            Kinanti - Solusi Cerdas untuk Manajemen Tugas dan Pesan Otomatis
           </h1>
           <p className="mt-[30px] text-gray-600">
-            Selamat datang di Forwardin! Pengelolaan pesan Anda menjadi lebih
-            mudah dengan Admin Tools kami. Tingkatkan komunikasi Anda dan
-            pelanggan dengan fitur pesan otomatis. Menyimpan kontak menjadi
-            lebih praktis dengan fitur sinkronisasi Google Contact. Dapatkan
-            kendali penuh pesan dengan manajemen konten yang praktis.
+            Kinantiku dirancang untuk mempermudah guru, siswa, dan pelaku bisnis
+            dalam mengelola informasi dengan cepat dan praktis. Tingkatkan
+            produktivitas Anda dengan solusi yang simpel, aman, dan mudah
+            digunakan! 🚀
           </p>
         </div>
       </div>
@@ -84,12 +83,12 @@ export default function Register() {
       <div className="w-[466px] flex flex-col justify-center p-[40px] bg-white rounded-lg shadow-md">
         <div className="text-center mb-[40px]">
           <h2 className="text-2xl font-bold text-black">
-            Welcome to Forwardin
+            Selamat Datang di Kinanti Ku !
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Revolutionize your communication
+            Tingkatkan Produktifitas, Gapai Prestasi <br />
+            Bersama Kinanti !
           </p>
-          <p className="text-sm text-gray-600">journey with Forwardin today</p>
         </div>
 
         <form className="flex flex-col gap-[20px]" onSubmit={handleSubmit}>
@@ -124,16 +123,12 @@ export default function Register() {
           </div>
 
           <div className="relative flex gap-2">
-            <select className="w-32 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-transparent text-black">
-              <option value="+62">(ID) +62</option>
-              {/* Add other country codes as needed */}
-            </select>
             <input
               type="text"
               id="phone"
               value={formData.phone}
               onChange={handleChange}
-              placeholder="WhatsApp Phone Number"
+              placeholder="WhatsApp Number 62895xxxxxxxx"
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
             />
           </div>
