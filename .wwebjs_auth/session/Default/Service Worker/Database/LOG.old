@@ -1,3 +1,2 @@
-2025/03/06-11:53:06.909 66ea Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Service Worker/Database/MANIFEST-000001
-2025/03/06-11:53:06.914 66ea Recovering log #3
-2025/03/06-11:53:06.920 66ea Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Service Worker/Database/000003.log 
+2025/03/07-09:08:53.111 4824 Creating DB C:\Users\infor\Documents\Raka\kinanti\.wwebjs_auth\session\Default\Service Worker\Database since it was missing.
+2025/03/07-09:08:53.117 4824 Reusing MANIFEST C:\Users\infor\Documents\Raka\kinanti\.wwebjs_auth\session\Default\Service Worker\Database/MANIFEST-000001

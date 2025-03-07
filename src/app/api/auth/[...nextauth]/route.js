@@ -6,53 +6,52 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 export const authOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: "jwt",
+  },
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: "Credentials",
       credentials: {
-        phone: { label: "Phone", type: "text", placeholder: "62xxxxxxxxxxx" },
+        phone: { label: "Phone Number", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials.phone || !credentials.password) {
-          throw new Error("Nomor WhatsApp dan password diperlukan");
-        }
-
-        // Cari user berdasarkan phone
         const user = await prisma.user.findUnique({
           where: { phone: credentials.phone },
         });
 
         if (!user) {
-          throw new Error("Nomor WhatsApp tidak terdaftar");
+          throw new Error("User not found");
         }
 
-        // Periksa password
-        const isPasswordValid = await bcrypt.compare(
+        const isValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
-
-        if (!isPasswordValid) {
-          throw new Error("Password salah");
+        if (!isValid) {
+          throw new Error("Invalid credentials");
         }
 
-        return {
-          id: user.id,
-          name: user.nama,
-          phone: user.phone,
-          role: user.role,
-        };
+        return { id: user.id, name: user.nama, phone: user.phone };
       },
     }),
   ],
-  pages: {
-    signIn: "/",
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id;
+      }
+      return session;
+    },
   },
-  session: {
-    strategy: "jwt",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);

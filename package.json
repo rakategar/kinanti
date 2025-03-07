@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "daisyui": "^5.0.0",
     "prisma": "6.4.1",
     "tailwindcss": "^4"
   }

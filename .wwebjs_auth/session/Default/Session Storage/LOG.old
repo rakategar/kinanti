@@ -1,3 +1,2 @@
-2025/03/06-11:53:07.847 6719 Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Session Storage/MANIFEST-000001
-2025/03/06-11:53:07.855 6719 Recovering log #3
-2025/03/06-11:53:07.860 6719 Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Session Storage/000003.log 
+2025/03/07-09:08:51.599 730 Creating DB C:\Users\infor\Documents\Raka\kinanti\.wwebjs_auth\session\Default\Session Storage since it was missing.
+2025/03/07-09:08:51.668 730 Reusing MANIFEST C:\Users\infor\Documents\Raka\kinanti\.wwebjs_auth\session\Default\Session Storage/MANIFEST-000001

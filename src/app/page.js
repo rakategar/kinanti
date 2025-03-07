@@ -1,143 +1,117 @@
 "use client";
-import Image from "next/image";
-import Link from "next/link";
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 
-export default function Home() {
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false); // State untuk loading
+import { useEffect, useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 
-  const router = useRouter();
+export default function Dashboard() {
   const { data: session } = useSession();
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false); // State untuk modal logout
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    setLoading(true); // Set loading ke true saat login dimulai
-
-    try {
-      const res = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (res.error) {
-        setError("Invalid Credentials");
-        setLoading(false); // Set loading ke false jika terjadi error
-        return;
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      try {
+        const res = await fetch("/api/assignments");
+        const data = await res.json();
+        setAssignments(data);
+      } catch (error) {
+        console.error("Error fetching assignments:", error);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      router.replace("/dashboard");
-      console.log(session);
-    } catch (error) {
-      console.log(error);
-      setLoading(false); // Set loading ke false jika terjadi exception
-    }
-  };
+    fetchAssignments();
+  }, []);
 
   return (
-    <div
-      className="flex items-center justify-center min-h-screen"
-      style={{ backgroundColor: "#ECF2FA" }}
-    >
-      {/* Logo */}
-      <Link className="absolute top-10 left-10" href={"/"}>
-        <Image
-          src="/logo.svg"
-          alt="Forwardin Logo"
-          width={177}
-          height={33.63}
-        />
-      </Link>
+    <div className="min-h-screen bg-gray-100 p-6">
+      {/* Header dengan tombol logout */}
+      <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md relative">
+        <button
+          onClick={() => setShowModal(true)}
+          className="absolute top-4 right-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+        >
+          Logout
+        </button>
 
-      {/* Content Section */}
-      <div className="w-[465px] mr-28">
-        <div className="w-[465px] h-[292.36px] rounded-tl-lg overflow-hidden">
-          <Image
-            src="/gambarlogin.svg"
-            alt="Admin Tools Screenshot"
-            width={465}
-            height={292.36}
-            className="rounded-tl-lg"
-          />
-        </div>
-        <div className="mt-[45px] text-left">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Elevate Your Messaging Efficiency with Our Innovative Admin Tools
-          </h1>
-          <p className="mt-[30px] text-gray-600">
-            Selamat datang di Forwardin! Pengelolaan pesan Anda menjadi lebih
-            mudah dengan Admin Tools kami. Tingkatkan komunikasi Anda dan
-            pelanggan dengan fitur pesan otomatis. Menyimpan kontak menjadi
-            lebih praktis dengan fitur sinkronisasi Google Contact. Dapatkan
-            kendali penuh pesan dengan manajemen konten yang praktis.
-          </p>
-        </div>
-      </div>
+        <h1 className="text-2xl font-bold text-gray-800">
+          Selamat datang, {session?.user?.name}!
+        </h1>
+        <p className="text-gray-600">
+          Berikut adalah tugas yang harus kamu selesaikan:
+        </p>
 
-      {/* Login Form Section */}
-      <div className="w-[466px] flex flex-col justify-center p-[40px] bg-white rounded-lg shadow-md">
-        <div className="text-center mb-[40px]">
-          <h2 className="text-2xl font-bold text-black">Welcome Back</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            We’re so excited to see you again!
-          </p>
-        </div>
-        <form className="flex flex-col gap-[30px]" onSubmit={handleSubmit}>
-          <div className="relative">
-            <input
-              onChange={(e) => setEmail(e.target.value)}
-              type="text"
-              id="email"
-              placeholder="Username / Email"
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
-              disabled={loading} // Nonaktifkan input jika loading
-            />
-          </div>
-          <div className="relative">
-            <input
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              id="password"
-              placeholder="Password"
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
-              disabled={loading} // Nonaktifkan input jika loading
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <a href="#" className="text-sm text-blue-500">
-              Lupa Password?
-            </a>
-          </div>
-          <button
-            type="submit"
-            className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading} // Nonaktifkan tombol jika loading
-          >
-            {loading ? "Loading..." : "Sign In"}
-          </button>
-          <div className="text-center mt-4 ">
-            <a className="text-sm text-black pr-2">Butuh buat akun?</a>
-            <a href="/register" className="text-sm text-blue-500">
-              Daftar di sini
-            </a>
-          </div>
-        </form>
-        {/* Error Message */}
-        {error && (
-          <p className="bg-red-500 rounded-lg flex justify-center items-center p-2">
-            {error}
-          </p>
+        {loading ? (
+          <p className="text-gray-500 mt-4">Memuat tugas...</p>
+        ) : assignments.length === 0 ? (
+          <p className="text-gray-500 mt-4">Tidak ada tugas yang tersedia.</p>
+        ) : (
+          <table className="w-full mt-4 border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-blue-500 text-white">
+                <th className="border border-gray-300 p-2">No</th>
+                <th className="border border-gray-300 p-2">Judul Tugas</th>
+                <th className="border border-gray-300 p-2">Status</th>
+                <th className="border border-gray-300 p-2">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assignments.map((assignment, index) => (
+                <tr key={assignment.id} className="text-center">
+                  <td className="border border-gray-300 p-2">{index + 1}</td>
+                  <td className="border border-gray-300 p-2">
+                    {assignment.judul}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {assignment.status === "SELESAI"
+                      ? "✅ Selesai"
+                      : "⏳ Belum Selesai"}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    <a
+                      href={`/tugas/${assignment.id}`}
+                      className="text-blue-500 hover:underline"
+                    >
+                      Lihat Tugas
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
+
+      {/* Modal Konfirmasi Logout */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg shadow-md text-center">
+            <h2 className="text-xl font-bold text-gray-800">
+              Konfirmasi Logout
+            </h2>
+            <p className="text-gray-600 mt-2">
+              Apakah Anda yakin ingin logout?
+            </p>
+
+            <div className="mt-4 flex justify-center gap-4">
+              <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+              >
+                Iya
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+              >
+                Tidak
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
