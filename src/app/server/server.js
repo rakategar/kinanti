@@ -6,22 +6,16 @@ const ExcelJS = require("exceljs"); // Pastikan sudah install: npm install excel
 const fs = require("fs");
 const prisma = new PrismaClient();
 const path = require("path");
-const os = require("os");
 
 const SUPABASE_URL = "https://wgdxgzraacfhfbxvxuzy.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnZHhnenJhYWNmaGZieHZ4dXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTAzNjM5OCwiZXhwIjoyMDU2NjEyMzk4fQ._dVS_wha-keEbaBb1xapdAeSpgJwwEAnWcrdnjDQ9nA";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const executablePath =
-  os.platform() === "win32" || "win64"
-    ? "C:\\Chromium\\chrome.exe"
-    : "/usr/bin/google-chrome";
-
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    executablePath,
+    executablePath: "/usr/bin/google-chrome",
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   },
@@ -580,7 +574,6 @@ client.on("message", async (message) => {
     );
     delete pendingAssignment[sender];
   }
-
 
   if (message.body.toLowerCase().startsWith("rekap")) {
     const guru = await prisma.user.findFirst({

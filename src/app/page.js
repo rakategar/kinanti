@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
 
 export default function Dashboard() {
   const { data: session } = useSession();
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false); // State untuk modal logout
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    const fetchAssignments = async () => {
+    const loadAssignments = async () => {
       try {
-        const res = await fetch("/api/assignments");
+        const res = await fetch("/api/assignments"); // Ambil data dari API
         const data = await res.json();
         setAssignments(data);
       } catch (error) {
@@ -22,7 +22,7 @@ export default function Dashboard() {
       }
     };
 
-    fetchAssignments();
+    loadAssignments();
   }, []);
 
   return (

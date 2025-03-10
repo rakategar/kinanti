@@ -1,2 +1,2 @@
-2025/03/07-09:08:51.433 4824 Creating DB C:\Users\infor\Documents\Raka\kinanti\.wwebjs_auth\session\Default\Sync Data\LevelDB since it was missing.
-2025/03/07-09:08:51.439 4824 Reusing MANIFEST C:\Users\infor\Documents\Raka\kinanti\.wwebjs_auth\session\Default\Sync Data\LevelDB/MANIFEST-000001
+2025/03/10-10:28:39.802 1f7f Creating DB /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Sync Data/LevelDB since it was missing.
+2025/03/10-10:28:39.808 1f7f Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Sync Data/LevelDB/MANIFEST-000001
