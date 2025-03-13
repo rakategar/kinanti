@@ -42,12 +42,14 @@ export const authOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.kelas = user.kelas; // ✅ Tambahkan kelas ke token
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
+        session.user.kelas = token.kelas; // ✅ Tambahkan kelas ke session
       }
       return session;
     },

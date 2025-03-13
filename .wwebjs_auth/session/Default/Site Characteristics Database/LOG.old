@@ -1,2 +1,3 @@
-2025/03/10-10:28:39.828 1f8b Creating DB /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Site Characteristics Database since it was missing.
-2025/03/10-10:28:39.837 1f8b Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Site Characteristics Database/MANIFEST-000001
+2025/03/13-19:51:38.259 4d4a Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Site Characteristics Database/MANIFEST-000001
+2025/03/13-19:51:38.269 4d4a Recovering log #3
+2025/03/13-19:51:38.269 4d4a Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Site Characteristics Database/000003.log 

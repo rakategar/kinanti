@@ -1,3 +1,6 @@
-2025/03/10-10:46:29.792 34f0 Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
-2025/03/10-10:46:29.812 34f0 Recovering log #3
-2025/03/10-10:46:29.813 34f0 Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Local Storage/leveldb/000003.log 
+2025/03/13-19:53:44.271 5028 Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2025/03/13-19:53:44.295 5028 Recovering log #20
+2025/03/13-19:53:44.296 5028 Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Local Storage/leveldb/000020.log 
+2025/03/13-19:55:45.167 5028 Level-0 table #24: started
+2025/03/13-19:55:45.175 5028 Level-0 table #24: 13656 bytes OK
+2025/03/13-19:55:45.178 5028 Delete type=0 #20

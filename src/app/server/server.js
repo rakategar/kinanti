@@ -1,11 +1,13 @@
 const qrcode = require("qrcode-terminal");
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Kelas } = require("@prisma/client");
 const { createClient } = require("@supabase/supabase-js");
 const ExcelJS = require("exceljs"); // Pastikan sudah install: npm install exceljs
 const fs = require("fs");
 const prisma = new PrismaClient();
 const path = require("path");
+
+// Import enum Prisma
 
 const SUPABASE_URL = "https://wgdxgzraacfhfbxvxuzy.supabase.co";
 const SUPABASE_KEY =
@@ -63,15 +65,23 @@ client.on("message", async (message) => {
       );
     }
 
-    // Menentukan target kelas (jika ada)
+    // Menentukan target kelas (harus ada)
     const args = message.body.split(" ");
-    let kelasTarget = args.length > 1 ? args.slice(1).join(" ") : null;
+    if (args.length < 2) {
+      return await message.reply(
+        "⚠️ Anda harus menyebutkan kelas tujuan!\n\n📌 Contoh penggunaan:\n*Penugasan XIITKJ2*"
+      );
+    }
+
+    let kelasTarget = args.slice(1).join(" "); // Ambil teks setelah "Penugasan"
 
     pendingAssignment[sender] = {
       step: 1,
       guruId: guru.id, // Simpan ID guru dengan benar
-      kelasTarget: message.body.split(" ")[1] || null, // Jika ada kelas
+      kelasTarget: kelasTarget,
     };
+
+    console.log(pendingAssignment[sender]);
 
     if (!pendingAssignment[sender]?.guruId) {
       console.log(
@@ -90,6 +100,7 @@ client.on("message", async (message) => {
 
   // 2. Menyimpan kode, judul, deskripsi tugas, dan pilihan lampiran PDF
   else if (pendingAssignment[sender]?.step === 1 && !message.hasMedia) {
+    console.log(pendingAssignment[sender]);
     const lines = message.body.split("\n");
     if (lines.length < 4) {
       return await message.reply(
@@ -122,6 +133,7 @@ client.on("message", async (message) => {
       judul: judulTugas,
       deskripsi: deskripsiTugas,
       lampirkanPDF: lampirkanPDF,
+      kelas: pendingAssignment[sender].kelasTarget,
     };
 
     if (lampirkanPDF) {
@@ -136,7 +148,8 @@ client.on("message", async (message) => {
           kode: kodeTugas,
           judul: judulTugas,
           deskripsi: deskripsiTugas,
-          pdfUrl: null, // Tidak ada file PDF
+          pdfUrl: null,
+          kelas: pendingAssignment[sender].kelas, // Tidak ada file PDF
         },
       });
       // Cari siswa berdasarkan kelas (atau semua siswa jika kelasTarget tidak ditentukan)
@@ -160,12 +173,12 @@ client.on("message", async (message) => {
       await message.reply(
         `✅ Tugas berhasil dibuat ! \n Gunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan\n\nContoh: *kirim mtk24 XTKJ1* `
       );
-      delete pendingAssignment[sender];
     }
   }
 
   // 3. Mengunggah PDF ke Supabase
   else if (pendingAssignment[sender]?.step === 2 && message.hasMedia) {
+    console.log(pendingAssignment[sender]);
     const media = await message.downloadMedia();
     if (!media.mimetype.includes("pdf")) {
       return await message.reply("⚠️ Hanya file PDF yang diperbolehkan!");
@@ -185,7 +198,7 @@ client.on("message", async (message) => {
 
     // Simpan ke database Prisma
     const pdfUrl = `${SUPABASE_URL}/storage/v1/object/public/assignments/${fileName}`;
-
+    console.log(pendingAssignment[sender]);
     // Cek apakah guruId tersedia
     if (!pendingAssignment[sender]?.guruId) {
       console.error(
@@ -196,8 +209,9 @@ client.on("message", async (message) => {
         "⚠️ Terjadi kesalahan: Guru ID tidak ditemukan. Coba ulangi."
       );
     }
-
+    console.log(pendingAssignment[sender]);
     // Simpan tugas ke database
+    console.log(pendingAssignment[sender].kelasTarget);
     const newTugas = await prisma.assignment.create({
       data: {
         guruId: pendingAssignment[sender].guruId,
@@ -205,6 +219,7 @@ client.on("message", async (message) => {
         judul: pendingAssignment[sender].judul,
         deskripsi: pendingAssignment[sender].deskripsi,
         pdfUrl: pdfUrl,
+        kelas: pendingAssignment[sender].kelas, // Gunakan enum Kelas
       },
     });
 

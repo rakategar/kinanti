@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 export async function middleware(req) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = req.cookies.get("token");
   const { pathname } = req.nextUrl;
 
   // Jika user belum login dan mencoba mengakses dashboard ("/"), arahkan ke "/login"
@@ -13,7 +12,7 @@ export async function middleware(req) {
   return NextResponse.next();
 }
 
-// Tentukan halaman yang ingin diawasi oleh middleware
+// Middleware hanya untuk halaman "/"
 export const config = {
-  matcher: ["/"], // Middleware hanya berlaku untuk halaman dashboard "/"
+  matcher: ["/"],
 };

@@ -1,6 +1,8 @@
 "use client";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -15,11 +17,18 @@ export default function Register() {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
-
+  const router = useRouter();
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // ✅ Validasi Nomor WhatsApp
+    if (!/^628\d{8,12}$/.test(formData.phone)) {
+      setError("❌ Nomor WhatsApp harus diawali 628 dan memiliki 10-14 digit.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/register", {
@@ -29,10 +38,19 @@ export default function Register() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.message || "Terjadi kesalahan.");
 
-      alert("Registrasi berhasil!");
-      setFormData({ nama: "", phone: "", password: "", kelas: "" });
+      // ✅ Langsung login setelah registrasi
+      const loginRes = await signIn("credentials", {
+        phone: formData.phone,
+        password: formData.password,
+        redirect: false, // Supaya kita bisa menangani navigasi manual
+      });
+
+      if (loginRes.error) throw new Error(loginRes.error);
+
+      // ✅ Redirect ke dashboard setelah login
+      router.replace("/");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -110,7 +128,7 @@ export default function Register() {
               onChange={handleChange}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500  placeholder-gray-500 placeholder-opacity-50 text-black"
             >
-              <option value="" disabled defaultValue={""}>
+              <option value="" disabled>
                 Pilih Kelas
               </option>
               <option value="XTKJ1">X TKJ 1</option>
@@ -153,8 +171,9 @@ export default function Register() {
           <button
             type="submit"
             className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
           >
-            Register
+            {loading ? "Loading" : "Register"}
           </button>
 
           {/* Error Massage */}
