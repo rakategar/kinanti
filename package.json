@@ -13,16 +13,24 @@
     "@prisma/client": "6.4.1",
     "@supabase/supabase-js": "^2.49.1",
     "bcryptjs": "^3.0.2",
+    "dropzone": "6.0.0-beta.2",
     "exceljs": "^4.4.0",
     "fluent-ffmpeg": "^2.1.3",
+    "flyonui": "^1.3.0",
     "jsonwebtoken": "^9.0.2",
+    "lodash": "^4.17.21",
+    "motion": "^12.5.0",
     "next": "15.2.0",
     "next-auth": "^4.24.7",
     "puppeteer": "^24.3.1",
     "qrcode-terminal": "^0.12.0",
     "react": "^19.0.0",
+    "react-confetti": "^6.4.0",
     "react-dom": "^19.0.0",
     "react-dropzone": "^14.3.8",
+    "react-icons": "^5.5.0",
+    "react-use": "^17.6.0",
+    "sweetalert2": "^11.17.2",
     "whatsapp-web.js": "^1.23.0"
   },
   "browserslist": {
@@ -40,9 +48,8 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/react": "19.0.10",
-    "daisyui": "^5.0.0",
     "prisma": "6.4.1",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.0.9",
     "typescript": "5.8.2"
   }
 }

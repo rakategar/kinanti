@@ -1,8 +1,12 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
+import { motion } from "framer-motion";
+import { GoHeartFill } from "react-icons/go";
+import Swal from "sweetalert2";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -17,7 +21,9 @@ export default function Register() {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
   };
+
   const router = useRouter();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -25,7 +31,36 @@ export default function Register() {
 
     // ✅ Validasi Nomor WhatsApp
     if (!/^628\d{8,12}$/.test(formData.phone)) {
-      setError("❌ Nomor WhatsApp harus diawali 628 dan memiliki 10-14 digit.");
+      Swal.fire({
+        title: "Warning!",
+        text: "Nomor HP harus diawali dengan 62.",
+        icon: "warning",
+        confirmButtonText: "OK",
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Tampilkan SweetAlert2 untuk konfirmasi data
+    const { isConfirmed } = await Swal.fire({
+      title: "Konfirmasi Data",
+      html: `
+        <div class="text-left">
+          <p><strong>Nama:</strong> ${formData.nama}</p>
+          <p><strong>Kelas:</strong> ${formData.kelas}</p>
+          <p><strong>Nomor WhatsApp:</strong> ${formData.phone}</p>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Daftar",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#7e22ce", // Warna ungu
+      cancelButtonColor: "#6b7280", // Warna abu-abu
+    });
+
+    // Jika pengguna memilih "Batal", hentikan proses
+    if (!isConfirmed) {
       setLoading(false);
       return;
     }
@@ -49,84 +84,103 @@ export default function Register() {
 
       if (loginRes.error) throw new Error(loginRes.error);
 
+      // Tampilkan SweetAlert2 untuk notifikasi sukses
+      await Swal.fire({
+        title: "Sukses!",
+        text: "Registrasi berhasil. Anda akan diarahkan ke halaman utama.",
+        icon: "success",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#7e22ce", // Warna ungu
+      });
+
       // ✅ Redirect ke dashboard setelah login
       router.replace("/");
     } catch (err) {
       setError(err.message);
+      // Tampilkan SweetAlert2 untuk notifikasi error
+      Swal.fire({
+        title: "Error!",
+        text: err.message,
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#7e22ce", // Warna ungu
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      className="flex items-center justify-center min-h-screen"
-      style={{ backgroundColor: "#ECF2FA" }}
-    >
-      {/* Logo */}
-      <div className="absolute top-10 left-10">
-        <Image
-          src="/logo.svg"
-          alt="Forwardin Logo"
-          width={177}
-          height={33.63}
-        />
-      </div>
-
-      {/* Content Section */}
-      <div className="w-[465px] mr-28">
-        {/* <div className="w-[465px] h-[292.36px] rounded-tl-lg overflow-hidden">
+    <div className="flex min-h-screen">
+      {/* Kiri - Gambar */}
+      <motion.div
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8 }}
+        className="flex-1/3 flex flex-col items-center justify-center p-10 bg-gradient-to-r from-violet-400 to-purple-300 relative"
+      >
+        <Link className="absolute top-0 left-8" href="/">
+          <Image src="/logo.png" alt="Logo" width={150} height={150} />
+        </Link>
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.5, duration: 0.8 }}
+        >
           <Image
-            src="/gambarlogin.svg"
-            alt="Admin Tools Screenshot"
-            width={465}
-            height={292.36}
-            className="rounded-tl-lg"
+            src="/gambarRegister.png"
+            alt="Login Illustration"
+            width={600}
+            height={600}
           />
-        </div> */}
-        <div className="mt-[45px] text-left">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Kinanti - Solusi Cerdas untuk Manajemen Tugas dan Pesan Otomatis
-          </h1>
-          <p className="mt-[30px] text-gray-600">
-            Kinantiku dirancang untuk mempermudah guru, siswa, dan pelaku bisnis
-            dalam mengelola informasi dengan cepat dan praktis. Tingkatkan
-            produktivitas Anda dengan solusi yang simpel, aman, dan mudah
-            digunakan! 🚀
-          </p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      {/* Login Form Section */}
-      <div className="w-[466px] flex flex-col justify-center p-[40px] bg-white rounded-lg shadow-md">
-        <div className="text-center mb-[40px]">
-          <h2 className="text-2xl font-bold text-black">
-            Selamat Datang di Kinanti Ku !
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Tingkatkan Produktifitas, Gapai Prestasi <br />
-            Bersama Kinanti !
-          </p>
-        </div>
-
-        <form className="flex flex-col gap-[20px]" onSubmit={handleSubmit}>
-          <div className="relative">
-            <input
+      {/* Kanan - Form Register */}
+      <motion.div
+        initial={{ opacity: 0, x: 50 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8 }}
+        className="flex-1 flex flex-col justify-center items-center p-10"
+      >
+        <div className="w-full max-w-md p-8">
+          <motion.h2
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.8 }}
+            className="text-2xl font-bold text-center text-gray-800"
+          >
+            Daftar Akun Baru 🚀
+          </motion.h2>
+          <motion.p
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.8 }}
+            className="text-gray-600 text-center mt-2 w-full"
+          >
+            Bergabunglah dengan Kinanti untuk meningkatkan produktivitas Anda!
+          </motion.p>
+          <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
+            <motion.input
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.9, duration: 0.8 }}
               type="text"
               id="nama"
               placeholder="Nama Lengkap"
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
               value={formData.nama}
               onChange={handleChange}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              disabled={loading}
             />
-          </div>
-
-          <div className="relative">
-            <select
+            <motion.select
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.1, duration: 0.8 }}
               id="kelas"
               value={formData.kelas}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500  placeholder-gray-500 placeholder-opacity-50 text-black"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="" disabled>
                 Pilih Kelas
@@ -137,60 +191,69 @@ export default function Register() {
               <option value="XITKJ2">XI TKJ 2</option>
               <option value="XIITKJ1">XII TKJ 1</option>
               <option value="XIITKJ2">XII TKJ 2</option>
-            </select>
-          </div>
-
-          <div className="relative flex gap-2">
-            <input
+            </motion.select>
+            <motion.input
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.3, duration: 0.8 }}
               type="text"
               id="phone"
+              placeholder="Nomor WhatsApp (628xxxxxxxxxx)"
               value={formData.phone}
               onChange={handleChange}
-              placeholder="WhatsApp Number 62895xxxxxxxx"
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              disabled={loading}
             />
-          </div>
-
-          <div className="relative">
-            <input
+            <motion.input
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.5, duration: 0.8 }}
               type="password"
               id="password"
+              placeholder="Password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Password"
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500 placeholder-opacity-50 text-black"
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              disabled={loading}
             />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <a href="#" className="text-sm text-blue-500">
-              Lupa Password?
-            </a>
-          </div>
-
-          <button
-            type="submit"
-            className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          >
-            {loading ? "Loading" : "Register"}
-          </button>
-
-          {/* Error Massage */}
-          {error && (
-            <p className="bg-red-500 rounded-lg flex justify-center items-center p-2">
-              {error}
-            </p>
-          )}
-
-          <div className="text-center mt-4">
-            <a className="text-sm text-black pr-2">Sudah punya akun?</a>
-            <a href="/login" className="text-sm text-blue-500">
-              Masuk di sini
-            </a>
-          </div>
-        </form>
-      </div>
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.7, duration: 0.8 }}
+              type="submit"
+              className="w-full py-2 px-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+              disabled={loading}
+            >
+              {loading ? "Loading..." : "Daftar"}
+            </motion.button>
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.9, duration: 0.8 }}
+                className="text-red-500 text-center mt-4"
+              >
+                {error}
+              </motion.p>
+            )}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 2.1, duration: 0.8 }}
+              className="text-center mt-4"
+            >
+              <span className="text-gray-600">Sudah punya akun? </span>
+              <Link href="/login" className="text-purple-500">
+                Masuk di sini
+              </Link>
+            </motion.div>
+          </form>
+        </div>
+        <div className="bottom-0 absolute flex flex-row pb-8 justify-center items-center gap-2 ">
+          <p className="opacity-80">Raka - Made with</p>
+          <GoHeartFill color="magenta" />
+        </div>
+      </motion.div>
     </div>
   );
 }
