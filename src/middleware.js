@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 export async function middleware(req) {
-  const token = req.cookies.get("token");
-  const { pathname } = req.nextUrl;
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-  // Jika user belum login dan mencoba mengakses dashboard ("/"), arahkan ke "/login"
-  if (!token && pathname === "/") {
+  // Jika tidak ada token, arahkan ke halaman login
+  if (!token) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
   return NextResponse.next();
 }
 
-// Middleware hanya untuk halaman "/"
 export const config = {
-  matcher: ["/"],
+  matcher: ["/"], // Hanya lindungi halaman dashboard
 };

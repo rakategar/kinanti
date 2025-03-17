@@ -8,6 +8,7 @@ import { FaTasks } from "react-icons/fa";
 import TugasTable from "../app/components/TugasTable";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
+import Swal from "sweetalert2";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -17,8 +18,20 @@ export default function Dashboard() {
   const { width, height } = useWindowSize();
 
   const handleLogout = () => {
-    localStorage.removeItem("hasShownConfetti"); // Hapus status confetti
-    signOut({ callbackUrl: "/login" }); // Proses logout
+    Swal.fire({
+      title: "Yakin ingin keluar?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Ya",
+      cancelButtonText: "Tidak",
+      confirmButtonColor: "#7e22ce", // Warna ungu
+      cancelButtonColor: "#6b7280", // Warna abu-abu
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem("hasShownConfetti"); // Hapus status confetti
+        signOut({ callbackUrl: "/login" }); // Proses logout
+      }
+    });
   };
 
   useEffect(() => {
@@ -61,11 +74,26 @@ export default function Dashboard() {
     }
   };
 
-  if (status === "loading") return <p>Loading session...</p>;
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 p-4 md:p-6">
+        <div className="max-w-4xl mx-auto bg-white p-4 md:p-6 rounded-xl shadow-xl">
+          {/* Skeleton untuk Judul */}
+          <div className="animate-pulse h-8 bg-gray-300 rounded w-64 mb-4"></div>
+
+          {/* Skeleton untuk Deskripsi */}
+          <div className="animate-pulse h-4 bg-gray-300 rounded w-48 mb-6"></div>
+
+          {/* Skeleton untuk Tabel */}
+          <div className="animate-pulse h-64 bg-gray-300 rounded w-full"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
-      className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 p-6"
+      className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 p-4 md:p-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -85,16 +113,19 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-xl relative">
+      <div className="max-w-4xl mx-auto bg-white p-4 md:p-6 rounded-xl shadow-xl relative">
+        {/* Tombol Logout */}
         <button
           onClick={handleLogout}
-          className="absolute top-4 right-4 flex items-center px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all"
+          className="absolute top-4 right-4 flex items-center px-3 py-1 md:px-4 md:py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all"
         >
-          <FiLogOut className="mr-2" /> Logout
+          <FiLogOut className="mr-1 md:mr-2" />{" "}
+          <span className="hidden md:inline">Logout</span>
         </button>
 
+        {/* Judul Dashboard */}
         <motion.h1
-          className="text-3xl font-bold text-gray-800 mb-2"
+          className="text-2xl md:text-3xl font-bold text-gray-800 mb-2"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
@@ -102,8 +133,9 @@ export default function Dashboard() {
           Selamat datang, {session?.user?.name}!
         </motion.h1>
 
+        {/* Deskripsi Tugas */}
         <motion.p
-          className="text-gray-600 flex items-center"
+          className="text-gray-600 flex items-center text-sm md:text-base"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -112,12 +144,15 @@ export default function Dashboard() {
           harus kamu selesaikan:
         </motion.p>
 
+        {/* Tabel Tugas */}
         {loading ? (
-          <p className="text-gray-500 mt-4">Memuat tugas...</p>
+          <div className="animate-pulse h-64 bg-gray-300 rounded w-full mt-4"></div>
         ) : assignments.length === 0 ? (
           <p className="text-gray-500 mt-4">Tidak ada tugas yang tersedia.</p>
         ) : (
-          <TugasTable assignments={assignments} userId={session?.user?.id} />
+          <div className="overflow-x-auto mt-4">
+            <TugasTable assignments={assignments} userId={session?.user?.id} />
+          </div>
         )}
       </div>
     </motion.div>

@@ -138,25 +138,47 @@ export default function TugasTable({ assignments, userId }) {
               Kode Tugas: {selectedTugas.kodeTugas}
             </p>
 
+            {/* Area Upload */}
             <div
               {...getRootProps()}
-              className={`mt-4 p-6 border-2 border-dashed rounded-lg text-center cursor-pointer ${
-                isDragActive ? "border-blue-500 bg-blue-100" : "border-gray-300"
-              }`}
+              className="mt-4 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
             >
               <input {...getInputProps()} />
-              {isDragActive ? (
-                <p className="text-blue-500">Lepaskan file di sini...</p>
-              ) : (
-                <p>
-                  📂 Tarik & Lepaskan file PDF di sini, atau klik untuk memilih
+              <div className="flex flex-col items-center justify-center">
+                <div className="bg-gray-100 rounded-full p-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-blue-500"
+                  >
+                    <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4" />
+                    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+                    <path d="m5 12-3 3 3 3" />
+                    <path d="m9 18 3-3-3-3" />
+                  </svg>
+                </div>
+                <p className="mt-4 text-gray-700">
+                  {isDragActive
+                    ? "Lepaskan file di sini..."
+                    : "Tarik & Lepaskan file PDF di sini, atau klik untuk memilih"}
                 </p>
-              )}
+                <p className="text-sm text-gray-500 mt-2">
+                  Hanya file PDF yang diperbolehkan (maks. 2MB).
+                </p>
+              </div>
             </div>
 
+            {/* Tombol Batal */}
             <div className="mt-4 flex justify-end">
               <button
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
                 onClick={closeModal}
                 disabled={isUploading}
               >
