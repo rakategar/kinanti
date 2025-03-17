@@ -78,12 +78,12 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Kiri - Gambar */}
+      {/* Kiri - Gambar (Hanya tampil di desktop) */}
       <motion.div
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8 }}
-        className="flex-1/3 flex flex-col items-center justify-center p-10 bg-gradient-to-r from-violet-400 to-purple-300 relative"
+        className="hidden md:flex flex-1/3 flex-col items-center justify-center p-10 bg-gradient-to-r from-violet-400 to-purple-300 relative"
       >
         <Link className="absolute top-0 left-8" href="/">
           <Image src="/logo.png" alt="Logo" width={150} height={150} />
@@ -102,14 +102,20 @@ export default function Home() {
         </motion.div>
       </motion.div>
 
-      {/* Kanan - Form Login */}
+      {/* Kanan - Form Login (Tampil di semua ukuran layar) */}
       <motion.div
         initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8 }}
-        className="flex-1 flex flex-col justify-center items-center p-10"
+        className="flex-1 flex flex-col justify-center items-center p-6 bg-white"
       >
-        <div className="w-full max-w-md p-8">
+        {/* Logo (Hanya tampil di mobile) */}
+        <Link className="md:hidden absolute top-6 left-6" href="/">
+          <Image src="/logo.png" alt="Logo" width={120} height={120} />
+        </Link>
+
+        {/* Form Login */}
+        <div className="w-full max-w-md p-6 ">
           <motion.h2
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -188,7 +194,9 @@ export default function Home() {
             </motion.div>
           </form>
         </div>
-        <div className="bottom-0 absolute flex flex-row pb-8 justify-center items-center gap-2">
+
+        {/* Footer */}
+        <div className="absolute bottom-6 flex flex-row justify-center items-center gap-2">
           <p className="opacity-80">Raka - Made with</p>
           <GoHeartFill color="magenta" />
         </div>

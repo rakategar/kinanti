@@ -33,7 +33,12 @@ export const authOptions = {
           throw new Error("Invalid credentials");
         }
 
-        return { id: user.id, name: user.nama, phone: user.phone };
+        return {
+          id: user.id,
+          name: user.nama,
+          phone: user.phone,
+          kelas: user.kelas,
+        };
       },
     }),
   ],
