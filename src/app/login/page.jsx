@@ -133,6 +133,7 @@ export default function Home() {
               transition={{ delay: 0.9, duration: 0.8 }}
               type="text"
               placeholder="62xxxxxxxxxxx"
+              name="phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -144,6 +145,7 @@ export default function Home() {
               transition={{ delay: 1.1, duration: 0.8 }}
               type="password"
               placeholder="Password"
+              name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
