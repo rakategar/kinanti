@@ -6,6 +6,8 @@ const ExcelJS = require("exceljs"); // Pastikan sudah install: npm install excel
 const fs = require("fs");
 const prisma = new PrismaClient();
 const path = require("path");
+const { PDFDocument } = require("pdf-lib");
+const sharp = require("sharp");
 
 // Import enum Prisma
 
@@ -50,8 +52,113 @@ async function buatExcel(data) {
   return buffer;
 }
 
+async function convertImagesToPDF(images, outputPath) {
+  const pdfDoc = await PDFDocument.create();
+
+  for (const imageBuffer of images) {
+    const image = await sharp(imageBuffer);
+    const metadata = await image.metadata();
+    const imageWidth = metadata.width;
+    const imageHeight = metadata.height;
+
+    const page = pdfDoc.addPage([imageWidth, imageHeight]);
+    const imageEmbed = await pdfDoc.embedJpg(imageBuffer); // If JPG
+    page.drawImage(imageEmbed, {
+      x: 0,
+      y: 0,
+      width: imageWidth,
+      height: imageHeight,
+    });
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  fs.writeFileSync(outputPath, pdfBytes);
+}
+
 client.on("message", async (message) => {
   const sender = message.from;
+
+  // Fitur Convert Gambar ke PDF
+  if (message.body.toLowerCase() === "convert") {
+    await message.reply(
+      "Selamat datang di tools convert JPG to PDF! 📷\n\nSilakan lampirkan gambar yang ingin di-convert (bisa satu atau lebih)."
+    );
+    pendingAssignment[sender] = { step: "upload_images", images: [] }; // Tandai pengguna sedang dalam mode upload gambar
+  }
+
+  // Proses gambar yang dikirim
+  else if (
+    pendingAssignment[sender]?.step === "upload_images" &&
+    message.hasMedia
+  ) {
+    const media = await message.downloadMedia();
+
+    // Pastikan file adalah gambar (JPG/PNG)
+    if (!media.mimetype.startsWith("image")) {
+      return await message.reply(
+        "⚠️ Hanya file gambar (JPG/PNG) yang diperbolehkan!"
+      );
+    }
+
+    // Simpan gambar ke dalam array
+    pendingAssignment[sender].images.push(Buffer.from(media.data, "base64"));
+
+    await message.reply(
+      "✅ Gambar berhasil diterima. Anda bisa mengirim gambar lagi atau ketik *selesai* untuk melanjutkan."
+    );
+  }
+
+  // Jika pengguna mengetik "selesai"
+  else if (
+    pendingAssignment[sender]?.step === "upload_images" &&
+    message.body.toLowerCase() === "selesai"
+  ) {
+    if (pendingAssignment[sender].images.length === 0) {
+      return await message.reply("⚠️ Anda belum mengirim gambar apa pun.");
+    }
+
+    await message.reply(
+      "📎 Silakan kirimkan nama file yang diinginkan untuk PDF . \n\nGunakan nama file *tanpa spasi*\nContoh : Tugas_Tkj "
+    );
+    pendingAssignment[sender].step = "request_filename"; // Lanjut ke langkah meminta nama file
+  }
+
+  // Proses nama file yang diminta
+  else if (pendingAssignment[sender]?.step === "request_filename") {
+    const fileName = message.body.trim();
+
+    if (!fileName) {
+      return await message.reply("⚠️ Nama file tidak boleh kosong.");
+    }
+
+    // Pastikan nama file memiliki ekstensi .pdf
+    const pdfFileName = fileName.endsWith(".pdf")
+      ? fileName
+      : `${fileName}.pdf`;
+    const pdfFilePath = path.join(__dirname, pdfFileName);
+
+    try {
+      // Konversi gambar ke PDF
+      await convertImagesToPDF(pendingAssignment[sender].images, pdfFilePath);
+
+      // Kirim PDF ke pengguna
+      const media = MessageMedia.fromFilePath(pdfFilePath);
+      await client.sendMessage(sender, media, {
+        caption: `✅ Gambar berhasil diubah menjadi PDF dengan nama file *${pdfFileName}*.`,
+      });
+
+      // Hapus file PDF sementara
+      fs.unlinkSync(pdfFilePath);
+
+      // Reset status pengguna
+      delete pendingAssignment[sender];
+    } catch (error) {
+      console.error("Error converting images to PDF:", error);
+      await message.reply(
+        "❌ Terjadi kesalahan saat mengonversi gambar ke PDF."
+      );
+    }
+  }
 
   // 1. Guru mengetik "tugas" atau "tugas XTKJ2"
   if (message.body.toLowerCase().startsWith("penugasan")) {
