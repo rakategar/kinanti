@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { GoHeartFill } from "react-icons/go";
@@ -14,7 +14,16 @@ export default function Home() {
   const [error, setError] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+
+  const { data: session, status } = useSession();
   const router = useRouter();
+
+  // Jika session sudah ada, arahkan ke halaman dashboard
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/");
+    }
+  }, [status, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,10 +46,12 @@ export default function Home() {
       const res = await signIn("credentials", {
         phone,
         password,
-        redirect: false,
+        redirect: true, // Gunakan redirect: true
+        callbackUrl: "/", // Tentukan URL tujuan setelah login
       });
 
-      if (res.error) {
+      // Jika ada error dari signIn
+      if (res?.error) {
         if (res.error === "User not found") {
           // Jika error 401 (nomor HP atau password salah)
           Swal.fire({
@@ -61,15 +72,14 @@ export default function Home() {
         return;
       }
 
-      // Jika login berhasil
-      router.replace("/");
+      // Jika login berhasil, tidak perlu melakukan apa-apa karena redirect sudah dihandle oleh NextAuth
     } catch (error) {
       console.error("Login error:", error);
       // Jika terjadi error di database
       Swal.fire({
-        title: "Question!",
+        title: "Error!",
         text: "Terjadi kesalahan di database. Silakan coba lagi.",
-        icon: "question",
+        icon: "error",
         confirmButtonText: "OK",
       });
       setLoading(false);
