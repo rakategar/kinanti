@@ -18,7 +18,6 @@
     "exceljs": "^4.4.0",
     "fluent-ffmpeg": "^2.1.3",
     "flyonui": "^1.3.0",
-    "jimp": "^1.6.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "motion": "^12.5.0",
