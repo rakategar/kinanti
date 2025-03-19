@@ -23,6 +23,10 @@ export default function RootLayout({ children }) {
     <>
       <Head>
         <title>{meta.title}</title>
+        <meta
+          name="facebook-domain-verification"
+          content="ljh1l7z61w8t8mespc4u99njkeprr0"
+        />
         <meta name="description" content={meta.description} />
         <meta
           name="keywords"
@@ -30,7 +34,7 @@ export default function RootLayout({ children }) {
         />
         <meta name="author" content="Raka - Made With <3" />
         <meta name="robots" content="index, follow" />
-        <link rel="icon" href="/icon.jpg" /> {/* Ikon web */}
+        <link rel="icon" href="/icon.ico" /> {/* Ikon web */}
         {/* Open Graph Meta Tags */}
         <meta property="og:title" content={meta.title} />
         <meta property="og:description" content={meta.description} />
@@ -68,7 +72,6 @@ export default function RootLayout({ children }) {
         <link rel="canonical" href={currentUrl} />
       </Head>
       <html lang="id">
-        {" "}
         {/* Ganti ke 'id' jika target audiens Indonesia */}
         <body className={inter.className}>
           <SessionProvider>{children}</SessionProvider>
