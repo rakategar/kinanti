@@ -24,7 +24,8 @@
     ".next/types/**/*.ts",
     "**/*.ts",
     "**/*.tsx",
-    "src/app/api/assignments/route.js"
+    "src/app/api/assignments/route.js",
+    "tailwind.config.js"
   ],
   "exclude": ["node_modules"]
 }

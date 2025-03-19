@@ -12,7 +12,7 @@ export default function RootLayout({ children }) {
     title: "Kinantiku - Sistem Pengelolaan Tugas Siswa SMKN 3 Buduran",
     description:
       "Kinantiku adalah sistem pintar pengelolaan tugas siswa yang terintegrasi dengan Bot WhatsApp, dirancang untuk SMKN 3 Buduran.",
-    image: "https://kinantiku.com/icon.jpg", // URL absolut
+    image: "https://kinantiku.com/logo.png", // URL absolut
     type: "website",
   };
 
