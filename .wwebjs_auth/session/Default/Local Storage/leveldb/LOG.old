@@ -1,3 +1,3 @@
-2025/03/20-08:37:42.537 21f8 Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
-2025/03/20-08:37:42.567 21f8 Recovering log #26
-2025/03/20-08:37:42.569 21f8 Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Local Storage/leveldb/000026.log 
+2025/03/20-09:45:10.606 5862 Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2025/03/20-09:45:10.607 5862 Recovering log #26
+2025/03/20-09:45:10.608 5862 Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/Local Storage/leveldb/000026.log 
