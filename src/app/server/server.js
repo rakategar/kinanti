@@ -19,7 +19,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    executablePath: "/usr/bin/google-chrome",
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   },
