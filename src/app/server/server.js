@@ -115,7 +115,7 @@ client.on("message", async (message) => {
       );
     }
 
-    const logoPath = path.join(__dirname, "path/to/logo.png");
+    const logoPath = path.join(__dirname, "/logo.png");
     const media = MessageMedia.fromFilePath(logoPath);
 
     let greeting = `Halo ${user.nama},\n\n`;
