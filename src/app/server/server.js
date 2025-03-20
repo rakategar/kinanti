@@ -78,6 +78,63 @@ async function convertImagesToPDF(images, outputPath) {
 client.on("message", async (message) => {
   const sender = message.from;
 
+  if (message.body.toLowerCase().startsWith("penugasan")) {
+    const guru = await prisma.user.findFirst({
+      where: { phone: sender.replace("@c.us", ""), role: "guru" },
+    });
+
+    if (!guru) {
+      return await message.reply(
+        "⚠️ Anda bukan guru atau belum terdaftar di sistem."
+      );
+    }
+
+    // Menentukan target kelas (harus ada)
+    const args = message.body.split(" ");
+    if (args.length < 2) {
+      return await message.reply(
+        "⚠️ Anda harus menyebutkan kelas tujuan!\n\n📌 Contoh penggunaan:\n*Penugasan XIITKJ2*"
+      );
+    }
+
+    let kelasTarget = args.slice(1).join(" "); // Ambil teks setelah "Penugasan"
+
+    pendingAssignment[sender] = {
+      // ...
+    };
+  }
+
+  // 2. User mengetik "start"
+  if (message.body.toLowerCase() === "start") {
+    const user = await prisma.user.findFirst({
+      where: { phone: sender.replace("@c.us", "") },
+    });
+
+    if (!user) {
+      return await message.reply(
+        "⚠️ Anda belum terdaftar di sistem. Silakan hubungi admin untuk pendaftaran."
+      );
+    }
+
+    const logoPath = path.join(__dirname, "path/to/logo.png");
+    const media = MessageMedia.fromFilePath(logoPath);
+
+    let greeting = `Halo ${user.nama},\n\n`;
+    if (user.role === "guru") {
+      greeting += "Anda terdaftar sebagai Guru.\n\n";
+      greeting += "Fitur yang tersedia:\n";
+      greeting += "1. Penugasan [kelas]\n";
+      greeting += "2. ...\n";
+    } else if (user.role === "siswa") {
+      greeting += "Anda terdaftar sebagai Siswa.\n\n";
+      greeting += "Fitur yang tersedia:\n";
+      greeting += "1. Lihat Tugas\n";
+      greeting += "2. ...\n";
+    }
+
+    await client.sendMessage(sender, media, { caption: greeting });
+  }
+
   // Fitur Convert Gambar ke PDF
   if (message.body.toLowerCase() === "convert") {
     await message.reply(
