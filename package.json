@@ -23,8 +23,8 @@
     "motion": "^12.5.0",
     "next": "15.2.2",
     "next-auth": "^4.24.11",
+    "node-cron": "^3.0.3",
     "pdf-lib": "^1.17.1",
-    "puppeteer": "^24.3.1",
     "qrcode-terminal": "^0.12.0",
     "react": "^19.0.0",
     "react-confetti": "^6.4.0",
@@ -34,7 +34,7 @@
     "react-use": "^17.6.0",
     "sharp": "^0.33.5",
     "sweetalert2": "^11.17.2",
-    "whatsapp-web.js": "^1.23.0"
+    "whatsapp-web.js": "^1.27.0"
   },
   "browserslist": {
     "production": [

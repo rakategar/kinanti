@@ -30,6 +30,7 @@ model Assignment {
   pdfUrl      String?  // Bisa null jika guru tidak melampirkan PDF
   lampirkanPDF Boolean @default(false) // Apakah tugas memerlukan PDF?
   createdAt   DateTime @default(now()) 
+  deadline    DateTime? // Kolom baru untuk menyimpan deadline (opsional)
   status      AssignmentStatus[] // Relasi ke status tugas siswa
   submissions AssignmentSubmission[] // Relasi ke tugas yang dikumpulkan siswa
 }

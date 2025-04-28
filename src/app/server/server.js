@@ -20,6 +20,7 @@ const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
     headless: true,
+    executablePath: "/usr/bin/google-chrome", // Path ke bin google-chrome
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   },
 });
@@ -27,9 +28,40 @@ client.on("qr", (qr) => {
   qrcode.generate(qr, { small: true });
 });
 
+const cron = require("node-cron");
+
 client.on("ready", async () => {
   await prisma.$disconnect();
   console.log("Client is ready! ✨");
+});
+
+client.on("ready", async () => {
+  await prisma.$disconnect();
+  console.log("Client is ready! ✨");
+
+  // 🌅 Jadwal Broadcast Selamat Pagi Jam 07:00
+  cron.schedule(
+    "0 7 * * *",
+    async () => {
+      console.log("⏰ Mengirim broadcast pagi...");
+      await broadcastPagi();
+    },
+    {
+      timezone: "Asia/Jakarta", // Pastikan pakai timezone Indonesia
+    }
+  );
+
+  // 🌇 Jadwal Broadcast Reminder Sore Jam 17:00
+  cron.schedule(
+    "0 17 * * *",
+    async () => {
+      console.log("⏰ Mengirim broadcast reminder sore...");
+      await broadcastSore();
+    },
+    {
+      timezone: "Asia/Jakarta",
+    }
+  );
 });
 
 let pendingAssignment = {};
@@ -115,21 +147,44 @@ client.on("message", async (message) => {
       );
     }
 
-    const logoPath = "/public/logo.png";
+    const logoPath = path.join(__dirname, "../../../public/logo.png");
     const media = MessageMedia.fromFilePath(logoPath);
 
     let greeting = `Halo ${user.nama},\n\n`;
     if (user.role === "guru") {
-      greeting += "Anda terdaftar sebagai Guru.\n\n";
-      greeting += "Fitur yang tersedia:\n";
-      greeting += "1. Penugasan [kelas]\n";
-      greeting += "2. ...\n";
+      greeting += "Anda terdaftar sebagai Guru. 📚\n\n";
+      greeting += "✨ Fitur yang tersedia:\n";
+      greeting +=
+        "1️⃣ *Penugasan [kelas]* - Membuat tugas untuk kelas tertentu.\n";
+      greeting += "   📌 Contoh: _Penugasan XIITKJ2_\n";
+      greeting +=
+        "2️⃣ *Lihat Tugas* - Melihat daftar tugas yang telah dibuat.\n";
+      greeting += "   📌 Contoh: _Lihat Tugas_\n";
+      greeting += "3️⃣ *Hapus Tugas [id]* - Menghapus tugas berdasarkan ID.\n";
+      greeting += "   📌 Contoh: _Hapus Tugas 123_\n";
+      greeting += "4️⃣ *Broadcast [pesan]* - Mengirim pesan ke semua siswa.\n";
+      greeting += "   📌 Contoh: _Broadcast Selamat belajar, siswa-siswaku!_\n";
+      greeting += "5️⃣ *Statistik* - Melihat statistik aktivitas siswa.\n";
+      greeting += "   📌 Contoh: _Statistik_\n";
+      greeting += "\n💡 Tetap semangat mendidik generasi penerus bangsa! 🌟";
     } else if (user.role === "siswa") {
-      greeting += "Anda terdaftar sebagai Siswa.\n\n";
-      greeting += "Fitur yang tersedia:\n";
-      greeting += "1. Lihat Tugas\n";
-      greeting += "2. ...\n";
+      greeting += "Anda terdaftar sebagai Siswa. 🎓\n\n";
+      greeting += "✨ Fitur yang tersedia:\n";
+      greeting +=
+        "1️⃣ *Lihat Tugas* - Melihat daftar tugas yang diberikan oleh guru.\n";
+      greeting += "   📌 Contoh: _Lihat Tugas_\n";
+      greeting += "2️⃣ *Kirim Tugas [id]* - Mengirimkan tugas berdasarkan ID.\n";
+      greeting += "   📌 Contoh: _Kirim Tugas 123_\n";
+      greeting += "3️⃣ *Tanya Guru [pesan]* - Mengirim pertanyaan ke guru.\n";
+      greeting += "   📌 Contoh: _Tanya Guru Apa deadline tugas ini?_\n";
+      greeting +=
+        "4️⃣ *Lihat Nilai* - Melihat nilai tugas yang telah dinilai.\n";
+      greeting += "   📌 Contoh: _Lihat Nilai_\n";
+      greeting +=
+        "\n💡 Jangan menyerah, teruslah belajar dan raih impianmu! 🚀";
     }
+
+    await client.sendMessage(sender, media, { caption: greeting });
 
     await client.sendMessage(sender, media, { caption: greeting });
   }
@@ -216,7 +271,7 @@ client.on("message", async (message) => {
     }
   }
 
-  // 1. Guru mengetik "tugas" atau "tugas XTKJ2"
+  // 1. Guru mengetik "penugasan" atau "penugasan XTKJ2"
   if (message.body.toLowerCase().startsWith("penugasan")) {
     const guru = await prisma.user.findFirst({
       where: { phone: sender.replace("@c.us", ""), role: "guru" },
@@ -228,7 +283,7 @@ client.on("message", async (message) => {
       );
     }
 
-    // Menentukan target kelas (harus ada)
+    // Menentukan target kelas
     const args = message.body.split(" ");
     if (args.length < 2) {
       return await message.reply(
@@ -236,38 +291,48 @@ client.on("message", async (message) => {
       );
     }
 
-    let kelasTarget = args.slice(1).join(" "); // Ambil teks setelah "Penugasan"
+    let kelasTarget = args.slice(1).join(" ");
+
+    // ✅ Validasi kelas ada di database
+    const kelasAda = await prisma.user.findFirst({
+      where: { kelas: kelasTarget, role: "siswa" },
+    });
+    if (!kelasAda) {
+      return await message.reply(
+        `⚠️ Kelas *${kelasTarget}* tidak ditemukan di sistem.\nPastikan Anda mengetik nama kelas dengan benar.`
+      );
+    }
 
     pendingAssignment[sender] = {
       step: 1,
-      guruId: guru.id, // Simpan ID guru dengan benar
+      guruId: guru.id,
       kelasTarget: kelasTarget,
     };
 
-    console.log(pendingAssignment[sender]);
-
-    if (!pendingAssignment[sender]?.guruId) {
-      console.log(
-        "DEBUG: pendingAssignment[sender]",
-        pendingAssignment[sender]
-      );
-      return await message.reply(
-        "⚠️ Terjadi kesalahan: Guru ID tidak ditemukan. Coba ulangi."
-      );
-    }
-    console.log(pendingAssignment[sender]);
     await message.reply(
-      "📌 Silakan kirimkan tugas dalam format berikut:\n\n- Kode:\n- Judul:\n- Deskripsi:\n- Lampirkan PDF: ya/tidak\n\nContoh:\n- Kode: MTK24\n- Judul: Matematika Dasar\n- Deskripsi: Kerjakan soal halaman 45\n- Lampirkan PDF: ya"
+      "📌 Silakan kirimkan tugas dalam format berikut:\n\n- Kode:\n- Judul:\n- Deskripsi:\n- Lampirkan PDF: ya/tidak\n- Deadline: (opsional, dalam hari)\n\nContoh:\n- Kode: MTK24\n- Judul: Matematika Dasar\n- Deskripsi: Kerjakan soal halaman 45\n- Lampirkan PDF: ya\n- Deadline: 7"
     );
   }
 
+  // 🔥 Command reset/batal
+  else if (message.body.toLowerCase() === "batal") {
+    if (pendingAssignment[sender]) {
+      delete pendingAssignment[sender];
+      await message.reply(
+        "❌ Penugasan dibatalkan. Mulai lagi dengan *penugasan [kelas]*."
+      );
+    } else {
+      await message.reply("⚠️ Tidak ada penugasan yang sedang berlangsung.");
+    }
+  }
+
+  // 2. Menyimpan kode, judul, deskripsi tugas, dan pilihan lampiran PDF
   // 2. Menyimpan kode, judul, deskripsi tugas, dan pilihan lampiran PDF
   else if (pendingAssignment[sender]?.step === 1 && !message.hasMedia) {
-    console.log(pendingAssignment[sender]);
     const lines = message.body.split("\n");
     if (lines.length < 4) {
       return await message.reply(
-        "Format tidak valid. Kirim dengan format:\n- Kode:\n- Judul:\n- Deskripsi:\n- Lampirkan PDF: ya/tidak"
+        "Format tidak valid. Kirim dengan format:\n- Kode:\n- Judul:\n- Deskripsi:\n- Lampirkan PDF: ya/tidak\n- Deadline: (opsional, dalam hari)"
       );
     }
 
@@ -277,7 +342,20 @@ client.on("message", async (message) => {
     const lampirkanPDF =
       lines[3].replace("- Lampirkan PDF:", "").trim().toLowerCase() === "ya";
 
-    // Cek apakah tugas dengan kode tersebut sudah ada
+    // Ambil deadline opsional
+    let deadlineDays = 7; // default
+    if (lines[4]) {
+      const deadlineLine = lines[4].replace("- Deadline:", "").trim();
+      const parsedDays = parseInt(deadlineLine);
+      if (!isNaN(parsedDays) && parsedDays > 0) {
+        deadlineDays = parsedDays;
+      }
+    }
+
+    const deadlineDate = new Date();
+    deadlineDate.setDate(deadlineDate.getDate() + deadlineDays);
+
+    // Cek apakah tugas dengan kode itu sudah ada
     const tugasSudahAda = await prisma.assignment.findUnique({
       where: { kode: kodeTugas },
     });
@@ -290,21 +368,23 @@ client.on("message", async (message) => {
 
     // Simpan data sementara
     pendingAssignment[sender] = {
-      step: lampirkanPDF ? 2 : 3, // Langsung ke penyimpanan tugas jika tidak perlu PDF
+      step: lampirkanPDF ? 2 : 3, // 2 = menunggu PDF, 3 = langsung buat tugas
       guruId: pendingAssignment[sender].guruId,
       kode: kodeTugas,
       judul: judulTugas,
       deskripsi: deskripsiTugas,
       lampirkanPDF: lampirkanPDF,
+      deadline: deadlineDate,
       kelas: pendingAssignment[sender].kelasTarget,
     };
 
     if (lampirkanPDF) {
+      // Minta file PDF, tapi TIDAK buat tugas dulu
       await message.reply(
         `📎 Silakan kirimkan file PDF tugas.\nKode tugas: *${kodeTugas}*`
       );
     } else {
-      // Langsung simpan tugas ke database tanpa menunggu PDF
+      // Baru kalau TIDAK butuh PDF, buat tugas sekarang
       const newTugas = await prisma.assignment.create({
         data: {
           guruId: pendingAssignment[sender].guruId,
@@ -312,19 +392,18 @@ client.on("message", async (message) => {
           judul: judulTugas,
           deskripsi: deskripsiTugas,
           pdfUrl: null,
-          kelas: pendingAssignment[sender].kelas, // Tidak ada file PDF
+          deadline: pendingAssignment[sender].deadline,
+          kelas: pendingAssignment[sender].kelas,
         },
       });
-      // Cari siswa berdasarkan kelas (atau semua siswa jika kelasTarget tidak ditentukan)
+
       const siswaList = await prisma.user.findMany({
         where: {
           role: "siswa",
-          ...(pendingAssignment[sender].kelasTarget
-            ? { kelas: pendingAssignment[sender].kelasTarget }
-            : {}),
+          kelas: pendingAssignment[sender].kelas,
         },
       });
-      // Tambahkan tugas ke daftar siswa (belum selesai)
+
       await prisma.assignmentStatus.createMany({
         data: siswaList.map((siswa) => ({
           siswaId: siswa.id,
@@ -334,82 +413,122 @@ client.on("message", async (message) => {
       });
 
       await message.reply(
-        `✅ Tugas berhasil dibuat ! \n Gunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan\n\nContoh: *kirim mtk24 XTKJ1* `
+        `✅ Tugas berhasil dibuat!\nGunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan.\n\nContoh: *kirim mtk24 XTKJ1*`
       );
+      delete pendingAssignment[sender];
     }
   }
 
   // 3. Mengunggah PDF ke Supabase
   else if (pendingAssignment[sender]?.step === 2 && message.hasMedia) {
-    console.log(pendingAssignment[sender]);
     const media = await message.downloadMedia();
     if (!media.mimetype.includes("pdf")) {
       return await message.reply("⚠️ Hanya file PDF yang diperbolehkan!");
     }
 
-    const fileName = `assignments/${Date.now()}.pdf`;
-    const { data, error } = await supabase.storage
-      .from("assignments")
-      .upload(fileName, Buffer.from(media.data, "base64"), {
-        contentType: media.mimetype,
+    try {
+      const fileName = `assignments/${Date.now()}.pdf`;
+      const { data, error } = await supabase.storage
+        .from("assignments")
+        .upload(fileName, Buffer.from(media.data, "base64"), {
+          contentType: media.mimetype,
+        });
+
+      if (error) throw error;
+
+      const pdfUrl = `${SUPABASE_URL}/storage/v1/object/public/assignments/${fileName}`;
+
+      const newTugas = await prisma.assignment.create({
+        data: {
+          guruId: pendingAssignment[sender].guruId,
+          kode: pendingAssignment[sender].kode,
+          judul: pendingAssignment[sender].judul,
+          deskripsi: pendingAssignment[sender].deskripsi,
+          pdfUrl: pdfUrl,
+          deadline: pendingAssignment[sender].deadline,
+          kelas: pendingAssignment[sender].kelas,
+        },
       });
 
-    if (error) {
-      console.error("❌ Gagal mengunggah PDF ke Supabase:", error);
-      return await message.reply("Terjadi kesalahan saat menyimpan file.");
-    }
+      const siswaList = await prisma.user.findMany({
+        where: {
+          role: "siswa",
+          kelas: pendingAssignment[sender].kelasTarget,
+        },
+      });
 
-    // Simpan ke database Prisma
-    const pdfUrl = `${SUPABASE_URL}/storage/v1/object/public/assignments/${fileName}`;
-    console.log(pendingAssignment[sender]);
-    // Cek apakah guruId tersedia
-    if (!pendingAssignment[sender]?.guruId) {
-      console.error(
-        "❌ Guru ID tidak ditemukan, pendingAssignment:",
-        pendingAssignment[sender]
+      await prisma.assignmentStatus.createMany({
+        data: siswaList.map((siswa) => ({
+          siswaId: siswa.id,
+          tugasId: newTugas.id,
+          status: "BELUM_SELESAI",
+        })),
+      });
+
+      await message.reply(
+        `✅ Tugas berhasil dibuat!\nGunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan.\n\nContoh: *kirim mtk24 XTKJ1*`
       );
+      delete pendingAssignment[sender];
+    } catch (err) {
+      console.error("❌ Gagal mengunggah PDF ke Supabase:", err);
+      await message.reply(
+        "❌ Terjadi kesalahan saat mengunggah file PDF. Coba kirim ulang."
+      );
+    }
+  }
+
+  if (message.body.toLowerCase() === "start") {
+    const user = await prisma.user.findFirst({
+      where: { phone: sender.replace("@c.us", "") },
+    });
+
+    if (!user) {
       return await message.reply(
-        "⚠️ Terjadi kesalahan: Guru ID tidak ditemukan. Coba ulangi."
+        "⚠️ Anda belum terdaftar di sistem. Silakan hubungi admin untuk pendaftaran."
       );
     }
-    console.log(pendingAssignment[sender]);
-    // Simpan tugas ke database
-    console.log(pendingAssignment[sender].kelasTarget);
-    const newTugas = await prisma.assignment.create({
-      data: {
-        guruId: pendingAssignment[sender].guruId,
-        kode: pendingAssignment[sender].kode,
-        judul: pendingAssignment[sender].judul,
-        deskripsi: pendingAssignment[sender].deskripsi,
-        pdfUrl: pdfUrl,
-        kelas: pendingAssignment[sender].kelas, // Gunakan enum Kelas
-      },
-    });
 
-    // Cari siswa berdasarkan kelas (atau semua siswa jika kelasTarget tidak ditentukan)
-    const siswaList = await prisma.user.findMany({
-      where: {
-        role: "siswa",
-        ...(pendingAssignment[sender].kelasTarget
-          ? { kelas: pendingAssignment[sender].kelasTarget }
-          : {}),
-      },
-    });
+    const logoPath = path.join(__dirname, "../../../public/logo.png");
+    const media = MessageMedia.fromFilePath(logoPath);
 
-    // Tambahkan tugas ke daftar siswa (belum selesai)
-    await prisma.assignmentStatus.createMany({
-      data: siswaList.map((siswa) => ({
-        siswaId: siswa.id,
-        tugasId: newTugas.id,
-        status: "BELUM_SELESAI",
-      })),
-    });
+    let greeting = `Halo ${user.nama},\n\n`;
+    if (user.role === "guru") {
+      greeting += "Anda terdaftar sebagai Guru. 📚\n\n";
+      greeting += "✨ Fitur yang tersedia:\n";
+      greeting +=
+        "1️⃣ *Penugasan [kelas]* - Membuat tugas untuk kelas tertentu.\n";
+      greeting += "   📌 Contoh: _Penugasan XIITKJ2_\n";
+      greeting +=
+        "2️⃣ *Rekap Penugasan* - Melihat rekap tugas yang telah dibuat.\n";
+      greeting += "   📌 Contoh: _Rekap Penugasan_\n";
+      greeting +=
+        "3️⃣ *List Penugasan* - Melihat daftar tugas yang telah dibuat.\n";
+      greeting += "   📌 Contoh: _List Penugasan_\n";
+      greeting += "4️⃣ *List Siswa* - Melihat daftar siswa di kelas tertentu.\n";
+      greeting += "   📌 Contoh: _List Siswa XIITKJ2_\n";
+      greeting += "5️⃣ *Convert [gambar]* - Mengonversi gambar ke PDF.\n";
+      greeting += "   📌 Contoh: _Convert_\n";
+      greeting += "\n💡 Tetap semangat mendidik generasi penerus bangsa! 🌟";
+    } else if (user.role === "siswa") {
+      greeting += "Anda terdaftar sebagai Siswa. 🎓\n\n";
+      greeting += "✨ Fitur yang tersedia:\n";
+      greeting +=
+        "1️⃣ *Lihat Tugas* - Melihat daftar tugas yang diberikan oleh guru.\n";
+      greeting += "   📌 Contoh: _Lihat Tugas_\n";
+      greeting +=
+        "2️⃣ *Kumpulkan Tugas [id]* - Mengumpulkan tugas berdasarkan ID.\n";
+      greeting += "   📌 Contoh: _Kumpulkan Tugas 123_\n";
+      greeting += "3️⃣ *Convert [gambar]* - Mengonversi gambar ke PDF.\n";
+      greeting += "   📌 Contoh: _Convert_\n";
+      greeting +=
+        "\n💡 Jangan menyerah, teruslah belajar dan raih impianmu! 🚀";
+    }
 
-    await message.reply(
-      `✅ Tugas berhasil dibuat ! \n Gunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan\natau *kirim [kode_tugas]* untuk mengirim ke semua kelas\n\nContoh: *kirim mtk24 XTKJ1* `
-    );
-    delete pendingAssignment[sender];
-  } else if (message.body.toLowerCase().startsWith("kirim ")) {
+    await client.sendMessage(sender, media, { caption: greeting });
+  }
+
+  // 📝 Fitur "kirim tugas"
+  else if (message.body.toLowerCase().startsWith("kirim ")) {
     const parts = message.body.split(" ");
 
     if (parts.length < 3) {
@@ -418,13 +537,12 @@ client.on("message", async (message) => {
       );
     }
 
-    const kodeTugas = parts[1]; // Ambil kode tugas
-    const kelasTujuan = parts.slice(2).join(" "); // Ambil nama kelas
+    const kodeTugas = parts[1];
+    const kelasTujuan = parts.slice(2).join(" ");
 
-    // Cari tugas berdasarkan kode
     const tugasTerakhir = await prisma.assignment.findUnique({
       where: { kode: kodeTugas },
-      include: { guru: true }, // Ambil informasi guru
+      include: { guru: true },
     });
 
     if (!tugasTerakhir) {
@@ -433,7 +551,6 @@ client.on("message", async (message) => {
       );
     }
 
-    // Cari siswa yang berada di kelas yang ditentukan
     const siswaList = await prisma.user.findMany({
       where: { role: "siswa", kelas: kelasTujuan },
     });
@@ -444,10 +561,26 @@ client.on("message", async (message) => {
       );
     }
 
-    // Kirim tugas ke siswa di kelas yang dipilih
+    // Format tanggal deadline agar mudah dibaca siswa
+    const options = { day: "numeric", month: "long", year: "numeric" };
+    const deadlineFormatted = tugasTerakhir.deadline.toLocaleDateString(
+      "id-ID",
+      options
+    );
+
+    // Kirim tugas ke siswa
     for (const siswa of siswaList) {
       const recipient = `${siswa.phone}@c.us`;
-      const pesan = `📚 *Tugas Baru dari ${tugasTerakhir.guru.nama}*\n🔖 *Kode:* ${tugasTerakhir.kode}\n*Judul:* ${tugasTerakhir.judul}\n📄 *Deskripsi:* ${tugasTerakhir.deskripsi}\n📎 Unduh PDF: ${tugasTerakhir.pdfUrl}`;
+      const pesan = `📚 *Tugas Baru dari ${
+        tugasTerakhir.guru.nama
+      }*\n\n🔖 *Kode:* ${tugasTerakhir.kode}\n📝 *Judul:* ${
+        tugasTerakhir.judul
+      }\n📄 *Deskripsi:* ${
+        tugasTerakhir.deskripsi
+      }\n\n🕒 *Deadline:* ${deadlineFormatted}\n${
+        tugasTerakhir.pdfUrl ? `📎 *Unduh PDF:* ${tugasTerakhir.pdfUrl}` : ""
+      }\n\n*Segera kerjakan sebelum deadline ya!* 📚💪`;
+
       await client.sendMessage(recipient, pesan);
       console.log(`📨 Tugas dikirim ke ${siswa.nama} (${siswa.phone})`);
     }
@@ -900,6 +1033,134 @@ client.on("message", async (message) => {
     return await workbook.xlsx.writeBuffer();
   }
 });
+
+async function broadcastPagi() {
+  try {
+    const siswaList = await prisma.user.findMany({
+      where: { role: "siswa" },
+    });
+
+    const today = new Date();
+    const options = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    const tanggalHariIni = today.toLocaleDateString("id-ID", options);
+
+    // 🎯 Array pesan semangat random
+    const pesanSemangatList = [
+      "Tetap semangat menggapai impianmu! 🚀",
+      "Hari baru, kesempatan baru! 💪",
+      "Jangan takut gagal, takutlah untuk tidak mencoba. ✨",
+      "Setiap langkah kecil hari ini membawa dampak besar besok! 🌱",
+      "Belajar adalah investasi terbaik untuk masa depanmu. 📚",
+      "Tantangan hari ini adalah kekuatanmu besok! 🔥",
+      "Lakukan yang terbaik, Tuhan akan melakukan sisanya. 🙏",
+      "Sukses adalah kumpulan usaha kecil yang dilakukan setiap hari. 🏆",
+      "Berani bermimpi, berani bertindak! 🎯",
+      "Hari ini penuh peluang, jangan sia-siakan! 🌟",
+    ];
+
+    // Ambil pesan random
+    const pesanSemangatRandom =
+      pesanSemangatList[Math.floor(Math.random() * pesanSemangatList.length)];
+
+    for (const siswa of siswaList) {
+      const tugasBelumSelesai = await prisma.assignmentStatus.findMany({
+        where: {
+          siswaId: siswa.id,
+          status: "BELUM_SELESAI",
+        },
+        include: {
+          tugas: true,
+        },
+      });
+
+      let tugasListText = "";
+      if (tugasBelumSelesai.length === 0) {
+        tugasListText = "✅ Tidak ada tugas yang belum diselesaikan.";
+      } else {
+        tugasBelumSelesai.forEach((item, index) => {
+          const deadlineFormatted = item.tugas.deadline
+            ? new Date(item.tugas.deadline).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
+            : "-";
+          tugasListText += `${index + 1}. 📖 *${
+            item.tugas.judul
+          }*\n   🕒 Deadline: ${deadlineFormatted}\n`;
+        });
+      }
+
+      const pesan = `🌅 *Selamat Pagi ${siswa.nama}!*\n\n📅 *Hari ini:* ${tanggalHariIni}\n\n💬 *Pesan Semangat:*\n_"${pesanSemangatRandom}"_\n\n📝 *Daftar Tugas Anda:*\n${tugasListText}\n\nHave a nice day! 🌟`;
+
+      const recipient = `${siswa.phone}@c.us`;
+      await client.sendMessage(recipient, pesan);
+      console.log(`📨 Broadcast pagi dikirim ke ${siswa.nama}`);
+    }
+  } catch (error) {
+    console.error("❌ Error broadcast pagi:", error);
+  }
+}
+
+async function broadcastSore() {
+  try {
+    const siswaList = await prisma.user.findMany({
+      where: { role: "siswa" },
+    });
+
+    const today = new Date();
+    const options = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    const tanggalHariIni = today.toLocaleDateString("id-ID", options);
+
+    for (const siswa of siswaList) {
+      const tugasBelumSelesai = await prisma.assignmentStatus.findMany({
+        where: {
+          siswaId: siswa.id,
+          status: "BELUM_SELESAI",
+        },
+        include: {
+          tugas: true,
+        },
+      });
+
+      if (tugasBelumSelesai.length === 0) {
+        continue; // ✅ Skip siswa yang sudah mengerjakan semua tugas
+      }
+
+      let tugasListText = "";
+      tugasBelumSelesai.forEach((item, index) => {
+        const deadlineFormatted = item.tugas.deadline
+          ? new Date(item.tugas.deadline).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })
+          : "-";
+        tugasListText += `${index + 1}. 📖 *${
+          item.tugas.judul
+        }*\n   🕒 Deadline: ${deadlineFormatted}\n`;
+      });
+
+      const pesan = `🌇 *Selamat Sore ${siswa.nama}!* \n\n📅 *Hari ini:* ${tanggalHariIni}\n\n📝 *Reminder Tugas Anda:*\n${tugasListText}\n\n💬 *Ayo selesaikan tugasmu sebelum deadline!*\nSemangat terus ya! 🚀`;
+
+      const recipient = `${siswa.phone}@c.us`;
+      await client.sendMessage(recipient, pesan);
+      console.log(`📨 Reminder sore dikirim ke ${siswa.nama}`);
+    }
+  } catch (error) {
+    console.error("❌ Error broadcast sore:", error);
+  }
+}
 
 process.on("SIGINT", async () => {
   console.log("Menutup koneksi Prisma...");
