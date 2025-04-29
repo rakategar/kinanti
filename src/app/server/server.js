@@ -62,6 +62,18 @@ client.on("ready", async () => {
       timezone: "Asia/Jakarta",
     }
   );
+
+  // 🔔 Jadwal Reminder H-1 Deadline Jam 17:00
+  cron.schedule(
+    "0 17 * * *",
+    async () => {
+      console.log("⏰ Mengirim reminder tugas yang deadline besok...");
+      await reminderDeadlineBesok();
+    },
+    {
+      timezone: "Asia/Jakarta",
+    }
+  );
 });
 
 let pendingAssignment = {};
@@ -1159,6 +1171,65 @@ async function broadcastSore() {
     }
   } catch (error) {
     console.error("❌ Error broadcast sore:", error);
+  }
+}
+
+async function reminderDeadlineBesok() {
+  try {
+    const siswaList = await prisma.user.findMany({
+      where: { role: "siswa" },
+    });
+
+    const today = new Date();
+    const besok = new Date(today);
+    besok.setDate(today.getDate() + 1);
+
+    const besokTanggal = besok.toISOString().split("T")[0]; // Format yyyy-mm-dd untuk pencocokan
+
+    for (const siswa of siswaList) {
+      // Cari tugas yang belum selesai dan deadline-nya besok
+      const tugasBesok = await prisma.assignmentStatus.findMany({
+        where: {
+          siswaId: siswa.id,
+          status: "BELUM_SELESAI",
+          tugas: {
+            deadline: {
+              gte: new Date(`${besokTanggal}T00:00:00.000Z`),
+              lt: new Date(`${besokTanggal}T23:59:59.999Z`),
+            },
+          },
+        },
+        include: {
+          tugas: true,
+        },
+      });
+
+      if (tugasBesok.length === 0) {
+        continue; // ✅ Skip siswa yang tidak ada tugas deadline besok
+      }
+
+      let tugasListText = "";
+      tugasBesok.forEach((item, index) => {
+        const deadlineFormatted = new Date(
+          item.tugas.deadline
+        ).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        tugasListText += `${index + 1}. 📖 *${
+          item.tugas.judul
+        }* - 🕒 Deadline: ${deadlineFormatted}\n`;
+      });
+
+      const pesan = `🔔 *Reminder Tugas!* \n\nHai ${siswa.nama} 👋,\nBesok adalah deadline tugas berikut:\n\n${tugasListText}\n\n💬 Segera selesaikan tugasmu ya biar tidak terlambat! Semangat! 🚀`;
+
+      const recipient = `${siswa.phone}@c.us`;
+      await client.sendMessage(recipient, pesan);
+      console.log(`📨 Reminder deadline besok dikirim ke ${siswa.nama}`);
+    }
+  } catch (error) {
+    console.error("❌ Error reminder deadline besok:", error);
   }
 }
 
