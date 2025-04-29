@@ -1,4 +1,23 @@
-2025/04/28-21:29:45.142 31ca Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/04/28-21:29:45.143 31ca Recovering log #330
-2025/04/28-21:29:45.154 31ca Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000330.log 
-2025/04/28-21:29:47.054 31cc Manual compaction at level-0 from '\x00A\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00B\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/04/29-13:43:57.889 7f2d Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/04/29-13:43:57.892 7f2d Recovering log #694
+2025/04/29-13:43:57.935 7f2d Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000694.log 
+2025/04/29-13:44:00.092 7f2f Level-0 table #704: started
+2025/04/29-13:44:00.114 7f2f Level-0 table #704: 732726 bytes OK
+2025/04/29-13:44:00.116 7f2f Delete type=0 #694
+2025/04/29-13:44:00.117 7f2d Manual compaction at level-0 from '\x00Z\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00[\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/04/29-13:44:02.648 7f2d Compacting 1@1 + 6@2 files
+2025/04/29-13:44:02.784 7f2d Generated table #705@1: 71986 keys, 2233953 bytes
+2025/04/29-13:44:02.941 7f2d Generated table #706@1: 36238 keys, 2204269 bytes
+2025/04/29-13:44:02.975 7f2d Generated table #707@1: 611 keys, 2118156 bytes
+2025/04/29-13:44:03.042 7f2d Generated table #708@1: 11950 keys, 2169939 bytes
+2025/04/29-13:44:03.131 7f2d Generated table #709@1: 35101 keys, 2180244 bytes
+2025/04/29-13:44:03.329 7f2d Generated table #710@1: 105366 keys, 2008599 bytes
+2025/04/29-13:44:03.329 7f2d Compacted 1@1 + 6@2 files => 12915160 bytes
+2025/04/29-13:44:03.331 7f2d compacted to: files[ 0 0 6 0 0 0 0 ]
+2025/04/29-13:44:03.332 7f2d Delete type=2 #701
+2025/04/29-13:44:03.333 7f2d Delete type=2 #696
+2025/04/29-13:44:03.333 7f2d Delete type=2 #698
+2025/04/29-13:44:03.333 7f2d Delete type=2 #700
+2025/04/29-13:44:03.333 7f2d Delete type=2 #704
+2025/04/29-13:44:03.333 7f2d Delete type=2 #697
+2025/04/29-13:44:03.333 7f2d Delete type=2 #699
