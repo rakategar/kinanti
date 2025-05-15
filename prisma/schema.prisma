@@ -69,6 +69,7 @@ enum Kelas {
   XITKJ2
   XIITKJ1
   XIITKJ2
+  TPTUP
 }
 
 enum TugasStatus {
