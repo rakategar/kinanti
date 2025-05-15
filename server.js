@@ -2,9 +2,10 @@ const { client } = require("./src/client");
 const { handleGuruCommand } = require("./src/controllers/guruController");
 const { handleSiswaCommand } = require("./src/controllers/siswaController");
 const { setupSchedules } = require("./src/controllers/scheduleController");
+const qrcode = require('qrcode-terminal'); 
 
 client.on("qr", (qr) => {
-  console.log("Scan QR:", qr);
+  qrcode.generate(qr, { small: true }); // Menampilkan QR code di terminal
 });
 
 client.on("ready", () => {
