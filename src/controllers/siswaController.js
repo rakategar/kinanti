@@ -1,5 +1,4 @@
 const { prisma } = require("../config/prisma");
-const { client } = require("../client");
 const path = require("path");
 const fs = require("fs");
 const { MessageMedia } = require("whatsapp-web.js");
