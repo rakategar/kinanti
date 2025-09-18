@@ -1,23 +1,44 @@
-2025/04/29-13:43:57.889 7f2d Reusing MANIFEST /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/04/29-13:43:57.892 7f2d Recovering log #694
-2025/04/29-13:43:57.935 7f2d Reusing old log /home/raka/kinanti/kinanti/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000694.log 
-2025/04/29-13:44:00.092 7f2f Level-0 table #704: started
-2025/04/29-13:44:00.114 7f2f Level-0 table #704: 732726 bytes OK
-2025/04/29-13:44:00.116 7f2f Delete type=0 #694
-2025/04/29-13:44:00.117 7f2d Manual compaction at level-0 from '\x00Z\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00[\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/04/29-13:44:02.648 7f2d Compacting 1@1 + 6@2 files
-2025/04/29-13:44:02.784 7f2d Generated table #705@1: 71986 keys, 2233953 bytes
-2025/04/29-13:44:02.941 7f2d Generated table #706@1: 36238 keys, 2204269 bytes
-2025/04/29-13:44:02.975 7f2d Generated table #707@1: 611 keys, 2118156 bytes
-2025/04/29-13:44:03.042 7f2d Generated table #708@1: 11950 keys, 2169939 bytes
-2025/04/29-13:44:03.131 7f2d Generated table #709@1: 35101 keys, 2180244 bytes
-2025/04/29-13:44:03.329 7f2d Generated table #710@1: 105366 keys, 2008599 bytes
-2025/04/29-13:44:03.329 7f2d Compacted 1@1 + 6@2 files => 12915160 bytes
-2025/04/29-13:44:03.331 7f2d compacted to: files[ 0 0 6 0 0 0 0 ]
-2025/04/29-13:44:03.332 7f2d Delete type=2 #701
-2025/04/29-13:44:03.333 7f2d Delete type=2 #696
-2025/04/29-13:44:03.333 7f2d Delete type=2 #698
-2025/04/29-13:44:03.333 7f2d Delete type=2 #700
-2025/04/29-13:44:03.333 7f2d Delete type=2 #704
-2025/04/29-13:44:03.333 7f2d Delete type=2 #697
-2025/04/29-13:44:03.333 7f2d Delete type=2 #699
+2025/09/19-02:45:55.004 147c2 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/09/19-02:45:55.006 147c2 Recovering log #1408
+2025/09/19-02:45:55.020 147c2 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001408.log 
+2025/09/19-02:45:57.297 147c5 Level-0 table #1425: started
+2025/09/19-02:45:57.324 147c5 Level-0 table #1425: 266527 bytes OK
+2025/09/19-02:45:57.329 147c5 Delete type=0 #1408
+2025/09/19-02:45:57.333 147cc Manual compaction at level-0 from '\x00\\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00]\x00\x00\x00' @ 0 : 0; will stop at '\x00\\x00\x00\x05' @ 3786568 : 1
+2025/09/19-02:45:57.333 147cc Compacting 1@0 + 1@1 files
+2025/09/19-02:45:57.350 147cc Generated table #1426@0: 6558 keys, 130299 bytes
+2025/09/19-02:45:57.354 147cc Generated table #1427@0: 27 keys, 1371 bytes
+2025/09/19-02:45:57.355 147cc Compacted 1@0 + 1@1 files => 131670 bytes
+2025/09/19-02:45:57.357 147cc compacted to: files[ 0 2 13 0 0 0 0 ]
+2025/09/19-02:45:57.360 147cc Delete type=2 #1425
+2025/09/19-02:45:57.361 147cd Manual compaction at level-0 from '\x00\\x00\x00\x05' @ 3786568 : 1 .. '\x00]\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/09/19-02:46:00.235 147cc Compacting 1@1 + 10@2 files
+2025/09/19-02:46:00.373 147cc Generated table #1428@1: 87198 keys, 2237908 bytes
+2025/09/19-02:46:00.621 147cc Generated table #1429@1: 90127 keys, 2303735 bytes
+2025/09/19-02:46:00.731 147cc Generated table #1430@1: 24810 keys, 2181220 bytes
+2025/09/19-02:46:00.812 147cc Generated table #1431@1: 32172 keys, 2186098 bytes
+2025/09/19-02:46:00.844 147cc Generated table #1432@1: 107 keys, 2121599 bytes
+2025/09/19-02:46:00.873 147cc Generated table #1433@1: 400 keys, 2114544 bytes
+2025/09/19-02:46:00.930 147cc Generated table #1434@1: 10365 keys, 2169936 bytes
+2025/09/19-02:46:01.012 147cc Generated table #1435@1: 34231 keys, 2205970 bytes
+2025/09/19-02:46:01.059 147cc Generated table #1436@1: 31831 keys, 2158595 bytes
+2025/09/19-02:46:01.190 147cc Generated table #1437@1: 112572 keys, 2267968 bytes
+2025/09/19-02:46:01.193 147cc Generated table #1438@1: 1182 keys, 23609 bytes
+2025/09/19-02:46:01.193 147cc Compacted 1@1 + 10@2 files => 21971182 bytes
+2025/09/19-02:46:01.194 147cc compacted to: files[ 0 1 14 0 0 0 0 ]
+2025/09/19-02:46:01.195 147cc Delete type=2 #1417
+2025/09/19-02:46:01.196 147cc Delete type=2 #1418
+2025/09/19-02:46:01.196 147cc Delete type=2 #1414
+2025/09/19-02:46:01.196 147cc Delete type=2 #1411
+2025/09/19-02:46:01.196 147cc Delete type=2 #1426
+2025/09/19-02:46:01.196 147cc Delete type=2 #1421
+2025/09/19-02:46:01.196 147cc Delete type=2 #1416
+2025/09/19-02:46:01.196 147cc Delete type=2 #1412
+2025/09/19-02:46:01.196 147cc Delete type=2 #1419
+2025/09/19-02:46:01.196 147cc Delete type=2 #1413
+2025/09/19-02:46:01.196 147cc Delete type=2 #1415
+2025/09/19-02:46:01.197 147cc Delete type=2 #1420
+2025/09/19-02:48:34.462 147c2 Compacting 1@1 + 2@2 files
+2025/09/19-02:48:34.485 147c2 Generated table #1439@1: 7811 keys, 161788 bytes
+2025/09/19-02:48:34.486 147c2 Compacted 1@1 + 2@2 files => 161788 bytes
+2025/09/19-02:48:34.487 147c2 compacted to: files[ 0 0 13 0 0 0 0 ]

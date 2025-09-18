@@ -1,718 +1,658 @@
-const { prisma } = require("../config/prisma");
-const path = require("path");
-const ExcelJS = require("exceljs"); // Pastikan sudah install: npm install exceljs
-const fs = require("fs");
+// src/controllers/guruController.js
+const prisma = require("../config/prisma");
 const { MessageMedia } = require("whatsapp-web.js");
-const { supabase, SUPABASE_URL } = require("../config/supabase");
-const { PDFDocument } = require("pdf-lib");
-const sharp = require("sharp");
-const { client } = require("../client");
+const { getState, setState, clearState } = require("../services/state");
+const { normalizePhone } = require("../utils/phone");
 
-let pendingAssignment = {};
+// ===== Helpers
+async function getUserByPhone(phone) {
+  return prisma.user.findUnique({ where: { phone } });
+}
 
-async function handleGuruCommand(message) {
-  const sender = message.from;
-  const body = message.body.toLowerCase();
-
-  async function buatExcel(data) {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Rekap Tugas");
-
-    // Tambahkan header
-    worksheet.addRow(["Nama", "Nomor HP", "Status", "Link File"]);
-
-    // Tambahkan data siswa
-    data.forEach((row) => {
-      worksheet.addRow(row);
-    });
-
-    // Simpan ke buffer
-    const buffer = await workbook.xlsx.writeBuffer();
-    return buffer;
+function ensureGuru(user) {
+  const role = (user?.role ?? "").toString().trim().toUpperCase();
+  if (role !== "GURU") {
+    const err = new Error("ROLE_FORBIDDEN");
+    err.code = "ROLE_FORBIDDEN";
+    throw err;
   }
+}
 
-  async function convertImagesToPDF(images, outputPath) {
-    const pdfDoc = await PDFDocument.create();
+const fmtWIB = (d) =>
+  new Date(d).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
 
-    for (const imageBuffer of images) {
-      const image = await sharp(imageBuffer);
-      const metadata = await image.metadata();
-      const imageWidth = metadata.width;
-      const imageHeight = metadata.height;
+function buildRecapText(s) {
+  return (
+    `📋 *Rangkuman Tugas*\n` +
+    `• Kode: *${s.kode ?? "-"}*\n` +
+    `• Judul: ${s.judul ?? "-"}\n` +
+    `• Deskripsi: ${s.deskripsi ?? "-"}\n` +
+    `• Wajib PDF (siswa): ${s.lampirPdf === "ya" ? "Ya" : "Tidak"}\n` +
+    `• Deadline: ${
+      s.deadlineHari ? `${s.deadlineHari} hari` : "Belum diatur"
+    }\n` +
+    `• Kelas: ${s.kelas ?? "-"}\n` +
+    (s.guruPdfReceived ? `• PDF Guru: *${s.guruPdfName || "terlampir"}*\n` : "")
+  );
+}
 
-      const page = pdfDoc.addPage([imageWidth, imageHeight]);
-      const imageEmbed = await pdfDoc.embedJpg(imageBuffer); // If JPG
-      page.drawImage(imageEmbed, {
-        x: 0,
-        y: 0,
-        width: imageWidth,
-        height: imageHeight,
-      });
-    }
+// ===== Wizard: kirim intro + FORM
+async function handleGuruBuatPenugasan(message, { user, entities, waClient }) {
+  let state = (await getState(user.phone)) || { lastIntent: null, slots: {} };
+  const freshStart = state.lastIntent !== "guru_buat_penugasan";
 
-    const pdfBytes = await pdfDoc.save();
-    fs.writeFileSync(outputPath, pdfBytes);
-  }
+  state.lastIntent = "guru_buat_penugasan";
 
-  // 1. Guru mengetik "penugasan" atau "penugasan XTKJ2"
-  // 1. Guru mengetik "penugasan" atau "penugasan XTKJ2"
-  if (message.body.toLowerCase().startsWith("penugasan")) {
-    const guru = await prisma.user.findFirst({
-      where: { phone: sender.replace("@c.us", ""), role: "guru" },
-    });
+  // init slot
+  if (freshStart || !state.slots) {
+    state.slots = {
+      kode: null,
+      judul: null,
+      deskripsi: null,
+      lampirPdf: null, // 'ya' | 'tidak' → juga berarti siswa wajib PDF
+      deadlineHari: null, // integer hari
+      kelas: entities.kelas || null,
 
-    if (!guru) {
-      return await message.reply(
-        "⚠️ Anda bukan guru atau belum terdaftar di sistem."
-      );
-    }
-
-    // Menentukan target kelas
-    const args = message.body.split(" ");
-    if (args.length < 2) {
-      return await message.reply(
-        "⚠️ Anda harus menyebutkan kelas tujuan!\n\n📌 Contoh penggunaan:\n*Penugasan XIITKJ2*"
-      );
-    }
-
-    let kelasTarget = args.slice(1).join(" ");
-
-    // ✅ Validasi kelas ada di database
-    const kelasAda = await prisma.user.findFirst({
-      where: { kelas: kelasTarget, role: "siswa" },
-    });
-    if (!kelasAda) {
-      return await message.reply(
-        `⚠️ Kelas *${kelasTarget}* tidak ditemukan di sistem.\nPastikan Anda mengetik nama kelas dengan benar.`
-      );
-    }
-
-    pendingAssignment[sender] = {
-      step: 1,
-      guruId: guru.id,
-      kelasTarget: kelasTarget,
+      // alur PDF guru
+      awaitingPdf: false,
+      guruPdfReceived: false,
+      guruPdfName: null,
+      guruPdfB64: null,
+      guruPdfMime: null,
+      guruPdfSize: null,
     };
+  } else if (!state.slots.kelas && entities.kelas) {
+    state.slots.kelas = entities.kelas;
+  }
+
+  await setState(user.phone, state);
+
+  await message.reply(
+    "📝 *Mulai buat penugasan*\n" +
+      "Ketik sesuai format berikut (boleh satu per satu).\n" +
+      "Jika sudah lengkap, balas: *simpan* (atau *batal* untuk membatalkan)."
+  );
+
+  const s = state.slots;
+  const form = `- Kode: ${s.kode ?? ""}
+- Judul: ${s.judul ?? ""}
+- Deskripsi: ${s.deskripsi ?? ""}
+- Lampirkan PDF (ya/tidak): ${s.lampirPdf ?? ""}
+- Deadline: ${s.deadlineHari ?? "N"} (hari)
+- Kelas: ${s.kelas ? `*${s.kelas}*` : "(ketik kelas, misal: XIITKJ2)"}`;
+
+  return waClient.sendMessage(message.from, form);
+}
+
+// ===== Parser baris "Field: nilai" (toleran kurung, spasi, awalan "- ")
+function parseWizardLine(line) {
+  const m = /^\s*-?\s*([a-zA-Z()[\]/ _-]+?)\s*:\s*(.+)\s*$/i.exec(line || "");
+  if (!m) return null;
+
+  let fieldRaw = m[1].toLowerCase();
+  fieldRaw = fieldRaw.replace(/\([^)]*\)/g, ""); // buang "(ya/tidak)" dst
+  fieldRaw = fieldRaw.replace(/\s+/g, " ").trim();
+
+  const value = m[2].trim();
+  const map = {
+    kode: "kode",
+    judul: "judul",
+    deskripsi: "deskripsi",
+    "lampirkan pdf": "lampirPdf",
+    deadline: "deadlineHari",
+    kelas: "kelas",
+  };
+  const field = map[fieldRaw];
+  if (!field) return null;
+
+  // cegah placeholder
+  if (field === "kelas" && /^\(ketik\s+kelas[,)]/i.test(value)) return null;
+
+  return { field, value };
+}
+
+// ===== Handler pesan saat wizard aktif (multiline + media)
+async function handleGuruWizardMessage(message, { user, waClient }) {
+  let state = await getState(user.phone);
+  if (!state || state.lastIntent !== "guru_buat_penugasan") return false;
+
+  const raw = message.body || "";
+
+  // ——— MENUNGGU PDF
+  if (state.slots?.awaitingPdf) {
+    if (message.hasMedia) {
+      const media = await message.downloadMedia().catch(() => null);
+      if (!media) {
+        await message.reply(
+          "⚠️ Gagal mengunduh file. Coba kirim ulang PDF-nya."
+        );
+        return true;
+      }
+      const mime = media.mimetype || "";
+      if (!/^application\/pdf$/i.test(mime)) {
+        await message.reply(
+          "📎 File harus *PDF*. Kirim ulang dalam format PDF ya."
+        );
+        return true;
+      }
+
+      const s = state.slots || {};
+      s.guruPdfReceived = true;
+      s.awaitingPdf = false;
+      s.guruPdfMime = mime;
+      s.guruPdfB64 = media.data;
+      s.guruPdfName = media.filename || "lampiran.pdf";
+      s.guruPdfSize = media.filesize || null;
+
+      state.slots = { ...s };
+      await setState(user.phone, state);
+
+      const recap = buildRecapText(s);
+      await message.reply(
+        `✅ *PDF diterima:* ${s.guruPdfName}\n\n${recap}\n` +
+          "Jika sudah siap, ketik *simpan* untuk menyelesaikan. 💾"
+      );
+      return true;
+    }
+
+    if (/^lewati$/i.test(raw)) {
+      const s = state.slots || {};
+      s.awaitingPdf = false;
+      s.guruPdfReceived = false;
+      s.guruPdfName = null;
+      s.guruPdfB64 = null;
+      s.guruPdfMime = null;
+      s.guruPdfSize = null;
+      s.lampirPdf = "tidak";
+      state.slots = { ...s };
+      await setState(user.phone, state);
+
+      await message.reply(
+        "➡️ Lampiran PDF dibatalkan. Kamu bisa lanjut isi field lain atau ketik *simpan* jika sudah lengkap."
+      );
+      return true;
+    }
 
     await message.reply(
-      "📌 Silakan kirimkan tugas dalam format berikut:\n\n- Kode:\n- Judul:\n- Deskripsi:\n- Lampirkan PDF: ya/tidak\n- Deadline: (opsional, dalam hari)\n\nContoh:\n- Kode: MTK24\n- Judul: Matematika Dasar\n- Deskripsi: Kerjakan soal halaman 45\n- Lampirkan PDF: ya\n- Deadline: 7"
+      "⏳ Bot sedang menunggu *file PDF* dari guru. Kirim file PDF sekarang, atau ketik *lewati* untuk batal melampirkan."
     );
+    return true;
   }
 
-  // 🔥 Command reset/batal
-  else if (message.body.toLowerCase() === "batal") {
-    if (pendingAssignment[sender]) {
-      delete pendingAssignment[sender];
+  // progress form bila ketik "buat tugas" lagi
+  if (/^buat\s+tugas(\s+baru)?$/i.test(raw)) {
+    const s = state.slots || {};
+    const form = `- Kode: ${s.kode ?? ""}
+- Judul: ${s.judul ?? ""}
+- Deskripsi: ${s.deskripsi ?? ""}
+- Lampirkan PDF (ya/tidak): ${s.lampirPdf ?? ""}
+- Deadline: ${s.deadlineHari ?? "N"} (hari)
+- Kelas: ${s.kelas ? `*${s.kelas}*` : "(ketik kelas, misal: XIITKJ2)"}`;
+    await message.reply(
+      "🧭 *Progress pengisian form*\nKetik sesuai format berikut (boleh satu per satu).\n" +
+        "Jika sudah lengkap, balas: *simpan* (atau *batal* untuk membatalkan)."
+    );
+    await message.reply(form);
+    return true;
+  }
+
+  // perintah khusus
+  if (/^(batal|cancel)$/i.test(raw)) {
+    await clearState(user.phone);
+    await message.reply("❎ Pembuatan penugasan dibatalkan.");
+    return true;
+  }
+
+  if (/^simpan$/i.test(raw)) {
+    const s = state.slots || {};
+    const missing = [];
+    if (!s.kode) missing.push("Kode");
+    if (!s.judul) missing.push("Judul");
+    if (!s.deskripsi) missing.push("Deskripsi");
+    if (!s.kelas || !/^(X|XI|XII)[A-Z]{2,8}\d{1,2}$/i.test(String(s.kelas))) {
+      missing.push("Kelas");
+    }
+    if (s.lampirPdf === "ya" && !s.guruPdfReceived) {
       await message.reply(
-        "❌ Penugasan dibatalkan. Mulai lagi dengan *penugasan [kelas]*."
+        "📎 Kamu memilih *Lampirkan PDF: ya*.\n" +
+          "Kirim file PDF sekarang (maks ~10MB), lalu ketik *simpan* lagi. Atau ketik *lewati* jika batal melampirkan."
       );
-    } else {
-      await message.reply("⚠️ Tidak ada penugasan yang sedang berlangsung.");
+      s.awaitingPdf = true;
+      state.slots = { ...s };
+      await setState(user.phone, state);
+      return true;
     }
-  }
-
-  // 2. Menyimpan kode, judul, deskripsi tugas, dan pilihan lampiran PDF
-  // 2. Menyimpan kode, judul, deskripsi tugas, dan pilihan lampiran PDF
-  else if (pendingAssignment[sender]?.step === 1 && !message.hasMedia) {
-    const lines = message.body.split("\n");
-    if (lines.length < 4) {
-      return await message.reply(
-        "Format tidak valid. Kirim dengan format:\n- Kode:\n- Judul:\n- Deskripsi:\n- Lampirkan PDF: ya/tidak\n- Deadline: (opsional, dalam hari)"
+    if (missing.length) {
+      await message.reply(
+        `⚠️ Field belum lengkap: ${missing.join(", ")}.\n` +
+          "Lengkapi dulu, lalu ketik *simpan*."
       );
+      return true;
     }
 
-    const kodeTugas = lines[0].replace("- Kode:", "").trim();
-    const judulTugas = lines[1].replace("- Judul:", "").trim();
-    const deskripsiTugas = lines[2].replace("- Deskripsi:", "").trim();
-    const lampirkanPDF =
-      lines[3].replace("- Lampirkan PDF:", "").trim().toLowerCase() === "ya";
-
-    // Ambil deadline opsional
-    let deadlineDays = 7; // default
-    if (lines[4]) {
-      const deadlineLine = lines[4].replace("- Deadline:", "").trim();
-      const parsedDays = parseInt(deadlineLine);
-      if (!isNaN(parsedDays) && parsedDays > 0) {
-        deadlineDays = parsedDays;
-      }
-    }
-
-    const deadlineDate = new Date();
-    deadlineDate.setDate(deadlineDate.getDate() + deadlineDays);
-
-    // Cek apakah tugas dengan kode itu sudah ada
-    const tugasSudahAda = await prisma.assignment.findUnique({
-      where: { kode: kodeTugas },
+    // guard duplikat (final)
+    const kodeFinal = String(s.kode).toUpperCase();
+    const kelasFinal = String(s.kelas).toUpperCase();
+    const dup = await prisma.assignment.findUnique({
+      where: { kode: kodeFinal },
     });
-
-    if (tugasSudahAda) {
-      return await message.reply(
-        `❌ Tugas dengan kode *${kodeTugas}* sudah pernah dibuat!\n\n📖 *${tugasSudahAda.judul} (${tugasSudahAda.kode})*\n📝 ${tugasSudahAda.deskripsi}`
-      );
-    }
-
-    // Simpan data sementara
-    pendingAssignment[sender] = {
-      step: lampirkanPDF ? 2 : 3, // 2 = menunggu PDF, 3 = langsung buat tugas
-      guruId: pendingAssignment[sender].guruId,
-      kode: kodeTugas,
-      judul: judulTugas,
-      deskripsi: deskripsiTugas,
-      lampirkanPDF: lampirkanPDF,
-      deadline: deadlineDate,
-      kelas: pendingAssignment[sender].kelasTarget,
-    };
-
-    if (lampirkanPDF) {
-      // Minta file PDF, tapi TIDAK buat tugas dulu
+    if (dup) {
       await message.reply(
-        `📎 Silakan kirimkan file PDF tugas.\nKode tugas: *${kodeTugas}*`
+        [
+          `🚫 *Tugas dengan kode ${kodeFinal} sudah ada.*`,
+          `• Kode: *${dup.kode}*`,
+          `• Judul: ${dup.judul}`,
+          `• Kelas: ${dup.kelas}`,
+          `• Deadline: ${dup.deadline ? fmtWIB(dup.deadline) : "Belum diatur"}`,
+          "",
+          "Silakan membuat tugas dengan *kode baru*.",
+          "Ketik misal: `Kode: MTK124` lalu *simpan* lagi. ✏️",
+        ].join("\n")
       );
-    } else {
-      // Baru kalau TIDAK butuh PDF, buat tugas sekarang
-      const newTugas = await prisma.assignment.create({
-        data: {
-          guruId: pendingAssignment[sender].guruId,
-          kode: kodeTugas,
-          judul: judulTugas,
-          deskripsi: deskripsiTugas,
-          pdfUrl: null,
-          deadline: pendingAssignment[sender].deadline,
-          kelas: pendingAssignment[sender].kelas,
-        },
-      });
-
-      const siswaList = await prisma.user.findMany({
-        where: {
-          role: "siswa",
-          kelas: pendingAssignment[sender].kelas,
-        },
-      });
-
-      await prisma.assignmentStatus.createMany({
-        data: siswaList.map((siswa) => ({
-          siswaId: siswa.id,
-          tugasId: newTugas.id,
-          status: "BELUM_SELESAI",
-        })),
-      });
-
-      await message.reply(
-        `✅ Tugas berhasil dibuat!\nGunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan.\n\nContoh: *kirim mtk24 XTKJ1*`
-      );
-      delete pendingAssignment[sender];
+      return true;
     }
-  }
 
-  // 3. Mengunggah PDF ke Supabase
-  else if (pendingAssignment[sender]?.step === 2 && message.hasMedia) {
-    const media = await message.downloadMedia();
-    if (!media.mimetype.includes("pdf")) {
-      return await message.reply("⚠️ Hanya file PDF yang diperbolehkan!");
+    // deadline → N hari dari sekarang
+    let deadline = null;
+    if (s.deadlineHari) {
+      const n = parseInt(String(s.deadlineHari).replace(/\D/g, ""), 10);
+      if (!isNaN(n) && n > 0) deadline = new Date(Date.now() + n * 86400000);
     }
+
+    const deskripsiFinal =
+      s.deskripsi +
+      (s.lampirPdf === "ya"
+        ? "\n\n[Wajib melampirkan PDF saat pengumpulan]"
+        : "");
+
+    // const pdfUrl = await uploadToStorageAndGetUrl(s.guruPdfName, s.guruPdfB64, s.guruPdfMime);
+    const pdfUrl = null;
 
     try {
-      const fileName = `assignments/${Date.now()}.pdf`;
-      const { data, error } = await supabase.storage
-        .from("assignments")
-        .upload(fileName, Buffer.from(media.data, "base64"), {
-          contentType: media.mimetype,
+      const created = await prisma.assignment.create({
+        data: {
+          kode: kodeFinal,
+          judul: s.judul,
+          deskripsi: deskripsiFinal,
+          deadline,
+          kelas: kelasFinal,
+          guruId: user.id,
+          // pdfUrl: pdfUrl || null,
+        },
+      });
+
+      // status siswa
+      const siswa = await prisma.user.findMany({
+        where: { role: "siswa", kelas: created.kelas },
+      });
+      if (siswa.length) {
+        await prisma.assignmentStatus.createMany({
+          data: siswa.map((st) => ({
+            siswaId: st.id,
+            tugasId: created.id,
+            status: "BELUM_SELESAI",
+          })),
+          skipDuplicates: true,
         });
+      }
 
-      if (error) throw error;
+      await clearState(user.phone); // keluar wizard
 
-      const pdfUrl = `${SUPABASE_URL}/storage/v1/object/public/assignments/${fileName}`;
+      let recap =
+        `✅ *Tugas berhasil dibuat!*\n` +
+        `• Kode: *${created.kode}*\n` +
+        `• Judul: ${created.judul}\n` +
+        `• Kelas: ${created.kelas}\n` +
+        `• Deadline: ${
+          created.deadline ? fmtWIB(created.deadline) : "Belum diatur"
+        }\n`;
+      if (s.guruPdfReceived) recap += `• PDF Guru: *${s.guruPdfName}*\n`;
+      recap += `\nUntuk mengirim ke siswa: ketik *kirim ${created.kode} ${created.kelas}* 📣`;
 
-      const newTugas = await prisma.assignment.create({
-        data: {
-          guruId: pendingAssignment[sender].guruId,
-          kode: pendingAssignment[sender].kode,
-          judul: pendingAssignment[sender].judul,
-          deskripsi: pendingAssignment[sender].deskripsi,
-          pdfUrl: pdfUrl,
-          deadline: pendingAssignment[sender].deadline,
-          kelas: pendingAssignment[sender].kelas,
-        },
-      });
-
-      const siswaList = await prisma.user.findMany({
-        where: {
-          role: "siswa",
-          kelas: pendingAssignment[sender].kelasTarget,
-        },
-      });
-
-      await prisma.assignmentStatus.createMany({
-        data: siswaList.map((siswa) => ({
-          siswaId: siswa.id,
-          tugasId: newTugas.id,
-          status: "BELUM_SELESAI",
-        })),
-      });
-
-      await message.reply(
-        `✅ Tugas berhasil dibuat!\nGunakan: *kirim [kode_tugas] [kelas]* untuk mengirim ke kelas tujuan.\n\nContoh: *kirim mtk24 XTKJ1*`
-      );
-      delete pendingAssignment[sender];
+      await message.reply(recap);
+      return true;
     } catch (err) {
-      console.error("❌ Gagal mengunggah PDF ke Supabase:", err);
-      await message.reply(
-        "❌ Terjadi kesalahan saat mengunggah file PDF. Coba kirim ulang."
-      );
-    }
-  }
-  // 📝 Fitur "kirim tugas"
-  else if (message.body.toLowerCase().startsWith("kirim ")) {
-    const parts = message.body.split(" ");
-
-    if (parts.length < 3) {
-      return await message.reply(
-        `⚠️ Format salah! Gunakan: *kirim [kode_tugas] [kelas]*\n\nContoh: *kirim mtk24 XTKJ1*`
-      );
-    }
-
-    const kodeTugas = parts[1];
-    const kelasTujuan = parts.slice(2).join(" ");
-
-    const tugasTerakhir = await prisma.assignment.findUnique({
-      where: { kode: kodeTugas },
-      include: { guru: true },
-    });
-
-    if (!tugasTerakhir) {
-      return await message.reply(
-        `❌ Tidak ada tugas dengan kode *${kodeTugas}*.`
-      );
-    }
-
-    const siswaList = await prisma.user.findMany({
-      where: { role: "siswa", kelas: kelasTujuan },
-    });
-
-    if (siswaList.length === 0) {
-      return await message.reply(
-        `⚠️ Tidak ada siswa di kelas *${kelasTujuan}*.`
-      );
-    }
-
-    // Format tanggal deadline agar mudah dibaca siswa
-    const options = { day: "numeric", month: "long", year: "numeric" };
-    const deadlineFormatted = tugasTerakhir.deadline.toLocaleDateString(
-      "id-ID",
-      options
-    );
-
-    // Kirim tugas ke siswa
-    for (const siswa of siswaList) {
-      const recipient = `${siswa.phone}@c.us`;
-      const pesan = `📚 *Tugas Baru dari ${
-        tugasTerakhir.guru.nama
-      }*\n\n🔖 *Kode:* ${tugasTerakhir.kode}\n📝 *Judul:* ${
-        tugasTerakhir.judul
-      }\n📄 *Deskripsi:* ${
-        tugasTerakhir.deskripsi
-      }\n\n🕒 *Deadline:* ${deadlineFormatted}\n${
-        tugasTerakhir.pdfUrl ? `📎 *Unduh PDF:* ${tugasTerakhir.pdfUrl}` : ""
-      }\n\n*Segera kerjakan sebelum deadline ya!* 📚💪`;
-
-      await client.sendMessage(recipient, pesan);
-      console.log(`📨 Tugas dikirim ke ${siswa.nama} (${siswa.phone})`);
-    }
-
-    await message.reply(
-      `✅ Tugas dengan kode *${kodeTugas}* telah dikirim ke kelas *${kelasTujuan}*.`
-    );
-  }
-
-  if (message.body.toLowerCase().startsWith("rekap")) {
-    const guru = await prisma.user.findFirst({
-      where: { phone: sender.replace("@c.us", ""), role: "guru" },
-    });
-
-    if (!guru) {
-      return await message.reply(
-        "⚠️ Anda bukan guru atau belum terdaftar di sistem."
-      );
-    }
-
-    const args = message.body.split(" ");
-    if (args.length < 2) {
-      return await message.reply(
-        "⚠️ Format salah! Gunakan: *rekap [kode_tugas]*"
-      );
-    }
-
-    const kodeTugas = args[1].toUpperCase();
-
-    // Cek tugas berdasarkan kode
-    const tugas = await prisma.assignment.findUnique({
-      where: { kode: kodeTugas },
-      include: {
-        status: {
-          include: { siswa: true },
-        },
-      },
-    });
-
-    if (!tugas) {
-      return await message.reply(
-        `❌ Tugas dengan kode *${kodeTugas}* tidak ditemukan.`
-      );
-    }
-
-    // Ambil semua siswa di kelas yang sesuai dengan tugas ini
-    const semuaSiswa = await prisma.user.findMany({
-      where: {
-        role: "siswa",
-        kelas: tugas.kelas, // Pastikan hanya siswa di kelas terkait
-      },
-    });
-
-    // Ambil semua pengumpulan tugas terkait
-    const submissions = await prisma.assignmentSubmission.findMany({
-      where: { tugasId: tugas.id },
-      select: {
-        siswaId: true,
-        pdfUrl: true,
-      },
-    });
-
-    // Mapping siswa yang sudah mengumpulkan tugas
-    const siswaSudahMengumpulkan = new Map();
-    submissions.forEach((sub) => {
-      siswaSudahMengumpulkan.set(sub.siswaId, sub.pdfUrl);
-    });
-
-    let laporan = `📌 *Rekap Pengumpulan Tugas ${tugas.judul} (${tugas.kode})*\n\n`;
-    let dataExcel = [["Nama", "Nomor HP", "Status", "Link File"]];
-
-    semuaSiswa.forEach((siswa, index) => {
-      const sudahMengumpulkan = siswaSudahMengumpulkan.has(siswa.id);
-      const tanda = sudahMengumpulkan ? "✅" : "❌";
-      const linkFile = sudahMengumpulkan
-        ? siswaSudahMengumpulkan.get(siswa.id)
-        : "-";
-
-      laporan += `${index + 1}. ${siswa.nama} ${tanda}\n`;
-      dataExcel.push([
-        siswa.nama,
-        siswa.phone,
-        sudahMengumpulkan ? "Sudah" : "Belum",
-        linkFile,
-      ]);
-    });
-
-    // Kirim rekap ke guru
-    await message.reply(laporan);
-    async function buatExcel(data) {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Rekap Tugas");
-
-      // Tambahkan header
-      worksheet.addRow(["Nama", "Nomor HP", "Status", "Link File"]);
-
-      // Tambahkan data siswa
-      data.forEach((row) => {
-        worksheet.addRow(row);
-      });
-
-      // Simpan ke buffer
-      const buffer = await workbook.xlsx.writeBuffer();
-      return buffer;
-    }
-
-    const dirPath = path.resolve(__dirname, "rekap_files");
-    const filePath = path.resolve(dirPath, "rekap_tugas.xlsx"); // Dideklarasikan di luar
-    try {
-      if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
+      // balapan → P2002
+      if (err.code === "P2002") {
+        const existing = await prisma.assignment.findUnique({
+          where: { kode: kodeFinal },
+        });
+        if (existing) {
+          await message.reply(
+            [
+              `🚫 *Tugas dengan kode ${kodeFinal} sudah ada.*`,
+              `• Kode: *${existing.kode}*`,
+              `• Judul: ${existing.judul}`,
+              `• Kelas: ${existing.kelas}`,
+              `• Deadline: ${
+                existing.deadline ? fmtWIB(existing.deadline) : "Belum diatur"
+              }`,
+              "",
+              "Silakan membuat tugas dengan *kode baru*.",
+              "Ketik misal: `Kode: MTK124` lalu *simpan* lagi. ✏️",
+            ].join("\n")
+          );
+          return true;
+        }
       }
+      throw err;
+    }
+  }
 
-      // Pastikan buatExcel mengembalikan buffer
-      const excelBuffer = await buatExcel(dataExcel);
-      if (!excelBuffer) {
-        throw new Error("Gagal membuat buffer Excel!");
+  // === Multiline: proses semua baris valid
+  const lines = raw.split(/\r?\n/);
+  let updated = 0;
+  let s = { ...(state.slots || {}) };
+  const prev = { ...(state.slots || {}) };
+
+  for (const line of lines) {
+    const parsed = parseWizardLine(line);
+    if (!parsed) continue;
+
+    if (parsed.field === "kode") {
+      const m = /\b([a-z]{2,8})[-_]?(\d{1,4})\b/i.exec(parsed.value);
+      if (!m) continue;
+      s.kode = `${m[1].toUpperCase()}-${m[2]}`;
+      updated++;
+    } else if (parsed.field === "lampirPdf") {
+      s.lampirPdf = /^(ya|yes|y)$/i.test(parsed.value) ? "ya" : "tidak";
+      updated++;
+      if (s.lampirPdf === "ya") {
+        s.awaitingPdf = true;
+        s.guruPdfReceived = false;
+        s.guruPdfName = null;
+        s.guruPdfB64 = null;
+        s.guruPdfMime = null;
+        s.guruPdfSize = null;
       }
-
-      // Simpan buffer ke file
-      await fs.promises.writeFile(filePath, excelBuffer);
-      console.log("✅ Rekap tugas berhasil disimpan di:", filePath);
-    } catch (error) {
-      console.error("❌ Terjadi kesalahan saat membuat rekap:", error);
+    } else if (parsed.field === "deadlineHari") {
+      const n = parseInt(parsed.value.replace(/\D/g, ""), 10);
+      s.deadlineHari = isNaN(n) ? null : n;
+      updated++;
+    } else if (parsed.field === "kelas") {
+      const rawKelas = parsed.value;
+      if (!/^[()]/.test(rawKelas)) {
+        s.kelas = rawKelas.replace(/\s+/g, "").toUpperCase();
+        updated++;
+      }
+    } else {
+      s[parsed.field] = parsed.value;
+      updated++;
     }
-
-    // Kirim file Excel
-    // Pastikan file ada sebelum dikirim
-    if (!fs.existsSync(filePath)) {
-      console.error("❌ File tidak ditemukan:", filePath);
-      return await message.reply(
-        "⚠️ Terjadi kesalahan, file rekap tidak ditemukan."
-      );
-    }
-
-    // Konversi file ke format media WhatsApp
-    const media = await MessageMedia.fromFilePath(filePath);
-
-    // Kirim file menggunakan sendMessage()
-    await message.client.sendMessage(message.from, media, {
-      caption: "📎 Berikut adalah rekap pengumpulan dalam bentuk Excel.",
-    });
   }
 
-  // Fungsi untuk membuat file Excel
-  async function buatExcel(data) {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Rekap Tugas");
-
-    // Tambahkan data ke worksheet
-    worksheet.addRows(data);
-
-    // Simpan ke buffer
-    return await workbook.xlsx.writeBuffer();
-  } // 📝 Fitur "list tugas"
-  if (message.body.toLowerCase() === "list penugasan") {
-    const guru = await prisma.user.findFirst({
-      where: { phone: sender.replace("@c.us", ""), role: "guru" },
-    });
-
-    if (!guru) {
-      return await message.reply(
-        "⚠️ Anda bukan guru atau belum terdaftar di sistem."
-      );
-    }
-
-    const tugasList = await prisma.assignment.findMany({
-      where: { guruId: guru.id },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (tugasList.length === 0) {
-      return await message.reply("📭 Anda belum pernah mengirim tugas.");
-    }
-
-    let pesan = "📚 *Daftar Tugas Anda:*\n";
-    tugasList.forEach((tugas, index) => {
-      pesan += `\n${index + 1}. *${tugas.judul}* (*${tugas.kode}*)\n   ${
-        tugas.deskripsi
-      }\n   📎 ${tugas.pdfUrl}\n`;
-    });
-
-    await message.reply(pesan);
-  }
-
-  // 📊 Fitur "list siswa"
-  else if (message.body.toLowerCase().startsWith("list siswa")) {
-    const guru = await prisma.user.findFirst({
-      where: { phone: sender.replace("@c.us", ""), role: "guru" },
-    });
-
-    if (!guru) {
-      return await message.reply(
-        "⚠️ Anda bukan guru atau belum terdaftar di sistem."
-      );
-    }
-
-    // Cek apakah ada kelas yang diminta
-    const args = message.body.split(" ");
-    let kelasFilter = args.length > 2 ? args.slice(2).join(" ") : null;
-
-    const siswaList = await prisma.user.findMany({
-      where: {
-        role: "siswa",
-        ...(kelasFilter ? { kelas: kelasFilter } : {}), // Filter kelas jika ada
-      },
-      orderBy: { nama: "asc" },
-    });
-
-    if (siswaList.length === 0) {
-      return await message.reply(
-        kelasFilter
-          ? `📭 Tidak ada siswa di kelas *${kelasFilter}*.`
-          : "📭 Belum ada siswa terdaftar."
-      );
-    }
-
-    // Buat file Excel
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Data Siswa");
-
-    // Header
-    worksheet.columns = [
-      { header: "No", key: "no", width: 5 },
-      { header: "Nama", key: "nama", width: 20 },
-      { header: "Nomor WA", key: "phone", width: 15 },
-      { header: "Kelas", key: "kelas", width: 10 },
-    ];
-
-    // Isi data
-    siswaList.forEach((siswa, index) => {
-      worksheet.addRow({
-        no: index + 1,
-        nama: siswa.nama,
-        phone: siswa.phone,
-        kelas: siswa.kelas,
+  // cek duplikat kode segera setelah update
+  if (updated > 0) {
+    if (s.kode && s.kode !== prev.kode) {
+      const kodeCheck = String(s.kode).toUpperCase();
+      const existed = await prisma.assignment.findUnique({
+        where: { kode: kodeCheck },
       });
-    });
+      if (existed) {
+        // batalkan perubahan kode → kembali ke prev
+        s.kode = prev.kode || null;
 
-    // Simpan sebagai buffer
-    const buffer = await workbook.xlsx.writeBuffer();
-    const media = new MessageMedia(
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      buffer.toString("base64"),
-      kelasFilter ? `Data_Siswa_${kelasFilter}.xlsx` : "Data_Siswa.xlsx"
-    );
+        state.slots = { ...(state.slots || {}), ...s };
+        await setState(user.phone, state);
 
-    // Kirim file ke WhatsApp
-    await client.sendMessage(sender, media);
-    await message.reply("📄 Data siswa telah dikirim dalam format Excel.");
-  }
+        await message.reply(
+          [
+            `🚫 *Tugas dengan kode ${kodeCheck} sudah ada.*`,
+            `• Kode: *${existed.kode}*`,
+            `• Judul: ${existed.judul}`,
+            `• Kelas: ${existed.kelas}`,
+            `• Deadline: ${
+              existed.deadline ? fmtWIB(existed.deadline) : "Belum diatur"
+            }`,
+            "",
+            "Silakan membuat tugas dengan *kode baru*.",
+            "Ketik misal: `Kode: MTK124` lalu *simpan* jika sudah lengkap. ✏️",
+          ].join("\n")
+        );
 
-  // 📊 Fitur "list siswa"
-  else if (message.body.toLowerCase().startsWith("list siswa")) {
-    const guru = await prisma.user.findFirst({
-      where: { phone: sender.replace("@c.us", ""), role: "guru" },
-    });
-
-    if (!guru) {
-      return await message.reply(
-        "⚠️ Anda bukan guru atau belum terdaftar di sistem."
-      );
+        if (s.awaitingPdf && !s.guruPdfReceived) {
+          await message.reply(
+            "📎 *Lampirkan PDF di pesan berikutnya.* Kirim file *PDF* (maks ~10MB)."
+          );
+        }
+        return true;
+      }
     }
 
-    // Cek apakah ada kelas yang diminta
-    const args = message.body.split(" ");
-    let kelasFilter = args.length > 2 ? args.slice(2).join(" ") : null;
+    state.slots = { ...(state.slots || {}), ...s };
+    await setState(user.phone, state);
 
-    const siswaList = await prisma.user.findMany({
-      where: {
-        role: "siswa",
-        ...(kelasFilter ? { kelas: kelasFilter } : {}), // Filter kelas jika ada
-      },
-      orderBy: { nama: "asc" },
-    });
-
-    if (siswaList.length === 0) {
-      return await message.reply(
-        kelasFilter
-          ? `📭 Tidak ada siswa di kelas *${kelasFilter}*.`
-          : "📭 Belum ada siswa terdaftar."
-      );
-    }
-
-    // Buat file Excel
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Data Siswa");
-
-    // Header
-    worksheet.columns = [
-      { header: "No", key: "no", width: 5 },
-      { header: "Nama", key: "nama", width: 20 },
-      { header: "Nomor WA", key: "phone", width: 15 },
-      { header: "Kelas", key: "kelas", width: 10 },
-    ];
-
-    // Isi data
-    siswaList.forEach((siswa, index) => {
-      worksheet.addRow({
-        no: index + 1,
-        nama: siswa.nama,
-        phone: siswa.phone,
-        kelas: siswa.kelas,
-      });
-    });
-
-    // Simpan sebagai buffer
-    const buffer = await workbook.xlsx.writeBuffer();
-    const media = new MessageMedia(
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      buffer.toString("base64"),
-      kelasFilter ? `Data_Siswa_${kelasFilter}.xlsx` : "Data_Siswa.xlsx"
-    );
-
-    // Kirim file ke WhatsApp
-    await client.sendMessage(sender, media);
-    await message.reply("📄 Data siswa telah dikirim dalam format Excel.");
-  }
-
-  // 📊 Fitur "convert JPGtoPDF"
-  if (message.body.toLowerCase() === "convert") {
-    await message.reply(
-      "Selamat datang di tools convert JPG to PDF! 📷\n\nSilakan lampirkan gambar yang ingin di-convert (bisa satu atau lebih)."
-    );
-    pendingAssignment[sender] = { step: "upload_images", images: [] }; // Tandai pengguna sedang dalam mode upload gambar
-  }
-
-  // Proses gambar yang dikirim
-  else if (
-    pendingAssignment[sender]?.step === "upload_images" &&
-    message.hasMedia
-  ) {
-    const media = await message.downloadMedia();
-
-    // Pastikan file adalah gambar (JPG/PNG)
-    if (!media.mimetype.startsWith("image")) {
-      return await message.reply(
-        "⚠️ Hanya file gambar (JPG/PNG) yang diperbolehkan!"
-      );
-    }
-
-    // Simpan gambar ke dalam array
-    pendingAssignment[sender].images.push(Buffer.from(media.data, "base64"));
-
-    await message.reply(
-      "✅ Gambar berhasil diterima. Anda bisa mengirim gambar lagi atau ketik *selesai* untuk melanjutkan."
-    );
-  }
-
-  // Jika pengguna mengetik "selesai"
-  else if (
-    pendingAssignment[sender]?.step === "upload_images" &&
-    message.body.trim().toLowerCase() === "selesai"
-  ) {
-    if (pendingAssignment[sender].images.length === 0) {
-      return await message.reply("⚠️ Anda belum mengirim gambar apa pun.");
-    }
-
-    await message.reply(
-      "📎 Silakan kirimkan nama file yang diinginkan untuk PDF . \n\nGunakan nama file *tanpa spasi*\nContoh : Tugas_Tkj "
-    );
-    pendingAssignment[sender].step = "request_filename"; // Lanjut ke langkah meminta nama file
-  }
-
-  // Proses nama file yang diminta
-  else if (pendingAssignment[sender]?.step === "request_filename") {
-    const fileName = message.body.trim();
-
-    if (!fileName) {
-      return await message.reply("⚠️ Nama file tidak boleh kosong.");
-    }
-
-    // Pastikan nama file memiliki ekstensi .pdf
-    const pdfFileName = fileName.endsWith(".pdf")
-      ? fileName
-      : `${fileName}.pdf`;
-    const pdfFilePath = path.join(__dirname, pdfFileName);
-
-    try {
-      // Konversi gambar ke PDF
-      await convertImagesToPDF(pendingAssignment[sender].images, pdfFilePath);
-
-      // Kirim PDF ke pengguna
-      const media = MessageMedia.fromFilePath(pdfFilePath);
-      await client.sendMessage(sender, media, {
-        caption: `✅ Gambar berhasil diubah menjadi PDF dengan nama file *${pdfFileName}*.`,
-      });
-
-      // Hapus file PDF sementara
-      fs.unlinkSync(pdfFilePath);
-
-      // Reset status pengguna
-      delete pendingAssignment[sender];
-    } catch (error) {
-      console.error("Error converting images to PDF:", error);
+    if (s.awaitingPdf && !s.guruPdfReceived) {
       await message.reply(
-        "❌ Terjadi kesalahan saat mengonversi gambar ke PDF."
+        "📎 *Lampirkan PDF di pesan berikutnya.*\n" +
+          "Kirim file *PDF* (maks ~10MB). Setelah terkirim, bot akan menampilkan rangkuman dan kamu bisa ketik *simpan*."
+      );
+      return true;
+    }
+
+    await message.reply(
+      `✔️ *${updated} field* disimpan. Ketik *simpan* jika sudah lengkap, atau lanjut isi field lain.`
+    );
+    return true;
+  }
+
+  // tangkap PDF walau belum mode menunggu
+  if (message.hasMedia) {
+    const media = await message.downloadMedia().catch(() => null);
+    if (media && /^application\/pdf$/i.test(media.mimetype || "")) {
+      const s2 = state.slots || {};
+      s2.lampirPdf = "ya";
+      s2.awaitingPdf = false;
+      s2.guruPdfReceived = true;
+      s2.guruPdfName = media.filename || "lampiran.pdf";
+      s2.guruPdfB64 = media.data;
+      s2.guruPdfMime = media.mimetype;
+      s2.guruPdfSize = media.filesize || null;
+
+      state.slots = { ...s2 };
+      await setState(user.phone, state);
+
+      const recap = buildRecapText(s2);
+      await message.reply(
+        `✅ *PDF diterima:* ${s2.guruPdfName}\n\n${recap}\n` +
+          "Jika sudah siap, ketik *simpan* untuk menyelesaikan. 💾"
+      );
+      return true;
+    }
+  }
+
+  await message.reply(
+    "❓ Format tidak dikenali. Gunakan format: *Field: nilai* (misal: `Kode: BD-03`).\n" +
+      "Contoh kirim sekaligus:\n" +
+      "- Kode: MTK123\n- Judul: Tugas MTK\n- Deskripsi: …\n- Lampirkan PDF: ya\n- Deadline: 3\n- Kelas: XIITKJ2\n\n" +
+      "Ketik *simpan* jika sudah lengkap atau *batal* untuk membatalkan."
+  );
+  return true;
+}
+
+// ===== Broadcast tugas (teks ke siswa diperjelas)
+async function handleGuruBroadcast(message, { entities, waClient }) {
+  const { kode_tugas, kelas } = entities;
+  if (!kode_tugas || !kelas) {
+    return message.reply(
+      'Butuh *kode_tugas* dan *kelas*. Contoh: "kirim tugas BD-03 untuk XIITKJ2".'
+    );
+  }
+
+  const asg = await prisma.assignment.findUnique({
+    where: { kode: kode_tugas.toUpperCase() },
+    include: { guru: true },
+  });
+  if (!asg)
+    return message.reply(`❌ Kode tugas *${kode_tugas}* tidak ditemukan.`);
+
+  const siswa = await prisma.user.findMany({ where: { role: "siswa", kelas } });
+  if (!siswa.length)
+    return message.reply(`ℹ️ Tidak ada siswa di kelas *${kelas}*.`);
+
+  const mustPdf = /\[Wajib melampirkan PDF/i.test(asg.deskripsi || "");
+  const guruNama = asg.guru?.nama || "Guru";
+
+  const header =
+    `📢 *Tugas dari ${guruNama}*\n` +
+    `🔖 *Kode:* ${asg.kode}\n` +
+    `📚 *Judul:* ${asg.judul}\n` +
+    `📝 *Deskripsi:*\n${asg.deskripsi || "-"}\n` +
+    (asg.deadline
+      ? `🗓️ *Deadline:* ${fmtWIB(asg.deadline)}\n`
+      : `🗓️ *Deadline:* Belum diatur\n`) +
+    (asg.pdfUrl
+      ? `📎 *Lampiran PDF guru:* ${asg.pdfUrl}\n`
+      : `📎 *Lampiran PDF guru:* -\n`) +
+    `🧾 *Harus mengumpulkan PDF:* ${mustPdf ? "Ya" : "Tidak"}\n\n` +
+    `🧭 *Cara mengumpulkan:*\n` +
+    `1) Balas chat ini dengan: *kumpul ${asg.kode}*\n` +
+    `2) ${
+      mustPdf
+        ? "Lampirkan *PDF* tugasmu (maks ~10MB)"
+        : "Kirim jawaban sesuai instruksi guru"
+    }\n` +
+    `3) Tekan kirim dan tunggu konfirmasi ✅`;
+
+  for (const s of siswa) {
+    const jid = `${s.phone}@c.us`;
+    try {
+      await waClient.sendMessage(jid, header);
+      // // Jika nanti pdfUrl aktif dan ingin kirim file:
+      // if (asg.pdfUrl) {
+      //   const media = await MessageMedia.fromUrl(asg.pdfUrl);
+      //   await waClient.sendMessage(jid, media, { caption: `📎 Lampiran: ${asg.judul}` });
+      // }
+    } catch (e) {
+      console.error("broadcast fail to", jid, e.message);
+    }
+  }
+
+  return message.reply(
+    `✅ Broadcast *${asg.kode}* terkirim ke kelas *${kelas}* (${siswa.length} siswa).`
+  );
+}
+
+// ===== Rekap excel (tetap)
+async function handleGuruRekapExcel(message, { entities, excelUtil }) {
+  const kelas = entities.kelas || null;
+  const siswa = await prisma.user.findMany({
+    where: { role: "siswa", ...(kelas ? { kelas } : {}) },
+    orderBy: { nama: "asc" },
+  });
+  if (!siswa.length)
+    return message.reply(
+      `ℹ️ Tidak ada siswa${kelas ? ` di kelas *${kelas}*` : ""}.`
+    );
+
+  const assignments = await prisma.assignment.findMany({
+    ...(kelas ? { where: { kelas } } : {}),
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  const rows = [];
+  for (const st of await prisma.assignmentStatus.findMany({
+    where: {
+      siswaId: { in: siswa.map((s) => s.id) },
+      tugasId: { in: assignments.map((a) => a.id) },
+    },
+    include: { tugas: true, siswa: true },
+  })) {
+    rows.push({
+      Kelas: st.siswa.kelas || "-",
+      Siswa: st.siswa.nama,
+      Kode: st.tugas.kode,
+      Judul: st.tugas.judul,
+      Status: st.status,
+    });
+  }
+
+  const buffer = await excelUtil.buildRekap(rows);
+  const media = new MessageMedia(
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer.toString("base64"),
+    `rekap_${kelas || "all"}.xlsx`
+  );
+  await message.reply(media);
+  return;
+}
+
+// ===== Entry point fitur2 guru
+async function handleGuruCommand(
+  message,
+  { waClient, entities, intent, excelUtil }
+) {
+  // ❌ Tolak grup: hanya chat pribadi
+  const jid = String(message.from || "");
+  if (/@g\.us$/i.test(jid)) {
+    await message.reply(
+      "👋 Fitur guru hanya tersedia di *chat pribadi* dengan bot.\n" +
+        "Silakan lanjutkan via pesan langsung, ya. 🙏"
+    );
+    return;
+  }
+
+  // Ambil nomor pengirim (chat pribadi → @c.us) dan normalisasi ke 62…
+  const phoneRaw = jid.replace(/@c\.us$/i, "");
+  const phoneKey = normalizePhone(phoneRaw);
+  const user = await getUserByPhone(phoneKey);
+
+  try {
+    ensureGuru(user);
+  } catch (e) {
+    if (e.code === "ROLE_FORBIDDEN") {
+      return message.reply("🔒 Fitur ini khusus *Guru*.");
+    }
+    throw e;
+  }
+
+  // prioritas wizard
+  const currentState = await getState(user.phone);
+  if (currentState?.lastIntent === "guru_buat_penugasan") {
+    const handled = await handleGuruWizardMessage(message, { user, waClient });
+    if (handled) return;
+  }
+
+  // raw trigger buat tugas
+  if (/^buat\s+tugas(\s+baru)?$/i.test(message.body || "")) {
+    return handleGuruBuatPenugasan(message, { user, entities, waClient });
+  }
+
+  // intent starter dari NLP
+  if (intent === "guru_buat_penugasan") {
+    return handleGuruBuatPenugasan(message, { user, entities, waClient });
+  }
+
+  // fitur lain
+  switch (intent) {
+    case "guru_broadcast_tugas":
+      return handleGuruBroadcast(message, { entities, waClient });
+
+    case "guru_rekap_excel":
+      return handleGuruRekapExcel(message, { entities, excelUtil });
+
+    case "guru_list_siswa": {
+      const kelas = entities.kelas || null;
+      const list = await prisma.user.findMany({
+        where: { role: "siswa", ...(kelas ? { kelas } : {}) },
+        orderBy: { nama: "asc" },
+        take: 200,
+      });
+      if (!list.length)
+        return message.reply(
+          `ℹ️ Tidak ada siswa${kelas ? ` di kelas *${kelas}*` : ""}.`
+        );
+      const lines = list.map(
+        (s, i) => `${i + 1}. ${s.nama} — ${s.kelas || "-"}`
+      );
+      return message.reply(
+        `👥 Daftar siswa${kelas ? ` ${kelas}` : ""}:\n` + lines.join("\n")
       );
     }
+
+    default:
+      return;
   }
 }
 
