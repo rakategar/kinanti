@@ -3,6 +3,7 @@ const prisma = require("../config/prisma");
 const { MessageMedia } = require("whatsapp-web.js");
 const { getState, setState, clearState } = require("../services/state");
 const { normalizePhone } = require("../utils/phone");
+const { uploadPDFtoSupabase } = require("../utils/pdfUtils");
 
 // ===== Helpers
 async function getUserByPhone(phone) {
@@ -265,8 +266,25 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
         ? "\n\n[Wajib melampirkan PDF saat pengumpulan]"
         : "");
 
-    // const pdfUrl = await uploadToStorageAndGetUrl(s.guruPdfName, s.guruPdfB64, s.guruPdfMime);
-    const pdfUrl = null;
+    // === Upload PDF guru (jika ada) ===
+    let pdfUrl = null;
+    if (s.guruPdfReceived && s.guruPdfB64 && s.guruPdfMime) {
+      const safeKode = String(kodeFinal || "TANPAKODE").replace(
+        /[^A-Za-z0-9_-]/g,
+        ""
+      );
+      const ts = new Date()
+        .toISOString()
+        .replace(/[-:TZ.]/g, "")
+        .slice(0, 14); // YYYYMMDDhhmmss
+      const baseName = s.guruPdfName?.toLowerCase().endsWith(".pdf")
+        ? s.guruPdfName
+        : `${safeKode}.pdf`;
+      const fileName = `${safeKode}_${ts}_${baseName}`; // contoh: RPL1_20250919_141530_tugas.pdf
+
+      const buffer = Buffer.from(s.guruPdfB64, "base64");
+      pdfUrl = await uploadPDFtoSupabase(buffer, fileName, s.guruPdfMime);
+    }
 
     try {
       const created = await prisma.assignment.create({
@@ -277,7 +295,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
           deadline,
           kelas: kelasFinal,
           guruId: user.id,
-          // pdfUrl: pdfUrl || null,
+          pdfUrl: pdfUrl || null,
         },
       });
 
@@ -518,11 +536,13 @@ async function handleGuruBroadcast(message, { entities, waClient }) {
     const jid = `${s.phone}@c.us`;
     try {
       await waClient.sendMessage(jid, header);
-      // // Jika nanti pdfUrl aktif dan ingin kirim file:
-      // if (asg.pdfUrl) {
-      //   const media = await MessageMedia.fromUrl(asg.pdfUrl);
-      //   await waClient.sendMessage(jid, media, { caption: `📎 Lampiran: ${asg.judul}` });
-      // }
+      // Jika nanti pdfUrl aktif dan ingin kirim file:
+      if (asg.pdfUrl) {
+        const media = await MessageMedia.fromUrl(asg.pdfUrl);
+        await waClient.sendMessage(jid, media, {
+          caption: `📎 Lampiran: ${asg.judul}`,
+        });
+      }
     } catch (e) {
       console.error("broadcast fail to", jid, e.message);
     }
