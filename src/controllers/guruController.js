@@ -1,9 +1,46 @@
 // src/controllers/guruController.js
-const prisma = require("../config/prisma");
+
+const prismaMod = require("../config/prisma");
+const prisma = prismaMod?.prisma ?? prismaMod?.default ?? prismaMod;
+
 const { MessageMedia } = require("whatsapp-web.js");
 const { getState, setState, clearState } = require("../services/state");
 const { normalizePhone } = require("../utils/phone");
 const { uploadPDFtoSupabase } = require("../utils/pdfUtils");
+
+const REKAP_WIZ = new Map();
+// Map<JID, { step: 'pick_code' | 'pick_class', guruId, kode?: string }>
+
+// Util kecil
+function phoneFromJid(jid = "") {
+  return String(jid || "").replace(/@c\.us$/i, "");
+}
+async function getGuruByJid(jid) {
+  const phone = phoneFromJid(jid);
+  return prisma.user.findFirst({ where: { phone, role: "guru" } });
+}
+function normKelas(s = "") {
+  return String(s || "")
+    .replace(/\s+/g, "")
+    .toUpperCase(); // "XI TKJ 2" -> "XITKJ2"
+}
+function formatKelasShow(s = "") {
+  return String(s || "-");
+}
+function wib(dt) {
+  try {
+    return new Date(dt).toLocaleString("id-ID", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return String(dt || "-");
+  }
+}
 
 // ===== Helpers
 async function getUserByPhone(phone) {
@@ -553,49 +590,204 @@ async function handleGuruBroadcast(message, { entities, waClient }) {
   );
 }
 
-// ===== Rekap excel (tetap)
-async function handleGuruRekapExcel(message, { entities, excelUtil }) {
-  const kelas = entities.kelas || null;
-  const siswa = await prisma.user.findMany({
-    where: { role: "siswa", ...(kelas ? { kelas } : {}) },
-    orderBy: { nama: "asc" },
-  });
-  if (!siswa.length)
+// --- Langkah 1: mulai wizard / daftar kode tugas milik guru ---
+async function startRekapWizard(message) {
+  const guru = await getGuruByJid(message.from);
+  if (!guru) {
     return message.reply(
-      `ℹ️ Tidak ada siswa${kelas ? ` di kelas *${kelas}*` : ""}.`
+      "👋 Hai! Fitur ini khusus *guru*. Jika belum punya akun guru, silakan daftar dulu di https://kinantiku.com ✨"
     );
+  }
 
-  const assignments = await prisma.assignment.findMany({
-    ...(kelas ? { where: { kelas } } : {}),
+  const tugas = await prisma.assignment.findMany({
+    where: { guruId: guru.id },
+    select: { kode: true, judul: true, kelas: true, createdAt: true },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
 
-  const rows = [];
-  for (const st of await prisma.assignmentStatus.findMany({
-    where: {
-      siswaId: { in: siswa.map((s) => s.id) },
-      tugasId: { in: assignments.map((a) => a.id) },
-    },
-    include: { tugas: true, siswa: true },
-  })) {
-    rows.push({
-      Kelas: st.siswa.kelas || "-",
-      Siswa: st.siswa.nama,
-      Kode: st.tugas.kode,
-      Judul: st.tugas.judul,
-      Status: st.status,
-    });
+  await setState(guru.phone, { lastIntent: "guru_rekap_wizard" });
+
+  if (!tugas.length) {
+    return message.reply(
+      "ℹ️ Kamu belum punya tugas yang terdata. Buat dulu ya. 🙂"
+    );
   }
+
+  let teks = "📚 *Daftar Tugas Kamu* (pilih salah satu kodenya):\n";
+  tugas.forEach((t, i) => {
+    teks += `\n${i + 1}. *${t.kode}* — ${t.judul} (${formatKelasShow(
+      t.kelas
+    )})`;
+  });
+  teks += `\n\nKetik *kode tugas* yang ingin direkap. Contoh: _${tugas[0].kode}_`;
+
+  REKAP_WIZ.set(message.from, { step: "pick_code", guruId: guru.id });
+  await message.reply(teks);
+}
+
+// --- Langkah 2: setelah guru ketik kode → minta kelas ---
+async function onPickCode(message, excelUtil) {
+  const state = REKAP_WIZ.get(message.from);
+  const kode = String(message.body || "")
+    .trim()
+    .toUpperCase();
+
+  const tugas = await prisma.assignment.findFirst({
+    where: { kode, guruId: state.guruId },
+    select: { id: true, kode: true, judul: true, kelas: true },
+  });
+
+  if (!tugas) {
+    return message.reply(
+      "😕 Kode tugas tidak ditemukan di daftar kamu. Ketik lagi ya (pastikan sesuai)."
+    );
+  }
+
+  REKAP_WIZ.set(message.from, { ...state, step: "pick_class", kode });
+
+  // Jika tugas punya kelas bawaan, tetap minta konfirmasi kelas (bisa beda paralel)
+  let teks = `✅ Kode *${tugas.kode}* — ${tugas.judul}\n`;
+  teks += "Kelas mana yang ingin direkap? (contoh: *XITKJ2* atau *XI TKJ 2*)";
+  return message.reply(teks);
+}
+
+// --- Langkah 3: setelah guru ketik kelas → kirim rekap belum kumpul + Excel ---
+async function onPickClass(message, excelUtil) {
+  const state = REKAP_WIZ.get(message.from);
+  const kelasRaw = String(message.body || "").trim();
+  const kelas = normKelas(kelasRaw);
+  REKAP_WIZ.delete(message.from);
+
+  // Ambil tugas by kode (punya guru ini)
+  const tugas = await prisma.assignment.findFirst({
+    where: { kode: state.kode },
+    select: { id: true, kode: true, judul: true, kelas: true },
+  });
+  if (!tugas) {
+    REKAP_WIZ.delete(message.from);
+    return message.reply(
+      "😕 Tugasnya tidak ditemukan. Ulangi perintah *rekap* ya."
+    );
+  }
+
+  // Ambil roster kelas
+  const siswaKelas = await prisma.user.findMany({
+    where: {
+      role: "siswa",
+      kelas: { contains: kelas.replace(/\s/g, ""), mode: "insensitive" },
+    },
+    select: { id: true, nama: true, kelas: true },
+    orderBy: { nama: "asc" },
+  });
+  if (!siswaKelas.length) {
+    REKAP_WIZ.delete(message.from);
+    return message.reply(`ℹ️ Tidak ada siswa di kelas *${kelasRaw}*.`);
+  }
+
+  // Ambil status & submission
+  const stList = await prisma.assignmentStatus.findMany({
+    where: { tugasId: tugas.id, siswaId: { in: siswaKelas.map((s) => s.id) } },
+    include: { siswa: true },
+  });
+  const subList = await prisma.assignmentSubmission.findMany({
+    where: { tugasId: tugas.id, siswaId: { in: siswaKelas.map((s) => s.id) } },
+    select: { siswaId: true, submittedAt: true },
+  });
+  const subMap = new Map(subList.map((s) => [s.siswaId, s.submittedAt]));
+
+  // Tentukan yang belum kumpul
+  // Catatan: kalau status belum ada sama sekali, kita anggap BELUM kumpul
+  const statusBySiswa = new Map(
+    stList.map((st) => [st.siswaId, String(st.status).toUpperCase()])
+  );
+  const belum = siswaKelas.filter((s) => statusBySiswa.get(s.id) !== "SELESAI");
+
+  // Kirim daftar text
+  if (!belum.length) {
+    await message.reply(
+      `🎉 Semua siswa *${kelasRaw}* sudah mengumpulkan untuk *${tugas.kode}* — ${tugas.judul}.`
+    );
+  } else {
+    let teks = `📋 *Belum Mengumpulkan* — *${tugas.kode}* (${tugas.judul})\nKelas: *${kelasRaw}*\n`;
+    belum.forEach((s, i) => {
+      teks += `\n${i + 1}. ${s.nama}`;
+    });
+    await message.reply(teks);
+  }
+
+  // Susun data Excel (lengkap: Kelas, Siswa, Kode, Judul, Status, Waktu)
+  const rows = siswaKelas.map((s) => {
+    const status = statusBySiswa.get(s.id) || "BELUM_SELESAI";
+    const submittedAt = subMap.get(s.id) || null;
+    return {
+      Kelas: s.kelas || "-",
+      Siswa: s.nama || "-",
+      Kode: tugas.kode,
+      Judul: tugas.judul,
+      Status: status,
+      Waktu: submittedAt ? new Date(submittedAt) : "-", // excelUtil akan format kalau Date
+    };
+  });
 
   const buffer = await excelUtil.buildRekap(rows);
   const media = new MessageMedia(
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    buffer.toString("base64"),
-    `rekap_${kelas || "all"}.xlsx`
+    Buffer.from(buffer).toString("base64"),
+    `rekap_${tugas.kode}_${kelas}.xlsx`
   );
   await message.reply(media);
-  return;
+
+  const guru = await getGuruByJid(message.from);
+  if (guru?.phone) await clearState(guru.phone);
+}
+
+// --- Router kecil untuk fitur rekap ----
+async function routeGuruRekap(message, { intent, entities, excelUtil }) {
+  const body = String(message.body || "").trim();
+  // >>> ADD: suport batal
+  if (REKAP_WIZ.has(message.from) && /^batal$/i.test(body)) {
+    REKAP_WIZ.delete(message.from);
+    // hapus state wizard
+    const guru = await getGuruByJid(message.from);
+    if (guru?.phone) await clearState(guru.phone);
+    return message.reply("❎ Wizard rekap dibatalkan.");
+  }
+  // 1) Kalau sedang di wizard, teruskan step
+  if (REKAP_WIZ.has(message.from)) {
+    const { step } = REKAP_WIZ.get(message.from);
+    if (step === "pick_code") return onPickCode(message, excelUtil);
+    if (step === "pick_class") return onPickClass(message, excelUtil);
+  }
+
+  if (
+    intent === "guru_rekap_excel" || // <— intent dari intents.js kamu sekarang
+    intent === "guru_rekap" || // jaga-jaga
+    /^rekap\s*$/i.test(body)
+  ) {
+    return startRekapWizard(message);
+  }
+
+  // 3) Shortcut: "rekap <KODE>" → langsung minta kelas
+  const m = body.match(/^rekap\s+([^\s]+)$/i);
+  if (m) {
+    const guru = await getGuruByJid(message.from);
+    if (!guru) {
+      return message.reply(
+        "👋 Hai! Fitur ini khusus *guru*. Jika belum punya akun guru, silakan daftar dulu di https://kinantiku.com ✨"
+      );
+    }
+    REKAP_WIZ.set(message.from, {
+      step: "pick_class",
+      guruId: guru.id,
+      kode: String(m[1]).toUpperCase(),
+    });
+    return message.reply(
+      "Oke! Kelas mana yang ingin direkap? (contoh: *XITKJ2* atau *XI TKJ 2*)"
+    );
+  }
+
+  return false; // tidak ditangani, biarkan handler lain jalan
 }
 
 // ===== Entry point fitur2 guru
@@ -617,6 +809,8 @@ async function handleGuruCommand(
   const phoneRaw = jid.replace(/@c\.us$/i, "");
   const phoneKey = normalizePhone(phoneRaw);
   const user = await getUserByPhone(phoneKey);
+  const takenByRekap = await routeGuruRekap(message, { intent, excelUtil });
+  if (takenByRekap !== false) return;
 
   try {
     ensureGuru(user);
@@ -643,14 +837,17 @@ async function handleGuruCommand(
   if (intent === "guru_buat_penugasan") {
     return handleGuruBuatPenugasan(message, { user, entities, waClient });
   }
+  // if (
+  //   intent === "guru_rekap_belum_kumpul" || // intent dari NLP (opsional)
+  //   /^rekap\s+\S+/i.test(String(message.body || "")) // fallback ketik manual
+  // ) {
+  //   return handleGuruRekapBelumKumpul(message, { entities });
+  // }
 
   // fitur lain
   switch (intent) {
     case "guru_broadcast_tugas":
       return handleGuruBroadcast(message, { entities, waClient });
-
-    case "guru_rekap_excel":
-      return handleGuruRekapExcel(message, { entities, excelUtil });
 
     case "guru_list_siswa": {
       const kelas = entities.kelas || null;

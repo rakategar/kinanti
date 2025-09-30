@@ -21,6 +21,8 @@ const {
   onIncomingMedia,
   onIncomingText,
 } = require("./src/features/imgToPdf");
+const { getState } = require("./src/services/state"); // <-- add
+const { setupSchedules } = require("./src/controllers/scheduleController");
 
 // ===== Helpers =====
 function phoneFromJid(jid = "") {
@@ -78,10 +80,23 @@ waClient.on("message", async (message) => {
 
     // ---- Role-aware routing: hanya kirim ke GuruController jika benar2 guru ----
     let role = await getUserRoleByJid(message.from);
-    // Normalisasi role
     if (role === "teacher") role = "guru";
     if (role === "student") role = "siswa";
 
+    // >>> ADD: jika guru sedang ada di wizard rekap, paksa route ke guruController
+    if (role === "guru") {
+      const phone = phoneFromJid(message.from);
+      const st = await getState(phone);
+      if (st?.lastIntent === "guru_rekap_wizard") {
+        return handleGuruCommand(message, {
+          intent, // biarkan apa adanya
+          entities: dialog.slots,
+          ctx,
+          waClient,
+          excelUtil,
+        });
+      }
+    }
     if (intent.startsWith("guru_")) {
       if (role === "guru") {
         return handleGuruCommand(message, {
@@ -92,9 +107,9 @@ waClient.on("message", async (message) => {
           excelUtil,
         });
       } else {
-        // BUKAN guru → jangan arahkan ke guruController; teruskan ke siswaController agar tidak mentok
+        // bukan guru → teruskan ke siswaController agar tidak mentok
         return handleSiswaCommand(message, {
-          intent, // boleh diteruskan; siswaController akan abaikan intent guru
+          intent,
           entities: dialog.slots,
           ctx,
           supabase,
@@ -128,6 +143,10 @@ waClient.on("qr", (qr) => {
   console.log(qr);
 });
 
-waClient.on("ready", () => console.log("WhatsApp client is ready!"));
+waClient.on("ready", () => {
+  console.log("WhatsApp client is ready!");
+  setupSchedules();
+});
+
 waClient.on("auth_failure", (m) => console.error("Auth failure:", m));
 waClient.on("disconnected", (r) => console.error("Disconnected:", r));

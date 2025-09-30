@@ -1,3 +1,6 @@
-2025/09/20-00:37:29.574 1fd57 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/shared_proto_db/MANIFEST-000001
-2025/09/20-00:37:29.574 1fd57 Recovering log #7
-2025/09/20-00:37:29.575 1fd57 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/shared_proto_db/000007.log 
+2025/09/30-21:02:10.121 3792 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/shared_proto_db/MANIFEST-000001
+2025/09/30-21:02:10.122 3792 Recovering log #7
+2025/09/30-21:02:10.140 3792 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/shared_proto_db/000007.log 
+2025/09/30-21:02:27.008 3798 Level-0 table #11: started
+2025/09/30-21:02:27.027 3798 Level-0 table #11: 108186 bytes OK
+2025/09/30-21:02:27.029 3798 Delete type=0 #7

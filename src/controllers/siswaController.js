@@ -1,6 +1,6 @@
 // src/controllers/siswaController.js
 // Fitur Siswa: daftar tugas, detail tugas, status tugas, dan kumpul tugas (unggah PDF ke Supabase)
-// Diselaraskan dengan server.js & intents, memakai schema: assignmentStatus(siswaId, tugasId, status: SELESAI/BELUM_SELESAI)
+// + Fitur Umum: Greeting (halo/assalamualaikum) untuk guru & siswa, serta nomor belum terdaftar.
 
 const prismaMod = require("../config/prisma");
 const prisma = prismaMod?.prisma ?? prismaMod?.default ?? prismaMod;
@@ -10,6 +10,15 @@ const { uploadPDFtoSupabase } = require("../utils/pdfUtils");
 // key = JID pengirim → { step: "await_pdf", assignmentId: <tugas.id>, assignmentKode, requirePdf }
 const PENDING = new Map();
 
+// ========== Quotes semangat (acak) ==========
+const QUOTES = [
+  "Belajar itu maraton, bukan sprint. Pelan tapi konsisten! 🏃‍♂️",
+  "Setiap hari adalah kesempatan baru buat jadi lebih keren dari kemarin. ✨",
+  "Jangan takut salah, karena dari situ kita naik level. 🎮",
+  "Sedikit demi sedikit, lama-lama jadi bukit. Keep going! ⛰️",
+  "Ilmu itu bekal, mimpi itu bensin. Gas terus! ⛽🚀",
+];
+
 // ========== Utils ==========
 function isGroupJid(jid = "") {
   return String(jid).endsWith("@g.us");
@@ -18,32 +27,47 @@ function phoneFromJid(jid = "") {
   return String(jid || "").replace(/@c\.us$/i, "");
 }
 function nowStamp() {
-  return new Date()
-    .toISOString()
-    .replace(/[-:TZ.]/g, "")
-    .slice(0, 14);
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    d.getFullYear() +
+    pad(d.getMonth() + 1) +
+    pad(d.getDate()) +
+    "_" +
+    pad(d.getHours()) +
+    pad(d.getMinutes()) +
+    pad(d.getSeconds())
+  );
 }
-function fmtDateWIB(d) {
+function fmtDateWIB(dt) {
   try {
-    const date = d instanceof Date ? d : new Date(d);
-    return date.toLocaleString("id-ID", {
+    const d = new Date(dt);
+    const fmt = new Intl.DateTimeFormat("id-ID", {
       timeZone: "Asia/Jakarta",
       year: "numeric",
-      month: "short",
+      month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
     });
+    return fmt.format(d);
   } catch {
-    return String(d || "-");
+    return String(dt || "-");
   }
 }
 function matchAny(text, arr) {
   const s = (text || "").toLowerCase();
   return arr.some((k) => s.includes(k));
 }
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 // ========== Data helpers ==========
+async function getUserBySender(senderJid) {
+  const phone = phoneFromJid(senderJid);
+  return prisma.user.findFirst({ where: { phone } });
+}
 async function getStudentBySender(senderJid) {
   const phone = phoneFromJid(senderJid);
   return prisma.user.findFirst({
@@ -59,31 +83,37 @@ async function listOpenAssignments(student) {
   });
 }
 
-// Daftar tugas SELESAI (untuk menu "status tugas"/riwayat)
-async function listSubmittedAssignments(student) {
+// Riwayat tugas (SELESAI)
+async function listDoneAssignments(student) {
   return prisma.assignmentStatus.findMany({
     where: { siswaId: student.id, status: "SELESAI" },
     include: { tugas: true },
+    orderBy: { updatedAt: "desc" },
   });
 }
 
-// Cari tugas sesuai kode (harus memang untuk kelas siswa & ada statusnya)
+// Dapatkan tugas by kode (yang memang ditugaskan ke siswa tsb)
 async function findAssignmentForStudentByKode(student, kode) {
-  const tugas = await prisma.assignment.findFirst({
-    where: { kode: kode.toUpperCase(), kelas: student.kelas },
+  const asg = await prisma.assignment.findFirst({
+    where: { kode },
     include: { guru: true },
   });
-  if (!tugas) return null;
-  const st = await prisma.assignmentStatus.findFirst({
-    where: { tugasId: tugas.id, siswaId: student.id },
+  if (!asg) return null;
+
+  const status = await prisma.assignmentStatus.findFirst({
+    where: { tugasId: asg.id, siswaId: student.id },
   });
-  if (!st) return null;
-  return { assignment: tugas, status: st };
+  if (!status) return null;
+
+  return { assignment: asg, status };
 }
 
-// Mulai sesi pengumpulan tugas
+// ========== Pengumpulan ==========
+
+// Mulai sesi pengumpulan
 async function beginSubmission(message, student, assignment) {
-  const requirePdf = !!assignment.requirePdf || !!assignment.wajibPdf;
+  const requirePdf = true; // untuk sementara wajib PDF
+  // simpan state
   PENDING.set(message.from, {
     step: "await_pdf",
     assignmentId: assignment.id,
@@ -96,15 +126,15 @@ async function beginSubmission(message, student, assignment) {
     : "";
 
   await message.reply(
-    "📝 *Pengumpulan Tugas*\n" +
-      `• Kode: *${assignment.kode}*\n` +
-      `• Judul: *${assignment.judul}*\n` +
-      `• Deadline: ${fmtDateWIB(assignment.deadline)}\n` +
+    "📝 *Pengumpulan Tugas Baru!*\n" +
+      `📌 Kode: *${assignment.kode}*\n` +
+      `📖 Judul: *${assignment.judul}*\n` +
+      `⏰ Deadline: ${fmtDateWIB(assignment.deadline)}\n` +
       lampiran +
-      "\n\nKirim *dokumen PDF* tugas kamu di chat ini." +
-      (requirePdf ? " (PDF wajib)" : "") +
-      "\nJika file kamu masih berupa foto, ketik *gambar ke pdf* untuk membuat PDF terlebih dahulu.\n" +
-      "_Ketik *batal* untuk membatalkan._"
+      "\n\n👉 Kirim *PDF tugas* kamu di sini ya!" +
+      (requirePdf ? " (PDF *wajib* 🔒)" : " (PDF opsional 😎)") +
+      "\nKalau masih berupa foto, ketik *gambar ke pdf* dulu biar rapi ✨\n" +
+      "_Ketik *batal* kalau mau cancel 🙅_"
   );
 }
 
@@ -120,14 +150,14 @@ async function safeUpsertSubmission({ tugasId, siswaId, data }) {
       update: data,
       create: { tugasId, siswaId, ...data },
     });
-  } catch (_) {
+  } catch {
     try {
       return await prisma.assignmentSubmission.upsert({
         where: { tugasId_siswaId: { tugasId, siswaId } },
         update: data,
         create: { tugasId, siswaId, ...data },
       });
-    } catch (_) {
+    } catch {
       const existing = await prisma.assignmentSubmission.findFirst({
         where: { tugasId, siswaId },
         select: { id: true },
@@ -153,31 +183,19 @@ async function handleMediaWhilePending(message, pending, student) {
     message.hasMedia ||
     /^application\/pdf$/i.test(mimeGuess);
 
-  if (!isPdfLike) return false;
-
-  let media;
-  try {
-    media = await message.downloadMedia();
-  } catch (e) {
-    console.error("[siswaController] downloadMedia error:", e);
+  if (!isPdfLike) {
     await message.reply(
-      "⚠️ Gagal mengambil file. Kirim ulang dokumen PDF kamu."
+      "⚠️ Format belum cocok. Kirim *PDF* ya. Kalau masih foto, ketik *gambar ke pdf* dulu."
     );
-    return true;
-  }
-
-  const mimetype = media?.mimetype || mimeGuess;
-  if (!/application\/pdf/i.test(mimetype)) {
-    await message.reply(
-      "⚠️ Yang diterima untuk pengumpulan adalah *dokumen PDF*. Jika masih berupa foto, ketik *gambar ke pdf* dulu ya."
-    );
-    return true;
+    return;
   }
 
   try {
+    const media = await message.downloadMedia();
+    if (!media?.data) throw new Error("No media data");
+
     const buffer = Buffer.from(media.data, "base64");
-    const phone = phoneFromJid(message.from);
-    const subdir = `users/siswa/${phone}/submissions`;
+    const subdir = `users/siswa/${student.phone}/submissions`;
     const origName = message._data?.filename || media?.filename || "tugas.pdf";
     const safeName = origName.toLowerCase().endsWith(".pdf")
       ? origName
@@ -196,87 +214,170 @@ async function handleMediaWhilePending(message, pending, student) {
       tugasId: pending.assignmentId,
       siswaId: student.id,
       data: {
-        fileUrl: url,
-        fileName,
-        submittedAt: new Date(),
-        via: "whatsapp_document",
+        pdfUrl: url,
       },
     });
 
     await prisma.assignmentStatus.updateMany({
-      where: { tugasId: pending.assignmentId, siswaId: student.id },
+      where: {
+        tugasId: pending.assignmentId,
+        siswaId: student.id,
+      },
       data: { status: "SELESAI" },
     });
 
     PENDING.delete(message.from);
     await message.reply(
-      "✅ *Tugas terkumpul!*\n" +
-        `• Kode: *${pending.assignmentKode}*\n` +
-        `• File: ${fileName}\n` +
-        "Terima kasih. Kamu bisa cek status dengan ketik *status tugas*."
+      "🎉 *Tugas sukses terkumpul!*\n" +
+        `📌 Kode: *${pending.assignmentKode}*\n` +
+        `📂 File: ${fileName}\n` +
+        "Mantap! 🚀 Cek status dengan ketik *status tugas*."
     );
   } catch (e) {
     console.error("[siswaController] upload/DB error:", e);
-    await message.reply(
-      "❌ Gagal menyimpan pengumpulan. Coba lagi atau kirim ulang PDF."
-    );
+    await message.reply("😢 Oops, gagal simpan tugas. Coba lagi ya.");
   }
-
-  return true;
 }
 
-// ========== Controller utama ==========
+// ========== MENU & INTENT SEDERHANA ==========
+function buildHelp(role) {
+  const r = String(role || "").toLowerCase();
+  if (r === "guru" || r === "teacher") {
+    return (
+      "📚 *Menu Guru:*\n" +
+      "• *buat tugas* — buat tugas\n" +
+      "• *rekap <KODE>* — rekap pengumpulan tugas\n" +
+      "• *list siswa* — daftar siswa di kelas\n" +
+      "• *gambar ke pdf* — ubah foto jadi PDF"
+    );
+  }
+  // default siswa
+  return (
+    "🎒 *Menu Siswa:*\n" +
+    "• *tugas saya* — cek tugas belum selesai\n" +
+    "• *status tugas* — riwayat tugas selesai\n" +
+    "• *detail <KODE>* — lihat detail tugas\n" +
+    "• *kumpul <KODE>* — kumpulin tugas (PDF)\n" +
+    "• *gambar ke pdf* — ubah foto jadi PDF"
+  );
+}
+
+// ========== GREETING HANDLER ==========
+function isGreeting(text = "") {
+  const s = String(text || "")
+    .trim()
+    .toLowerCase();
+  // Kata kunci umum salam/sapaan
+  const keys = [
+    "halo",
+    "hallo",
+    "assalamualaikum",
+    "assalamu'alaikum",
+    "asalamualaikum",
+    "selamat pagi",
+    "selamat siang",
+    "selamat sore",
+    "selamat malam",
+    "hai",
+    "hey",
+    "hei",
+  ];
+  return keys.some((k) => s.startsWith(k));
+}
+
+// Intent matcher sederhana
+function detectIntent(body = "") {
+  const s = (body || "").trim().toLowerCase();
+  if (isGreeting(s)) return "greeting";
+  if (/^tugas\s+saya$/.test(s)) return "siswa_tugas_saya";
+  if (/^status\s+tugas$/.test(s)) return "siswa_status_tugas";
+  if (/^detail\s+[-\w]+/i.test(s)) return "siswa_detail_tugas";
+  if (/^kumpul\s+[-\w]+/i.test(s)) return "siswa_kumpul_tugas";
+  if (/^menu$|^help$|^bantuan$/.test(s)) return "siswa_help";
+  return "unknown";
+}
+
+// ========== Handler utama siswa ==========
 async function handleSiswaCommand(message, opts = {}) {
   try {
-    // DM-only
-    if (isGroupJid(message.from)) {
-      await message.reply(
-        "ℹ️ Fitur siswa hanya tersedia di *chat pribadi*. Silakan DM bot ya."
-      );
-      return;
-    }
-
-    if (!prisma || !prisma.user || !prisma.assignment) {
-      console.warn("[siswaController] Prisma belum siap / salah ekspor.");
-      await message.reply(
-        "⚠️ Fitur siswa belum siap: koneksi database belum terhubung."
-      );
-      return;
-    }
-
-    const intent = opts.intent || "";
-    const body = String(message.body || "").trim();
-    const lbody = body.toLowerCase();
-
-    // Ambil siswa
-    const student = await getStudentBySender(message.from);
-    if (!student) {
-      await message.reply(
-        "⚠️ Nomor kamu belum terdaftar sebagai *siswa* di sistem."
-      );
-      return;
-    }
-
-    // ===== 1) Prioritas: sesi pengumpulan aktif =====
+    // === NEW: Prioritaskan state PENDING lebih dulu ===
     const pending = PENDING.get(message.from);
     if (pending) {
-      if (lbody === "batal") {
+      const bodyLower = String(message.body || "")
+        .trim()
+        .toLowerCase();
+
+      // batal
+      if (bodyLower === "batal" || bodyLower === "cancel") {
         PENDING.delete(message.from);
-        await message.reply("❌ Pengumpulan dibatalkan.");
-        return;
-      }
-      const handled = await handleMediaWhilePending(message, pending, student);
-      if (handled) return;
-      if (!message.hasMedia && body) {
         await message.reply(
-          "Silakan *kirim dokumen PDF* tugas kamu. Jika file masih berupa foto, ketik *gambar ke pdf* untuk membuat PDF.\n_Ketik *batal* untuk membatalkan._"
+          "❌ Pengumpulan dibatalkan. Ketik *kumpul <KODE>* lagi kalau mau mulai ulang."
         );
         return;
       }
+
+      // pastikan pengirim adalah siswa terdaftar
+      const studentWhilePending = await getStudentBySender(message.from);
+      if (!studentWhilePending) {
+        PENDING.delete(message.from);
+        await message.reply(
+          "📵 Nomor kamu belum terdaftar sebagai *siswa*. Daftar di https://kinantiku.com ya ✨"
+        );
+        return;
+      }
+
+      // jika ada media/dokumen, proses sebagai submission
+      if (
+        message.hasMedia ||
+        ["document", "image", "video"].includes(message.type)
+      ) {
+        await handleMediaWhilePending(message, pending, studentWhilePending);
+        return;
+      }
+
+      // selain itu, ingatkan untuk kirim PDF
+      await message.reply(
+        "↪️ Kamu sedang dalam sesi *pengumpulan tugas*.\nSilakan kirim *file PDF*-nya di sini ya.\nKetik *batal* untuk keluar."
+      );
       return;
     }
+    // === END NEW ===
 
-    // ===== 2) Routing intents & keyword fallback (SELALU aktif) =====
+    const body = String(message.body || "");
+    const lbody = body.toLowerCase();
+    const intent = detectIntent(body);
+
+    const needsStudent = () =>
+      [
+        "siswa_tugas_saya",
+        "siswa_status_tugas",
+        "siswa_detail_tugas",
+        "siswa_kumpul_tugas",
+      ].includes(intent) ||
+      matchAny(lbody, [
+        "tugas saya",
+        "daftar tugas",
+        "tugas belum",
+        "lihat tugas",
+        "list tugas",
+        "status tugas",
+        "riwayat tugas",
+        "riwayat",
+        "detail ",
+        "info ",
+        "kumpul ",
+      ]);
+
+    let student = null;
+    if (needsStudent()) {
+      student = await getStudentBySender(message.from);
+      if (!student) {
+        await message.reply(
+          "📵 Nomor kamu belum terdaftar sebagai *siswa*. Daftar di https://kinantiku.com ya ✨"
+        );
+        return;
+      }
+    }
 
     // A. Daftar tugas (BELUM_SELESAI)
     if (
@@ -290,102 +391,74 @@ async function handleSiswaCommand(message, opts = {}) {
         "list tugas",
       ])
     ) {
-      const rows = await listOpenAssignments(student);
-      if (!rows.length) {
-        await message.reply("✅ Kamu tidak memiliki tugas yang belum selesai.");
-        return;
-      }
-      let resp = "📌 *Daftar Tugas Belum Selesai*\n";
-      for (const r of rows) {
-        const t = r.tugas;
-        resp +=
-          "\n" +
-          `• Kode: *${t.kode}*\n` +
-          `  Judul: ${t.judul}\n` +
-          `  Guru: ${t.guru?.name || t.guru?.nama || "-"}\n` +
-          `  Deadline: ${fmtDateWIB(t.deadline)}\n` +
-          (t.pdfUrl ? `  Lampiran: ${t.pdfUrl}\n` : "") +
-          `  Cara kumpul: ketik *kumpul ${t.kode}* lalu kirim PDF.\n`;
-      }
-      await message.reply(resp);
-      return;
-    }
-
-    // B. Status/riwayat (SELESAI)
-    if (
-      intent === "siswa_status" ||
-      matchAny(lbody, ["status tugas", "status", "riwayat tugas", "riwayat"])
-    ) {
-      const rows = await listSubmittedAssignments(student);
-      if (!rows.length) {
-        await message.reply("ℹ️ Belum ada tugas yang kamu kumpulkan.");
-        return;
-      }
-      let resp = "🗂️ *Riwayat Pengumpulan (SELESAI)*\n";
-      for (const r of rows) {
-        const t = r.tugas;
-        resp +=
-          `\n• ${t.kode} — ${t.judul}\n` +
-          `  Status: SELESAI\n` +
-          `  Deadline: ${fmtDateWIB(t.deadline)}\n`;
-      }
-      await message.reply(resp);
-      return;
-    }
-
-    // C. Detail/info tugas <KODE> (intent atau keyword)
-    if (intent === "siswa_detail_tugas") {
-      const kode = (
-        opts.entities?.kode ||
-        opts.entities?.kode_tugas ||
-        opts.entities?.assignmentCode ||
-        ""
-      )
-        .toString()
-        .trim()
-        .toUpperCase();
-      if (!kode) {
-        await message.reply("Format: *detail <KODE>* (contoh: _detail RPL-1_)");
-        return;
-      }
-      const found = await findAssignmentForStudentByKode(student, kode);
-      if (!found) {
+      const items = await listOpenAssignments(student);
+      if (!items?.length) {
         await message.reply(
-          `⚠️ Tugas dengan kode *${kode}* tidak ditemukan untuk kelas kamu.`
+          "✅ Tidak ada tugas yang belum selesai. Gas terus belajarnya! " +
+            pickRandom(QUOTES)
         );
         return;
       }
-      const t = found.assignment;
+      const lines = items.map((it, i) => {
+        const tg = it.tugas;
+        return (
+          `${i + 1}. *${tg.kode}* — ${tg.judul}\n` +
+          `   Guru: ${tg.guru?.nama || "-"} | Deadline: ${fmtDateWIB(
+            tg.deadline
+          )}`
+        );
+      });
       await message.reply(
-        "📝 *Detail Tugas*\n" +
-          `• Kode: *${t.kode}*\n` +
-          `• Judul: *${t.judul}*\n` +
-          `• Deskripsi: ${t.deskripsi || "-"}\n` +
-          `• Deadline: ${fmtDateWIB(t.deadline)}\n` +
-          `• Kelas: ${t.kelas}\n` +
-          (t.pdfUrl ? `• Lampiran Guru: ${t.pdfUrl}\n` : "")
+        "📚 *Daftar Tugas Kamu* (pilih salah satu kodenya):\n\n" +
+          lines.join("\n") +
+          "\n\nKetik *kode tugas* yang ingin direkap. Contoh: _TKJ-09_"
       );
       return;
     }
-    const md = lbody.match(/(?:detail|info)\s+([a-z0-9_-]+)/i);
-    if (md) {
-      const kode = md[1].toUpperCase();
-      const found = await findAssignmentForStudentByKode(student, kode);
-      if (!found) {
-        await message.reply(
-          `⚠️ Tugas dengan kode *${kode}* tidak ditemukan untuk kelas kamu.`
-        );
+
+    // B. Riwayat (SELESAI)
+    if (
+      intent === "siswa_status_tugas" ||
+      matchAny(lbody, ["status tugas", "riwayat tugas", "riwayat"])
+    ) {
+      const items = await listDoneAssignments(student);
+      if (!items?.length) {
+        await message.reply("Belum ada tugas selesai. Semangat! 💪");
         return;
       }
-      const t = found.assignment;
+      const lines = items.slice(0, 10).map((it, i) => {
+        const tg = it.tugas;
+        return `${i + 1}. *${tg.kode}* — ${tg.judul} (SELESAI)`;
+      });
+      await message.reply("🧾 *Riwayat Tugas Selesai:*\n" + lines.join("\n"));
+      return;
+    }
+
+    // C. Detail <KODE>
+    let detailKode = null;
+    if (intent === "siswa_detail_tugas") {
+      detailKode = (opts.entities?.kode || opts.entities?.assignmentCode || "")
+        .toString()
+        .trim();
+    }
+    if (!detailKode) {
+      const m = lbody.match(/detail\s+([a-z0-9_-]+)/i);
+      if (m) detailKode = m[1].toUpperCase();
+    }
+    if (detailKode) {
+      const found = await findAssignmentForStudentByKode(student, detailKode);
+      if (!found) {
+        await message.reply(`😕 Tugas dengan kode *${detailKode}* ga ketemu.`);
+        return;
+      }
+      const a = found.assignment;
+      const lampiran = a.pdfUrl ? `\n📎 Lampiran: ${a.pdfUrl}` : "";
       await message.reply(
-        "📝 *Detail Tugas*\n" +
-          `• Kode: *${t.kode}*\n` +
-          `• Judul: *${t.judul}*\n` +
-          `• Deskripsi: ${t.deskripsi || "-"}\n` +
-          `• Deadline: ${fmtDateWIB(t.deadline)}\n` +
-          `• Kelas: ${t.kelas}\n` +
-          (t.pdfUrl ? `• Lampiran Guru: ${t.pdfUrl}\n` : "")
+        "ℹ️ *Detail Tugas:*\n" +
+          `• Kode: *${a.kode}*\n` +
+          `• Judul: *${a.judul}*\n` +
+          `• Instruksi: ${a.deskripsi || "-"}\n` +
+          `• Deadline: ${fmtDateWIB(a.deadline)}${lampiran}`
       );
       return;
     }
@@ -404,39 +477,36 @@ async function handleSiswaCommand(message, opts = {}) {
     if (kumpulKode) {
       const found = await findAssignmentForStudentByKode(student, kumpulKode);
       if (!found) {
-        await message.reply(
-          `⚠️ Tugas dengan kode *${kumpulKode}* tidak ditemukan untuk kelas kamu.`
-        );
+        await message.reply(`😕 Tugas dengan kode *${kumpulKode}* ga ketemu.`);
         return;
       }
       await beginSubmission(message, student, found.assignment);
       return;
     }
 
-    // E. Menu siswa
+    // E. Menu siswa (fallback bantuan)
     if (
       intent === "siswa_help" ||
       matchAny(lbody, ["bantuan", "help", "menu", "siswa"])
     ) {
       await message.reply(
-        "👋 *Menu Siswa*\n" +
-          "• *tugas saya* — lihat tugas belum selesai\n" +
-          "• *status tugas* — lihat riwayat (SELESAI)\n" +
-          "• *detail <KODE>* — lihat detail tugas tertentu\n" +
-          "• *kumpul <KODE>* — mulai pengumpulan tugas (kirim PDF)\n" +
-          "• *gambar ke pdf* — ubah foto jadi PDF (alat bantu)\n"
+        "📚 *Menu Siswa:*\n" +
+          "• *tugas saya* — cek tugas belum selesai\n" +
+          "• *status tugas* — riwayat tugas selesai\n" +
+          "• *detail <KODE>* — lihat detail tugas\n" +
+          "• *kumpul <KODE>* — kumpulin tugas (PDF)\n" +
+          "• *gambar ke pdf* — ubah foto jadi PDF"
       );
       return;
     }
 
     // ===== Fallback =====
     await message.reply(
-      "ℹ️ Tidak mengenali perintahmu.\n" +
-        "Ketik *menu* untuk melihat perintah siswa atau *kumpul <KODE>* untuk mulai pengumpulan."
+      "🤷 Perintah ga dikenali.\nKetik *menu* buat lihat opsi atau *kumpul <KODE>* buat kumpul tugas."
     );
   } catch (e) {
     console.error("handleSiswaCommand error:", e);
-    await message.reply("Maaf, terjadi kesalahan pada fitur siswa.");
+    await message.reply("😵 Aduh, ada error di fitur siswa. Coba lagi ya!");
   }
 }
 
