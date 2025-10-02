@@ -197,6 +197,7 @@ export default function Register() {
               <option value="XITKJ2">XI TKJ 2</option>
               <option value="XIITKJ1">XII TKJ 1</option>
               <option value="XIITKJ2">XII TKJ 2</option>
+              <option value="TPTUP">TPTUP</option>
             </motion.select>
             <motion.input
               initial={{ opacity: 0, x: -20 }}

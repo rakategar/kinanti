@@ -23,6 +23,8 @@ const {
 } = require("./src/features/imgToPdf");
 const { getState } = require("./src/services/state"); // <-- add
 const { setupSchedules } = require("./src/controllers/scheduleController");
+const qrcode = require('qrcode-terminal'); 
+
 
 // ===== Helpers =====
 function phoneFromJid(jid = "") {
@@ -130,7 +132,8 @@ waClient.on("message", async (message) => {
     console.error("NLP/handler error:", e);
     return message.reply("Maaf, terjadi kesalahan. Coba lagi ya.");
   }
-});
+
+
 
 // =====================
 // Lifecycle & Logging

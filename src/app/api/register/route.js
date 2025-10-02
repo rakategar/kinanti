@@ -15,6 +15,7 @@ export async function POST(req) {
       "XITKJ2",
       "XIITKJ1",
       "XIITKJ2",
+      "TPTUP"
     ];
     if (!kelasEnum.includes(kelas)) {
       return new Response(
