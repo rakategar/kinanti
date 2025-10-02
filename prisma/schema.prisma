@@ -55,6 +55,7 @@ model AssignmentSubmission {
   pdfUrl    String?  // Bisa null jika tidak ada lampiran
   status    TugasStatus @default(SELESAI) // Status tugas (opsional)
   createdAt DateTime @default(now()) 
+  updatedAt  DateTime @updatedAt
 }
 
 enum Role {
@@ -75,4 +76,22 @@ enum Kelas {
 enum TugasStatus {
   BELUM_SELESAI
   SELESAI
+}
+
+model ConversationState {
+  id         String   @id @default(cuid())
+  userPhone  String   @unique
+  lastIntent String?
+  slots      Json
+  updatedAt  DateTime @updatedAt
+}
+
+model NlpLog {
+  id         String   @id @default(cuid())
+  userPhone  String
+  text       String
+  predicted  String
+  confidence Float
+  entities   Json?
+  createdAt  DateTime @default(now())
 }

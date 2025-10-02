@@ -9,6 +9,8 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+/.wwebjs_auth/
+/.wwebjs_cache/
 
 # testing
 /coverage
