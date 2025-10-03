@@ -2,41 +2,59 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { GoHeartFill } from "react-icons/go";
 import Swal from "sweetalert2";
 
+/** Normalisasi nomor HP ke format 62…. */
+function normalizePhone(input = "") {
+  const p = String(input).replace(/[^\d]/g, "");
+  if (!p) return "";
+  return p.startsWith("0") ? "62" + p.slice(1) : p; // 08… -> 628…
+}
+
 export default function Home() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-
-  const { data: session, status } = useSession();
   const router = useRouter();
 
-  // Jika session sudah ada, arahkan ke halaman dashboard
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.replace("/");
+  async function fetchFreshSession() {
+    try {
+      const res = await fetch("/api/auth/session", { cache: "no-store" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
     }
-  }, [status, router]);
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
 
-    // Validasi nomor HP
-    if (!phone.startsWith("62")) {
+    const norm = normalizePhone(phone);
+    if (!norm.startsWith("62")) {
       Swal.fire({
         title: "Warning!",
         text: "Nomor HP harus diawali dengan 62.",
         icon: "warning",
         confirmButtonText: "OK",
+        confirmButtonColor: "#7e22ce",
+      });
+      setLoading(false);
+      return;
+    }
+    if (!password) {
+      Swal.fire({
+        title: "Warning!",
+        text: "Password tidak boleh kosong.",
+        icon: "warning",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#7e22ce",
       });
       setLoading(false);
       return;
@@ -44,51 +62,75 @@ export default function Home() {
 
     try {
       const res = await signIn("credentials", {
-        phone,
+        phone: norm,
         password,
-        redirect: true, // Gunakan redirect: true
-        callbackUrl: "/", // Tentukan URL tujuan setelah login
+        redirect: false,
       });
 
-      // Jika ada error dari signIn
-      if (res?.error) {
-        if (res.error === "User not found") {
-          // Jika error 401 (nomor HP atau password salah)
-          Swal.fire({
-            title: "Nomor HP atau password salah !",
-            icon: "error",
-            confirmButtonText: "OK",
-          });
-        } else {
-          // Error lainnya
-          Swal.fire({
-            title: "Error!",
-            text: res.error,
-            icon: "error",
-            confirmButtonText: "OK",
-          });
-        }
+      if (!res || res.error) {
+        const msg =
+          res?.error === "User not found"
+            ? "Nomor HP atau password salah!"
+            : res?.error || "Terjadi kesalahan. Coba lagi.";
+        Swal.fire({
+          title: "Error!",
+          text: msg,
+          icon: "error",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#7e22ce",
+        });
         setLoading(false);
         return;
       }
 
-      // Jika login berhasil, tidak perlu melakukan apa-apa karena redirect sudah dihandle oleh NextAuth
+      // Ambil session paling baru langsung dari API NextAuth
+      // (lebih stabil daripada getSession di App Router)
+      let s = null;
+      for (let i = 0; i < 4; i++) {
+        s = await fetchFreshSession();
+        if (s?.user?.id) break;
+        await new Promise((r) => setTimeout(r, 150));
+      }
+
+      const role = s?.user?.role?.toLowerCase?.() || "";
+      const uid = s?.user?.id || null;
+
+      // simpan ke localStorage sebagai fallback untuk halaman /guru
+      try {
+        if (s?.user) {
+          localStorage.setItem("user", JSON.stringify(s.user));
+        }
+        if (role === "guru" && uid) {
+          localStorage.setItem("guruId", String(uid));
+        } else {
+          localStorage.removeItem("guruId");
+        }
+      } catch {}
+
+      if (role === "guru") {
+        router.replace("/guru");
+      } else if (role === "siswa") {
+        router.replace("/");
+      } else {
+        router.replace("/login");
+      }
     } catch (error) {
       console.error("Login error:", error);
-      // Jika terjadi error di database
       Swal.fire({
         title: "Error!",
-        text: "Terjadi kesalahan di database. Silakan coba lagi.",
+        text: "Terjadi kesalahan di server. Silakan coba lagi.",
         icon: "error",
         confirmButtonText: "OK",
+        confirmButtonColor: "#7e22ce",
       });
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="flex min-h-screen">
-      {/* Kiri - Gambar (Hanya tampil di desktop) */}
+      {/* Kiri - Gambar (desktop) */}
       <motion.div
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
@@ -108,24 +150,25 @@ export default function Home() {
             alt="Login Illustration"
             width={500}
             height={500}
+            priority
           />
         </motion.div>
       </motion.div>
 
-      {/* Kanan - Form Login (Tampil di semua ukuran layar) */}
+      {/* Kanan - Form Login */}
       <motion.div
         initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.8 }}
         className="flex-1 flex flex-col justify-center items-center p-6 bg-white"
       >
-        {/* Logo (Hanya tampil di mobile) */}
+        {/* Logo mobile */}
         <Link className="md:hidden absolute top-6 left-6" href="/">
           <Image src="/logo.png" alt="Logo" width={120} height={120} />
         </Link>
 
-        {/* Form Login */}
-        <div className="w-full max-w-md p-6 ">
+        {/* Card Form */}
+        <div className="w-full max-w-md p-6">
           <motion.h2
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -142,6 +185,7 @@ export default function Home() {
           >
             Sign in to continue
           </motion.p>
+
           <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
             <motion.input
               initial={{ opacity: 0, x: -20 }}
@@ -154,6 +198,8 @@ export default function Home() {
               onChange={(e) => setPhone(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               disabled={loading}
+              inputMode="numeric"
+              autoComplete="username"
             />
             <motion.input
               initial={{ opacity: 0, x: -20 }}
@@ -166,42 +212,19 @@ export default function Home() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               disabled={loading}
+              autoComplete="current-password"
             />
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.3, duration: 0.8 }}
-              className="flex items-center justify-between text-sm"
-            >
-              <label className="flex items-center space-x-2">
-                <input type="checkbox" className="text-purple-500" />
-                <span>Remember me</span>
-              </label>
-              <a href="#" className="text-purple-500">
-                Forgot password?
-              </a>
-            </motion.div>
+
             <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.5, duration: 0.8 }}
               type="submit"
-              className="w-full py-2 px-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:ring-purple-800"
+              className="w-full py-2 px-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-60"
               disabled={loading}
             >
               {loading ? "Loading..." : "Log In"}
             </motion.button>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.7, duration: 0.8 }}
-              className="text-center mt-4"
-            >
-              <span className="text-gray-600">New here? </span>
-              <Link href="/register" className="text-purple-500">
-                Create an account
-              </Link>
-            </motion.div>
           </form>
         </div>
 
