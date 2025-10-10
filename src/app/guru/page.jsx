@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { FiPlus, FiRefreshCw, FiLogOut } from "react-icons/fi";
 import GuruAssignmentsTable from "./partials/AssignmentsTable";
 import AssignmentFormModal from "./partials/AssignmentFormModal";
+import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
 
 async function fetchServerSession() {
   try {
@@ -15,6 +17,53 @@ async function fetchServerSession() {
   } catch {
     return null;
   }
+}
+
+// Helpers SweetAlert2
+function toastError(message = "Terjadi kesalahan.") {
+  return Swal.fire({
+    icon: "error",
+    title: "Gagal",
+    text: message,
+    toast: true,
+    position: "top-end",
+    showConfirmButton: false,
+    timer: 2500,
+    timerProgressBar: true,
+  });
+}
+
+function notifySuccess(title = "Berhasil", text = "") {
+  return Swal.fire({
+    icon: "success",
+    title,
+    text,
+    confirmButtonText: "OK",
+    allowOutsideClick: false,
+    allowEscapeKey: true,
+    // default position is center (sesuai permintaan)
+  });
+}
+
+async function confirmDialog({
+  title = "Yakin?",
+  text = "Aksi ini tidak dapat dibatalkan.",
+  confirmText = "Ya, lanjutkan",
+  cancelText = "Batal",
+  icon = "question",
+}) {
+  const res = await Swal.fire({
+    title,
+    text,
+    icon,
+    showCancelButton: true,
+    confirmButtonText: confirmText,
+    cancelButtonText: cancelText,
+    focusCancel: true,
+    reverseButtons: true,
+    allowOutsideClick: false,
+  });
+  return res.isConfirmed;
 }
 
 export default function GuruDashboard() {
@@ -95,6 +144,7 @@ export default function GuruDashboard() {
       if (!res.ok) {
         console.error("Load assignments failed:", res.status);
         setItems([]);
+        await toastError("Gagal memuat data tugas.");
         return;
       }
       const data = await res.json();
@@ -102,6 +152,7 @@ export default function GuruDashboard() {
     } catch (e) {
       console.error(e);
       setItems([]);
+      await toastError("Gagal terhubung ke server.");
     } finally {
       setLoading(false);
     }
@@ -134,8 +185,15 @@ export default function GuruDashboard() {
 
   async function onDeleteAssignment(id) {
     if (!id) return;
-    const yakin = confirm("Hapus tugas ini? Aksi tidak dapat dibatalkan.");
+    const yakin = await confirmDialog({
+      title: "Hapus tugas ini?",
+      text: "Aksi tidak dapat dibatalkan.",
+      confirmText: "Ya, hapus",
+      cancelText: "Batal",
+      icon: "warning",
+    });
     if (!yakin) return;
+
     try {
       const res = await fetch(`/api/guru/assignments?id=${id}`, {
         method: "DELETE",
@@ -143,20 +201,20 @@ export default function GuruDashboard() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error || "Gagal menghapus tugas.");
+        await toastError(data.error || "Gagal menghapus tugas.");
         return;
       }
       await fetchData();
-      alert("Tugas berhasil dihapus.");
+      await notifySuccess("Tugas berhasil dihapus.");
     } catch (e) {
       console.error(e);
-      alert("Gagal menghapus tugas.");
+      await toastError("Gagal menghapus tugas.");
     }
   }
 
   async function onBroadcast(kode, kelas) {
     if (!kode || !kelas) {
-      alert("Masukkan kode dan kelas.");
+      await toastError("Masukkan kode dan kelas.");
       return false;
     }
     try {
@@ -167,14 +225,14 @@ export default function GuruDashboard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Broadcast gagal.");
+        await toastError(data.error || "Broadcast gagal.");
         return false;
       }
-      alert(data.message || "Broadcast diproses.");
+      await notifySuccess("Broadcast dikirim.", data.message || "");
       return true;
     } catch (e) {
       console.error(e);
-      alert("Broadcast gagal terkirim.");
+      await toastError("Broadcast gagal terkirim.");
       return false;
     }
   }
@@ -188,7 +246,7 @@ export default function GuruDashboard() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error || "Gagal membuat rekap.");
+        await toastError(data.error || "Gagal membuat rekap.");
         return;
       }
       const blob = await res.blob();
@@ -198,9 +256,11 @@ export default function GuruDashboard() {
       a.download = `rekap_${kode}_${kelas}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
+
+      await notifySuccess("Rekap siap diunduh.", "File Excel telah diunduh.");
     } catch (e) {
       console.error(e);
-      alert("Gagal mengunduh rekap.");
+      await toastError("Gagal mengunduh rekap.");
     }
   }
 
