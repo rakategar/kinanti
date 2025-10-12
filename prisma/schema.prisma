@@ -95,3 +95,61 @@ model NlpLog {
   entities   Json?
   createdAt  DateTime @default(now())
 }
+
+
+// =================== ENUM ===================
+enum AssessmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+}
+
+enum MediaType {
+  IMAGE
+  AUDIO
+  PDF
+  OTHER
+}
+
+// =================== INTI PENILAIAN ===================
+model Assessment {
+  id          Int        @id @default(autoincrement())
+  guruId      Int
+  code        String     @unique
+  title       String
+  className   String
+
+  // --- kolom di bawah ini bikin error karena tidak ada di DB kamu.
+  // --- tandai @ignore agar Prisma tidak mengikutkannya saat query/insert.
+  description String?    @ignore
+  kkm         Int?       @ignore
+  status      String?    @ignore
+  timeOpen    DateTime?  @ignore
+  timeClose   DateTime?  @ignore
+  durationMin Int?       @ignore
+  shuffleQuestions     Boolean? @ignore
+  shuffleOptions       Boolean? @ignore
+  maxAttempts          Int?     @ignore
+  showScoreImmediately Boolean? @ignore
+  showKeyAfterClose    Boolean? @ignore
+
+  questions   Question[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Question {
+  id           Int        @id @default(autoincrement())
+  assessmentId Int
+  data         Json       // ← seluruh isi soal (teks, opsi, kunci, url gambar)
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+}
+
+
+

@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { FiPlus, FiRefreshCw, FiLogOut } from "react-icons/fi";
 import GuruAssignmentsTable from "./partials/AssignmentsTable";
 import AssignmentFormModal from "./partials/AssignmentFormModal";
+import AssessmentsTable from "./partials/AssessmentsTable";
+import AssessmentFormModal from "./partials/AssessmentFormModal";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
 
@@ -19,7 +21,7 @@ async function fetchServerSession() {
   }
 }
 
-// Helpers SweetAlert2
+// SweetAlert2 helpers
 function toastError(message = "Terjadi kesalahan.") {
   return Swal.fire({
     icon: "error",
@@ -41,7 +43,6 @@ function notifySuccess(title = "Berhasil", text = "") {
     confirmButtonText: "OK",
     allowOutsideClick: false,
     allowEscapeKey: true,
-    // default position is center (sesuai permintaan)
   });
 }
 
@@ -70,12 +71,20 @@ export default function GuruDashboard() {
   const { data: session, status } = useSession();
 
   const [guruId, setGuruId] = useState(null);
+
+  // assignments
   const [items, setItems] = useState([]);
-  const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loadingAssign, setLoadingAssign] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
-  // Cari guruId dari beberapa sumber: useSession -> /api/auth/session -> localStorage
+  // assessments (penilaian)
+  const [assessments, setAssessments] = useState([]);
+  const [loadingAssess, setLoadingAssess] = useState(true);
+  const [showAssessmentForm, setShowAssessmentForm] = useState(false);
+
+  const [q, setQ] = useState("");
+
+  // Resolve guruId
   useEffect(() => {
     (async () => {
       if (status === "loading") return;
@@ -84,14 +93,12 @@ export default function GuruDashboard() {
         return;
       }
 
-      // 1) dari useSession()
       const idFromHook = session?.user?.id ? Number(session.user.id) : null;
       if (idFromHook) {
         setGuruId(idFromHook);
         return;
       }
 
-      // 2) dari /api/auth/session (server)
       const s = await fetchServerSession();
       const idFromApi = s?.user?.id ? Number(s.user.id) : null;
       if (idFromApi) {
@@ -105,7 +112,6 @@ export default function GuruDashboard() {
         return;
       }
 
-      // 3) fallback terakhir: localStorage
       try {
         const gid = localStorage.getItem("guruId");
         if (gid) {
@@ -122,27 +128,26 @@ export default function GuruDashboard() {
         }
       } catch {}
 
-      // jika semua gagal:
       setGuruId(null);
     })();
   }, [status, session]);
 
   useEffect(() => {
     if (!guruId) {
-      setLoading(false);
+      setLoadingAssign(false);
+      setLoadingAssess(false);
       return;
     }
-    fetchData();
+    fetchAssignments();
+    fetchAssessments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guruId]);
 
-  async function fetchData() {
+  async function fetchAssignments() {
     try {
-      setLoading(true);
-      if (!guruId) return;
+      setLoadingAssign(true);
       const res = await fetch(`/api/guru/assignments?guruId=${guruId}`);
       if (!res.ok) {
-        console.error("Load assignments failed:", res.status);
         setItems([]);
         await toastError("Gagal memuat data tugas.");
         return;
@@ -152,13 +157,35 @@ export default function GuruDashboard() {
     } catch (e) {
       console.error(e);
       setItems([]);
-      await toastError("Gagal terhubung ke server.");
+      await toastError("Gagal terhubung ke server (tugas).");
     } finally {
-      setLoading(false);
+      setLoadingAssign(false);
     }
   }
 
-  const filtered = useMemo(() => {
+  async function fetchAssessments() {
+    try {
+      setLoadingAssess(true);
+      const res = await fetch(`/api/guru/assessments?guruId=${guruId}`);
+      if (!res.ok) {
+        setAssessments([]);
+        await toastError("Gagal memuat data penilaian.");
+        return;
+      }
+      const data = await res.json();
+      // dukung format {ok, data} atau array langsung
+      const list = Array.isArray(data) ? data : data?.data ?? [];
+      setAssessments(list);
+    } catch (e) {
+      console.error(e);
+      setAssessments([]);
+      await toastError("Gagal terhubung ke server (penilaian).");
+    } finally {
+      setLoadingAssess(false);
+    }
+  }
+
+  const filteredAssignments = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return items;
     return items.filter((a) => {
@@ -175,6 +202,23 @@ export default function GuruDashboard() {
     });
   }, [q, items]);
 
+  const filteredAssessments = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return assessments;
+    return assessments.filter((a) => {
+      const kode = (a.kode || a.code || "").toLowerCase();
+      const judul = (a.judul || a.title || "").toLowerCase();
+      const kelas = (a.kelas || a.className || "").toLowerCase();
+      const status = (a.status || "").toLowerCase();
+      return (
+        kode.includes(s) ||
+        judul.includes(s) ||
+        kelas.includes(s) ||
+        status.includes(s)
+      );
+    });
+  }, [q, assessments]);
+
   function handleLogout() {
     try {
       localStorage.removeItem("guruId");
@@ -183,13 +227,13 @@ export default function GuruDashboard() {
     signOut({ callbackUrl: "/login" });
   }
 
+  // ASSIGNMENTS actions (sudah ada)
   async function onDeleteAssignment(id) {
     if (!id) return;
     const yakin = await confirmDialog({
       title: "Hapus tugas ini?",
       text: "Aksi tidak dapat dibatalkan.",
       confirmText: "Ya, hapus",
-      cancelText: "Batal",
       icon: "warning",
     });
     if (!yakin) return;
@@ -204,7 +248,7 @@ export default function GuruDashboard() {
         await toastError(data.error || "Gagal menghapus tugas.");
         return;
       }
-      await fetchData();
+      await fetchAssignments();
       await notifySuccess("Tugas berhasil dihapus.");
     } catch (e) {
       console.error(e);
@@ -237,7 +281,7 @@ export default function GuruDashboard() {
     }
   }
 
-  async function onRekap(kode, kelas) {
+  async function onRekapAssignment(kode, kelas) {
     try {
       const res = await fetch("/api/guru/rekap", {
         method: "POST",
@@ -264,6 +308,61 @@ export default function GuruDashboard() {
     }
   }
 
+  // ASSESSMENTS actions (baru)
+  async function onDeleteAssessment(id) {
+    const yakin = await confirmDialog({
+      title: "Hapus penilaian ini?",
+      text: "Aksi tidak dapat dibatalkan.",
+      confirmText: "Ya, hapus",
+      icon: "warning",
+    });
+    if (!yakin) return;
+
+    try {
+      const res = await fetch(`/api/guru/assessments?id=${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok === false) {
+        await toastError(
+          data?.error || data?.message || "Gagal menghapus penilaian."
+        );
+        return;
+      }
+      await notifySuccess("Penilaian dihapus.");
+      fetchAssessments();
+    } catch (e) {
+      console.error(e);
+      await toastError("Gagal menghapus penilaian.");
+    }
+  }
+
+  async function onRekapAssessment(kode, kelas) {
+    try {
+      const res = await fetch("/api/guru/penilaian/rekap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kode, kelas }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        await toastError(data.error || "Gagal membuat rekap penilaian.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `rekap_penilaian_${kode}_${kelas}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      await notifySuccess("Rekap siap diunduh.");
+    } catch (e) {
+      console.error(e);
+      await toastError("Gagal mengunduh rekap penilaian.");
+    }
+  }
+
   return (
     <motion.div
       className="min-h-screen bg-gradient-to-br from-amber-50 to-rose-100 p-4 md:p-6"
@@ -277,12 +376,15 @@ export default function GuruDashboard() {
               Dashboard Guru
             </h1>
             <p className="text-gray-600">
-              Kelola penugasan, broadcast, dan rekap kelas.
+              Kelola penugasan, broadcast, rekap, dan penilaian kelas.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => fetchData()}
+              onClick={() => {
+                fetchAssignments();
+                fetchAssessments();
+              }}
               className="inline-flex items-center px-3 py-2 rounded-md border bg-white hover:bg-gray-50"
               title="Refresh"
               disabled={!guruId}
@@ -290,6 +392,8 @@ export default function GuruDashboard() {
               <FiRefreshCw className="mr-2" />
               Refresh
             </button>
+
+            {/* Buat Tugas */}
             <button
               onClick={() => setShowForm(true)}
               className="inline-flex items-center px-3 py-2 rounded-md bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
@@ -298,6 +402,17 @@ export default function GuruDashboard() {
               <FiPlus className="mr-2" />
               Buat Tugas
             </button>
+
+            {/* Buat Penilaian */}
+            <button
+              onClick={() => setShowAssessmentForm(true)}
+              className="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+              disabled={!guruId}
+            >
+              <FiPlus className="mr-2" />
+              Buat Penilaian
+            </button>
+
             <button
               onClick={handleLogout}
               className="inline-flex items-center px-3 py-2 rounded-md bg-gray-800 text-white hover:bg-black"
@@ -324,30 +439,59 @@ export default function GuruDashboard() {
           />
         </div>
 
+        {/* TABEL PENUGASAN */}
         <div className="mt-4">
-          {loading ? (
-            <div className="animate-pulse h-64 bg-gray-200 rounded" />
+          {loadingAssign ? (
+            <div className="animate-pulse h-56 bg-gray-200 rounded" />
           ) : (
             <GuruAssignmentsTable
-              data={filtered}
+              data={filteredAssignments}
               onBroadcast={async ({ kode, kelas }) => {
                 const ok = await onBroadcast(kode, kelas);
-                if (ok) fetchData();
+                if (ok) fetchAssignments();
               }}
-              onRekap={async ({ kode, kelas }) => {
-                await onRekap(kode, kelas);
-              }}
+              onRekap={onRekapAssignment}
               onDelete={onDeleteAssignment}
+            />
+          )}
+        </div>
+
+        {/* TABEL PENILAIAN */}
+        <div className="mt-6">
+          {loadingAssess ? (
+            <div className="animate-pulse h-56 bg-gray-200 rounded" />
+          ) : (
+            <AssessmentsTable
+              data={filteredAssessments}
+              onRekap={({ kode, kelas }) => onRekapAssessment(kode, kelas)}
+              onDelete={(id) => onDeleteAssessment(id)}
             />
           )}
         </div>
       </div>
 
+      {/* MODAL FORM */}
       {showForm && (
         <AssignmentFormModal
           guruId={guruId}
           onClose={() => setShowForm(false)}
-          onCreated={fetchData}
+          onCreated={() => {
+            setShowForm(false);
+            fetchAssignments();
+          }}
+        />
+      )}
+
+      {showAssessmentForm && (
+        <AssessmentFormModal
+          guruId={guruId}
+          onClose={() => setShowAssessmentForm(false)}
+          onCreated={(newId) => {
+            setShowAssessmentForm(false);
+            fetchAssessments();
+            // opsional: langsung arahkan ke halaman soal
+            // router.push(`/guru/penilaian/${newId}/soal`);
+          }}
         />
       )}
     </motion.div>
