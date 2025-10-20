@@ -9,6 +9,7 @@ import TugasTable from "../app/components/TugasTable";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
 import Swal from "sweetalert2";
+import KinantiBanner from "./components/KinantiBanner";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -103,6 +104,7 @@ export default function Dashboard() {
       )}
 
       <div className="max-w-5xl mx-auto bg-white p-4 md:p-6 rounded-xl shadow-xl relative">
+        <KinantiBanner />
         {/* Tombol Logout */}
         <button
           onClick={handleLogout}

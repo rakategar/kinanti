@@ -1,3 +1,6 @@
-2025/09/30-21:09:22.912 3bb2 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
-2025/09/30-21:09:22.943 3bb2 Recovering log #45
-2025/09/30-21:09:22.948 3bb2 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Local Storage/leveldb/000045.log 
+2025/10/20-11:52:21.188 5cd0 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2025/10/20-11:52:21.206 5cd0 Recovering log #45
+2025/10/20-11:52:21.209 5cd0 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Local Storage/leveldb/000045.log 
+2025/10/20-11:54:22.146 5cd2 Level-0 table #50: started
+2025/10/20-11:54:22.178 5cd2 Level-0 table #50: 15093 bytes OK
+2025/10/20-11:54:22.197 5cd2 Delete type=0 #45

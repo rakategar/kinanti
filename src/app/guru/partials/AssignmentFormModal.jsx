@@ -1,6 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
+
+function toast({ icon = "info", title = "", text = "", timer = 2200 }) {
+  return Swal.fire({
+    icon,
+    title,
+    text,
+    toast: true,
+    position: "top-end",
+    showConfirmButton: false,
+    timer,
+    timerProgressBar: true,
+  });
+}
 
 export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
   const [kode, setKode] = useState("");
@@ -14,15 +29,23 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
 
   async function submit() {
     if (!guruId) {
-      alert("Guru tidak dikenali.");
+      toast({ icon: "error", title: "Gagal", text: "Guru tidak dikenali." });
       return;
     }
     if (!kode || !judul || !kelas) {
-      alert("Kode, Judul, dan Kelas wajib diisi.");
+      toast({
+        icon: "warning",
+        title: "Lengkapi Form",
+        text: "Kode, Judul, dan Kelas wajib diisi.",
+      });
       return;
     }
     if (lampirPdf && !file) {
-      alert("Kamu memilih melampirkan PDF, pilih file-nya.");
+      toast({
+        icon: "warning",
+        title: "Lampiran belum dipilih",
+        text: "Kamu memilih melampirkan PDF, pilih file-nya.",
+      });
       return;
     }
 
@@ -44,14 +67,30 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data.error || "Gagal membuat tugas.");
+        toast({
+          icon: "error",
+          title: "Gagal membuat tugas",
+          text: data.error || "Terjadi kesalahan pada server.",
+        });
         return;
       }
-      alert(data.message || "Tugas berhasil dibuat.");
+
+      // ✅ Berhasil → tutup modal & tampilkan toast sukses kanan atas
+      toast({
+        icon: "success",
+        title: "Tugas berhasil dibuat",
+        text: data.message || "",
+      });
+
+      // biarkan parent yang menutup & refresh (sesuai logika yang sudah ada)
       onCreated?.();
     } catch (e) {
       console.error("create err:", e);
-      alert("Gagal membuat tugas.");
+      toast({
+        icon: "error",
+        title: "Gagal",
+        text: "Gagal membuat tugas.",
+      });
     } finally {
       setSaving(false);
     }
@@ -79,6 +118,7 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
               placeholder="MTK-101"
               value={kode}
               onChange={(e) => setKode(e.target.value)}
+              disabled={saving}
             />
           </div>
           <div>
@@ -90,6 +130,7 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
               onChange={(e) =>
                 setKelas(e.target.value.toUpperCase().replace(/\s+/g, ""))
               }
+              disabled={saving}
             />
           </div>
           <div className="md:col-span-2">
@@ -99,6 +140,7 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
               placeholder="Tugas Bab 3 Persamaan Kuadrat"
               value={judul}
               onChange={(e) => setJudul(e.target.value)}
+              disabled={saving}
             />
           </div>
           <div className="md:col-span-2">
@@ -108,6 +150,7 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
               placeholder="Instruksi untuk siswa…"
               value={deskripsi}
               onChange={(e) => setDeskripsi(e.target.value)}
+              disabled={saving}
             />
           </div>
 
@@ -122,6 +165,7 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
               placeholder="3 (opsional)"
               value={deadlineHari}
               onChange={(e) => setDeadlineHari(e.target.value)}
+              disabled={saving}
             />
             <p className="text-xs text-gray-500 mt-1">
               Kosongkan jika tanpa deadline.
@@ -137,6 +181,7 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
                 type="checkbox"
                 checked={lampirPdf}
                 onChange={(e) => setLampirPdf(e.target.checked)}
+                disabled={saving}
               />
               <span className="text-sm">Ya, lampirkan file PDF</span>
             </div>
@@ -146,6 +191,7 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
                   type="file"
                   accept="application/pdf"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  disabled={saving}
                 />
                 <p className="text-xs text-gray-500 mt-1">Maks ~10MB.</p>
               </div>

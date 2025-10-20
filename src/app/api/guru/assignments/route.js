@@ -5,7 +5,9 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// ==========================
 // GET /api/guru/assignments?guruId=123
+// ==========================
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
@@ -17,13 +19,11 @@ export async function GET(req) {
       );
     }
 
-    // (Opsional) validasi kepemilikan: session.id === guruId
     const session = await getServerSession(authOptions);
     const sid = Number(session?.user?.id);
+    // Validasi opsional: pastikan guru yang login sama
     if (!sid || sid !== guruId) {
-      // demi keamanan, kamu bisa ketat di sini:
       // return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
-      // atau longgar saja:
     }
 
     const list = await prisma.assignment.findMany({
@@ -37,11 +37,9 @@ export async function GET(req) {
         deadline: true,
         pdfUrl: true,
         createdAt: true,
-        // Jika kamu punya relasi status/submission dan ingin ringkasan, bisa include count di sini.
       },
     });
 
-    // Tambahkan field ringkasan (dummy aman)
     const now = Date.now();
     const payload = list.map((a) => ({
       ...a,
@@ -55,7 +53,7 @@ export async function GET(req) {
 
     return NextResponse.json(payload);
   } catch (e) {
-    console.error(e);
+    console.error("GET /api/guru/assignments error:", e);
     return NextResponse.json(
       { error: "Gagal memuat assignments" },
       { status: 500 }
@@ -63,7 +61,12 @@ export async function GET(req) {
   }
 }
 
+// ==========================
 // DELETE /api/guru/assignments?id=999
+// ==========================
+// ==========================
+// DELETE /api/guru/assignments?id=999
+// ==========================
 export async function DELETE(req) {
   try {
     const { searchParams } = new URL(req.url);
@@ -78,8 +81,11 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
     }
 
-    // Pastikan tugas milik guru yang login
-    const found = await prisma.assignment.findUnique({ where: { id } });
+    // cek & validasi kepemilikan
+    const found = await prisma.assignment.findUnique({
+      where: { id },
+      include: { submissions: true }, // pastikan nama relasi sesuai model Assignment kamu
+    });
     if (!found) {
       return NextResponse.json(
         { error: "Tugas tidak ditemukan" },
@@ -90,17 +96,25 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
     }
 
-    // Jika ada relasi (status/submission), hapus dulu anak-anaknya sesuai FK (atau ON DELETE CASCADE via schema)
-    // Contoh:
-    // await prisma.assignmentStatus.deleteMany({ where: { assignmentId: id } });
-    // await prisma.assignmentSubmission.deleteMany({ where: { assignmentId: id } });
+    // 🔧 Hapus semua submission terkait tugas ini.
+    // Gunakan RELATION FILTER sesuai schema: 'tugas' (bukan 'assignment')
+    await prisma.assignmentSubmission.deleteMany({
+      where: { tugas: { id } }, // <= ini kunci perbaikannya
+    });
+    // Catatan: kalau di schema-mu tidak ada relasi bernama 'tugas', tapi ada 'assignment',
+    // pakai: where: { assignment: { id } } atau where: { tugasId: id }
 
+    // Hapus record assignment utama
     await prisma.assignment.delete({ where: { id } });
-    return NextResponse.json({ ok: true });
+
+    return NextResponse.json({
+      ok: true,
+      message: `Tugas ${found.kode} (${found.judul}) berhasil dihapus.`,
+    });
   } catch (e) {
-    console.error(e);
+    console.error("DELETE /api/guru/assignments error:", e);
     return NextResponse.json(
-      { error: "Gagal menghapus tugas" },
+      { error: "Gagal menghapus tugas." },
       { status: 500 }
     );
   }

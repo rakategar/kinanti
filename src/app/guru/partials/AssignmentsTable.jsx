@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { FiShare2, FiFileText, FiTrash2 } from "react-icons/fi";
+import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
 
 const TZ = "Asia/Jakarta";
 
@@ -60,6 +62,8 @@ export default function GuruAssignmentsTable({
   onDelete,
 }) {
   const [kelasInput, setKelasInput] = useState({});
+  const kelasOptions = ["XI RPL", "XI TKJ", "XII RPL", "XII TKJ"];
+
   const rows = useMemo(() => {
     const copy = [...data];
     copy.sort((a, b) => {
@@ -69,6 +73,31 @@ export default function GuruAssignmentsTable({
     });
     return copy;
   }, [data]);
+
+  async function confirmDelete({ id, kode, judul }) {
+    const res = await Swal.fire({
+      title: "Hapus tugas ini?",
+      html: `
+        <div class="text-left text-sm">
+          <div><b>Kode:</b> ${kode || "-"}</div>
+          <div><b>Judul:</b> ${judul || "-"}</div>
+          <div class="mt-2 text-gray-600">Aksi ini tidak dapat dibatalkan.</div>
+        </div>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Ya, hapus",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      focusCancel: true,
+      reverseButtons: true,
+    });
+    if (!res.isConfirmed) return;
+
+    // lempar ke handler parent (page.jsx) agar urusan API & refresh tetap terpusat
+    onDelete && onDelete(id);
+  }
 
   return (
     <div className="rounded-xl border border-gray-200 overflow-hidden">
@@ -91,7 +120,8 @@ export default function GuruAssignmentsTable({
               const isOverdue =
                 a.deadline && new Date(a.deadline).getTime() < Date.now();
               const jid = a.id;
-              const kelasVal = kelasInput[jid] ?? a.kelas ?? "";
+              const kelasVal =
+                kelasInput[jid] ?? a.kelas ?? kelasOptions[0] ?? "";
 
               return (
                 <tr
@@ -143,29 +173,36 @@ export default function GuruAssignmentsTable({
 
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <input
-                        className="w-28 rounded border px-2 py-1 text-xs"
-                        placeholder="Kelas (XITKJ2)"
-                        value={kelasVal}
-                        onChange={(e) =>
-                          setKelasInput((s) => ({
-                            ...s,
-                            [jid]: e.target.value
-                              .toUpperCase()
-                              .replace(/\s+/g, ""),
-                          }))
-                        }
-                        title="Kelas untuk broadcast/rekap"
-                      />
+                      {/* input + datalist: bisa diketik & pilih */}
+                      <div className="relative">
+                        <input
+                          list={`kelas-options-${jid}`}
+                          className="w-32 rounded border px-2 py-1 text-xs focus:ring-2 focus:ring-violet-400"
+                          value={kelasVal}
+                          onChange={(e) =>
+                            setKelasInput((s) => ({
+                              ...s,
+                              [jid]: e.target.value.toUpperCase(),
+                            }))
+                          }
+                          placeholder="Kelas..."
+                          title="Ketik atau pilih kelas"
+                        />
+                        <datalist id={`kelas-options-${jid}`}>
+                          {kelasOptions.map((opt) => (
+                            <option key={opt} value={opt} />
+                          ))}
+                        </datalist>
+                      </div>
+
                       <button
                         className="inline-flex items-center px-2 py-1 rounded bg-violet-600 text-white hover:bg-violet-700 text-xs"
                         onClick={() =>
                           onBroadcast &&
                           onBroadcast({
                             kode: a.kode,
-                            kelas: (kelasInput[jid] || a.kelas || "")
-                              .toString()
-                              .toUpperCase(),
+                            kelas:
+                              kelasInput[jid] || a.kelas || kelasOptions[0],
                           })
                         }
                         title="Broadcast ke kelas"
@@ -173,15 +210,15 @@ export default function GuruAssignmentsTable({
                         <FiShare2 className="mr-1" />
                         Broadcast
                       </button>
+
                       <button
                         className="inline-flex items-center px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs"
                         onClick={() =>
                           onRekap &&
                           onRekap({
                             kode: a.kode,
-                            kelas: (kelasInput[jid] || a.kelas || "")
-                              .toString()
-                              .toUpperCase(),
+                            kelas:
+                              kelasInput[jid] || a.kelas || kelasOptions[0],
                           })
                         }
                         title="Download rekap Excel"
@@ -189,9 +226,16 @@ export default function GuruAssignmentsTable({
                         <FiFileText className="mr-1" />
                         Rekap
                       </button>
+
                       <button
                         className="inline-flex items-center px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 text-xs"
-                        onClick={() => onDelete && onDelete(a.id)}
+                        onClick={() =>
+                          confirmDelete({
+                            id: a.id,
+                            kode: a.kode,
+                            judul: a.judul,
+                          })
+                        }
                         title="Hapus tugas"
                       >
                         <FiTrash2 className="mr-1" />

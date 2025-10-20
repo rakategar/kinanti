@@ -1,3 +1,4 @@
+// app/api/guru/broadcast/route.js
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 
@@ -40,31 +41,46 @@ export async function POST(req) {
       );
     }
 
-    // Ambil siswa di kelas yang sama
+    // Ambil semua siswa pada kelas yang sama
     const students = await prisma.user.findMany({
       where: { role: "siswa", kelas },
       select: { id: true, nama: true, phone: true },
     });
 
-    // (opsional) simpan jejak broadcast di log table kalau ada — diabaikan karena tidak ada tabelnya
+    // Panggil API bot
+    const botUrl =
+      process.env.BOT_INTERNAL_URL || "http://localhost:4000/broadcast";
+    const headers = { "Content-Type": "application/json" };
+    if (process.env.BOT_SECRET) {
+      headers["Authorization"] = `Bearer ${process.env.BOT_SECRET}`;
+    }
 
-    // di sini *seharusnya* kamu panggil service/bot internal untuk kirim WA
-    // contoh (pseudo):
-    // await fetch(process.env.BOT_INTERNAL_URL + "/broadcast", { method: "POST", body: JSON.stringify({...}) })
+    const resp = await fetch(botUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        kode,
+        kelas,
+        siswa: students,
+        judul: assignment.judul,
+        deadline: assignment.deadline,
+        pdfUrl: assignment.pdfUrl,
+      }),
+    });
 
-    const sampleTargets = students.slice(0, 5).map((s) => s.phone);
-    return NextResponse.json(
-      {
-        message: "Broadcast diproses.",
-        task: {
-          kode,
-          kelas,
-          targetCount: students.length,
-          sampleTargets,
-        },
-      },
-      { status: 200 }
-    );
+    const result = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      console.error("Bot response error:", result);
+      return NextResponse.json(
+        { error: result?.error || "Gagal kirim ke bot." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      message: "Broadcast diproses oleh bot.",
+      detail: result,
+    });
   } catch (err) {
     console.error("POST /api/guru/broadcast error:", err);
     return NextResponse.json(
