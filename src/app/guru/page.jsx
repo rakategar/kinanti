@@ -353,14 +353,14 @@ export default function GuruDashboard() {
               Buat Tugas
             </button>
 
-            <button
+            {/* <button
               onClick={() => setShowAssessmentForm(true)}
               className="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
               disabled={!guruId || broadcasting}
             >
               <FiPlus className="mr-2" />
               Buat Penilaian
-            </button>
+            </button> */}
 
             <button
               onClick={handleLogout}
@@ -401,13 +401,13 @@ export default function GuruDashboard() {
         </div>
 
         {/* Tabel Penilaian */}
-        <div className="mt-6">
+        {/* <div className="mt-6">
           {loadingAssess ? (
             <div className="animate-pulse h-56 bg-gray-200 rounded" />
           ) : (
             <AssessmentsTable data={filteredAssessments} />
           )}
-        </div>
+        </div> */}
       </div>
 
       {showForm && (

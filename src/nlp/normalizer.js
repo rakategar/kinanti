@@ -8,14 +8,19 @@ const SLANG = {
   ngumpulin: "kumpul",
   ngumpul: "kumpul",
   kumpulin: "kumpul",
+  kumpulkan: "kumpul",
+  mengumpulkan: "kumpul",
   uplod: "upload",
   uplot: "upload",
   uploud: "upload",
   tgskah: "tugas",
+  tgs: "tugas",
   tg: "tugas",
   mapel: "mata pelajaran",
   pelajaran: "mata pelajaran",
   besuk: "besok",
+  mau: "ingin",
+  pengen: "ingin",
 };
 
 function normalize(text) {

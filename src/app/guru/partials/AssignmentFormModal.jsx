@@ -1,8 +1,7 @@
 "use client";
-
 import { useState } from "react";
 import Swal from "sweetalert2";
-import "sweetalert2/dist/sweetalert2.min.css";
+import { SiGooglegemini } from "react-icons/si";
 
 function toast({ icon = "info", title = "", text = "", timer = 2200 }) {
   return Swal.fire({
@@ -17,79 +16,202 @@ function toast({ icon = "info", title = "", text = "", timer = 2200 }) {
   });
 }
 
+// Daftar kelas yang tersedia
+const KELAS_OPTIONS = [
+  "XTKJ1",
+  "XTKJJ2",
+  "XITKJ1",
+  "XITKJ2",
+  "XIITKJ1",
+  "XIITKJ2",
+  "TPTUP",
+];
+
 export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
   const [kode, setKode] = useState("");
   const [judul, setJudul] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
   const [kelas, setKelas] = useState("");
-  const [deadlineHari, setDeadlineHari] = useState(""); // N hari dari sekarang
+  const [kelasDropdownOpen, setKelasDropdownOpen] = useState(false);
+  const [deadlineHari, setDeadlineHari] = useState("");
   const [lampirPdf, setLampirPdf] = useState(false);
   const [file, setFile] = useState(null);
+  const [tambahKunciJawaban, setTambahKunciJawaban] = useState(false);
+  const [kunciJawabanFile, setKunciJawabanFile] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [checkingKode, setCheckingKode] = useState(false);
+  const [kodeStatus, setKodeStatus] = useState(null); // 'available' | 'taken' | null
 
-  async function submit() {
-    if (!guruId) {
-      toast({ icon: "error", title: "Gagal", text: "Guru tidak dikenali." });
+  // Filter kelas berdasarkan input
+  const filteredKelas = KELAS_OPTIONS.filter((k) =>
+    k.toLowerCase().includes(kelas.toLowerCase())
+  );
+
+  // Pengecekan kode tugas
+  async function checkKodeTugas(kodeValue) {
+    if (!kodeValue || kodeValue.trim() === "") {
+      setKodeStatus(null);
       return;
     }
-    if (!kode || !judul || !kelas) {
+
+    setCheckingKode(true);
+    try {
+      const res = await fetch(
+        `/api/assignments/check-kode?kode=${encodeURIComponent(
+          kodeValue.toUpperCase()
+        )}`
+      );
+      const data = await res.json();
+
+      if (data.available) {
+        setKodeStatus("available");
+      } else {
+        setKodeStatus("taken");
+      }
+    } catch (err) {
+      console.error("Error checking kode:", err);
+      setKodeStatus(null);
+    } finally {
+      setCheckingKode(false);
+    }
+  }
+
+  function handleKodeChange(e) {
+    const value = e.target.value;
+    setKode(value);
+    setKodeStatus(null);
+  }
+
+  function handleKodeBlur() {
+    if (kode.trim()) {
+      checkKodeTugas(kode);
+    }
+  }
+
+  function handleKelasChange(e) {
+    setKelas(e.target.value);
+    setKelasDropdownOpen(true);
+  }
+
+  function selectKelas(kelasValue) {
+    setKelas(kelasValue);
+    setKelasDropdownOpen(false);
+  }
+
+  function handleKunciJawabanChange(e) {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    // Validasi hanya PDF
+    if (selectedFile.type !== "application/pdf") {
       toast({
-        icon: "warning",
-        title: "Lengkapi Form",
-        text: "Kode, Judul, dan Kelas wajib diisi.",
+        icon: "error",
+        title: "Format Tidak Valid",
+        text: "Kunci jawaban hanya dapat berupa file PDF!",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setKunciJawabanFile(selectedFile);
+  }
+
+  function handleFileChange(e) {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    // Validasi hanya PDF
+    if (selectedFile.type !== "application/pdf") {
+      toast({
+        icon: "error",
+        title: "Format Tidak Valid",
+        text: "File tugas hanya dapat berupa PDF!",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setFile(selectedFile);
+  }
+
+  async function submit() {
+    // Validasi kode tugas sudah dicek dan tersedia
+    if (kodeStatus === "taken") {
+      toast({
+        icon: "error",
+        title: "Kode Tugas Sudah Digunakan",
+        text: "Silakan gunakan kode tugas yang lain",
       });
       return;
     }
+
+    if (!kode || !judul || !deskripsi || !kelas) {
+      toast({
+        icon: "warning",
+        title: "Data Belum Lengkap",
+        text: "Mohon lengkapi semua field yang wajib diisi",
+      });
+      return;
+    }
+
     if (lampirPdf && !file) {
       toast({
         icon: "warning",
-        title: "Lampiran belum dipilih",
-        text: "Kamu memilih melampirkan PDF, pilih file-nya.",
+        title: "PDF Belum Dipilih",
+        text: "Anda memilih lampirkan PDF, tapi belum memilih file",
+      });
+      return;
+    }
+
+    if (tambahKunciJawaban && !kunciJawabanFile) {
+      toast({
+        icon: "warning",
+        title: "Kunci Jawaban Belum Dipilih",
+        text: "Anda memilih tambahkan kunci jawaban, tapi belum memilih file",
       });
       return;
     }
 
     setSaving(true);
     try {
-      const form = new FormData();
-      form.append("guruId", String(guruId));
-      form.append("kode", kode.toUpperCase());
-      form.append("judul", judul);
-      form.append("deskripsi", deskripsi);
-      form.append("kelas", kelas.toUpperCase().replace(/\s+/g, ""));
-      form.append("deadlineHari", String(deadlineHari || ""));
-      form.append("lampirPdf", lampirPdf ? "ya" : "tidak");
-      if (file) form.append("file", file);
+      const formData = new FormData();
+      formData.append("guruId", guruId);
+      formData.append("kode", kode);
+      formData.append("judul", judul);
+      formData.append("deskripsi", deskripsi);
+      formData.append("kelas", kelas.toUpperCase().replace(/\s+/g, ""));
+      formData.append("deadlineHari", deadlineHari || "");
+      formData.append("lampirPdf", lampirPdf);
 
-      const res = await fetch("/api/guru/create-assignment", {
-        method: "POST",
-        body: form,
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast({
-          icon: "error",
-          title: "Gagal membuat tugas",
-          text: data.error || "Terjadi kesalahan pada server.",
-        });
-        return;
+      if (file) formData.append("file", file);
+
+      formData.append("tambahKunciJawaban", tambahKunciJawaban);
+      if (kunciJawabanFile) {
+        formData.append("kunciJawabanFile", kunciJawabanFile);
       }
 
-      // ✅ Berhasil → tutup modal & tampilkan toast sukses kanan atas
-      toast({
-        icon: "success",
-        title: "Tugas berhasil dibuat",
-        text: data.message || "",
+      const res = await fetch("/api/assignments", {
+        method: "POST",
+        body: formData,
       });
 
-      // biarkan parent yang menutup & refresh (sesuai logika yang sudah ada)
-      onCreated?.();
-    } catch (e) {
-      console.error("create err:", e);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal membuat tugas");
+
+      toast({
+        icon: "success",
+        title: "Berhasil",
+        text: "Tugas berhasil dibuat!",
+      });
+
+      if (onCreated) onCreated(data.assignment);
+      if (onClose) onClose();
+    } catch (err) {
+      console.error(err);
       toast({
         icon: "error",
-        title: "Gagal",
-        text: "Gagal membuat tugas.",
+        title: "Gagal Menyimpan",
+        text: err.message || "Terjadi kesalahan saat menyimpan tugas",
       });
     } finally {
       setSaving(false);
@@ -97,122 +219,264 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white w-full max-w-2xl rounded-xl shadow-2xl p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Buat Tugas</h2>
-          <button
-            className="text-gray-500 hover:text-gray-700"
-            onClick={onClose}
-            disabled={saving}
-          >
-            ✕
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+          <h2 className="text-2xl font-bold">📝 Buat Tugas Baru</h2>
+          <p className="text-blue-100 text-sm mt-1">
+            Lengkapi form di bawah untuk membuat tugas baru
+          </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Kode</label>
-            <input
-              className="w-full rounded border px-3 py-2"
-              placeholder="MTK-101"
-              value={kode}
-              onChange={(e) => setKode(e.target.value)}
-              disabled={saving}
-            />
+        {/* Content */}
+        <div className="overflow-y-auto p-6 flex-1">
+          {/* Kode Tugas */}
+          <div className="mb-5">
+            <label className="block font-semibold mb-2 text-gray-700">
+              Kode Tugas <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                className={`w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 transition-all ${
+                  kodeStatus === "available"
+                    ? "border-green-500 focus:ring-green-200"
+                    : kodeStatus === "taken"
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+                }`}
+                placeholder="Contoh: MTK-001"
+                value={kode}
+                onChange={handleKodeChange}
+                onBlur={handleKodeBlur}
+              />
+              {checkingKode && (
+                <div className="absolute right-3 top-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                </div>
+              )}
+              {kodeStatus === "available" && (
+                <div className="absolute right-3 top-3 text-green-600">✓</div>
+              )}
+              {kodeStatus === "taken" && (
+                <div className="absolute right-3 top-3 text-red-600">✗</div>
+              )}
+            </div>
+            {kodeStatus === "available" && (
+              <p className="text-sm text-green-600 mt-1">
+                ✓ Kode tugas tersedia
+              </p>
+            )}
+            {kodeStatus === "taken" && (
+              <p className="text-sm text-red-600 mt-1">
+                ✗ Kode tugas sudah digunakan
+              </p>
+            )}
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Kelas</label>
+
+          {/* Judul */}
+          <div className="mb-5">
+            <label className="block font-semibold mb-2 text-gray-700">
+              Judul Tugas <span className="text-red-500">*</span>
+            </label>
             <input
-              className="w-full rounded border px-3 py-2"
-              placeholder="XITKJ2"
-              value={kelas}
-              onChange={(e) =>
-                setKelas(e.target.value.toUpperCase().replace(/\s+/g, ""))
-              }
-              disabled={saving}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">Judul</label>
-            <input
-              className="w-full rounded border px-3 py-2"
-              placeholder="Tugas Bab 3 Persamaan Kuadrat"
+              type="text"
+              className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+              placeholder="Contoh: Tugas Matematika Bab 5"
               value={judul}
               onChange={(e) => setJudul(e.target.value)}
-              disabled={saving}
             />
           </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">Deskripsi</label>
+
+          {/* Deskripsi */}
+          <div className="mb-5">
+            <label className="block font-semibold mb-2 text-gray-700">
+              Deskripsi <span className="text-red-500">*</span>
+            </label>
             <textarea
-              className="w-full rounded border px-3 py-2 min-h-[100px]"
-              placeholder="Instruksi untuk siswa…"
+              className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-none"
+              placeholder="Jelaskan detail tugas yang harus dikerjakan..."
+              rows={4}
               value={deskripsi}
               onChange={(e) => setDeskripsi(e.target.value)}
-              disabled={saving}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Deadline (hari)
-            </label>
-            <input
-              type="number"
-              min="0"
-              className="w-full rounded border px-3 py-2"
-              placeholder="3 (opsional)"
-              value={deadlineHari}
-              onChange={(e) => setDeadlineHari(e.target.value)}
-              disabled={saving}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Kosongkan jika tanpa deadline.
-            </p>
+          {/* Kelas & Deadline */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+            {/* Kelas dengan Dropdown Searchable */}
+            <div className="relative">
+              <label className="block font-semibold mb-2 text-gray-700">
+                Kelas <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                placeholder="Ketik atau pilih kelas..."
+                value={kelas}
+                onChange={handleKelasChange}
+                onFocus={() => setKelasDropdownOpen(true)}
+                onBlur={() =>
+                  setTimeout(() => setKelasDropdownOpen(false), 200)
+                }
+                autoComplete="off"
+              />
+
+              {/* Dropdown Options */}
+              {kelasDropdownOpen && filteredKelas.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {filteredKelas.map((kelasOption) => (
+                    <button
+                      key={kelasOption}
+                      type="button"
+                      className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+                      onClick={() => selectKelas(kelasOption)}
+                    >
+                      {kelasOption}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 mt-1">
+                💡 Ketik untuk mencari atau pilih dari dropdown
+              </p>
+            </div>
+
+            {/* Deadline */}
+            <div>
+              <label className="block font-semibold mb-2 text-gray-700">
+                Deadline (hari)
+              </label>
+              <input
+                type="number"
+                className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                placeholder="Contoh: 7"
+                value={deadlineHari}
+                onChange={(e) => setDeadlineHari(e.target.value)}
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Lampirkan PDF Guru?
-            </label>
-            <div className="flex items-center gap-2">
+          {/* Lampiran PDF Tugas */}
+          <div className="mb-5 bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={lampirPdf}
                 onChange={(e) => setLampirPdf(e.target.checked)}
-                disabled={saving}
+                className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
               />
-              <span className="text-sm">Ya, lampirkan file PDF</span>
-            </div>
+              <span className="font-semibold text-gray-700">
+                📎 Lampirkan PDF Tugas
+              </span>
+            </label>
             {lampirPdf && (
-              <div className="mt-2">
+              <div className="mt-3">
                 <input
                   type="file"
-                  accept="application/pdf"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  disabled={saving}
+                  accept=".pdf"
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                  onChange={handleFileChange}
                 />
-                <p className="text-xs text-gray-500 mt-1">Maks ~10MB.</p>
+                {file && (
+                  <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
+                    <span>✓</span> File dipilih: {file.name}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Kunci Jawaban */}
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-lg border-2 border-amber-200">
+            <label className="block font-semibold mb-1 text-gray-800 flex items-center gap-2">
+              <span className="text-xl">🔑</span>
+              Kunci Jawaban
+            </label>
+
+            {/* Keterangan Penilaian Otomatis */}
+            <div className="flex items-center gap-1.5 mb-3 text-xs text-gray-600">
+              <span className="italic">* Penilaian otomatis oleh Gemini</span>
+              <SiGooglegemini className="text-blue-500 w-3.5 h-3.5" />
+            </div>
+
+            <div className="flex gap-4 mb-3">
+              <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-all">
+                <input
+                  type="radio"
+                  name="kunciJawaban"
+                  checked={tambahKunciJawaban === true}
+                  onChange={() => setTambahKunciJawaban(true)}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="font-medium">Ya, tambahkan</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-all">
+                <input
+                  type="radio"
+                  name="kunciJawaban"
+                  checked={tambahKunciJawaban === false}
+                  onChange={() => {
+                    setTambahKunciJawaban(false);
+                    setKunciJawabanFile(null);
+                  }}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="font-medium">Tidak</span>
+              </label>
+            </div>
+
+            {tambahKunciJawaban && (
+              <div className="bg-white p-4 rounded-lg border border-amber-300 shadow-sm">
+                <label className="block font-semibold mb-2 text-gray-700">
+                  Upload Kunci Jawaban (PDF){" "}
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer"
+                  onChange={handleKunciJawabanChange}
+                />
+                {kunciJawabanFile && (
+                  <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
+                    <span>✓</span> File dipilih: {kunciJawabanFile.name}
+                  </p>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-end gap-2">
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-4 border-t flex gap-3 justify-end">
           <button
-            className="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300"
+            type="button"
             onClick={onClose}
+            className="px-6 py-2.5 bg-white border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition-all"
             disabled={saving}
           >
             Batal
           </button>
           <button
-            className="px-4 py-2 rounded-md bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
+            type="button"
             onClick={submit}
-            disabled={saving}
+            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+            disabled={saving || kodeStatus === "taken"}
           >
-            {saving ? "Menyimpan…" : "Simpan"}
+            {saving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Menyimpan...</span>
+              </>
+            ) : (
+              <>
+                <span>💾</span>
+                <span>Simpan Tugas</span>
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -1,3 +1,2 @@
-2025/10/20-11:52:21.175 5ca4 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Site Characteristics Database/MANIFEST-000001
-2025/10/20-11:52:21.176 5ca4 Recovering log #3
-2025/10/20-11:52:21.176 5ca4 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Site Characteristics Database/000003.log 
+2025/11/27-13:55:42.842 e13f Creating DB /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Site Characteristics Database since it was missing.
+2025/11/27-13:55:42.850 e13f Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Site Characteristics Database/MANIFEST-000001

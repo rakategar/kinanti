@@ -35,7 +35,6 @@ function relDeadline(dateLike) {
   if (days === 0) return "• hari ini";
   if (days === 1) return "• besok";
   if (days > 1) return `• ${days} hari lagi`;
-  // lewat tapi tidak jauh → absolut saja
   return "• sudah lewat";
 }
 
@@ -80,6 +79,11 @@ export default function TugasTable({ assignments, userId }) {
   const [isUploading, setUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
 
+  // State untuk modal detail submission
+  const [isDetailModalOpen, setDetailModalOpen] = useState(false);
+  const [submissionDetail, setSubmissionDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
   // Urutkan by deadline (null di akhir), lalu by status
   const rows = useMemo(() => {
     const copy = [...assignments];
@@ -87,7 +91,6 @@ export default function TugasTable({ assignments, userId }) {
       const ad = a.deadline ? new Date(a.deadline).getTime() : Infinity;
       const bd = b.deadline ? new Date(b.deadline).getTime() : Infinity;
       if (ad !== bd) return ad - bd;
-      // opsional: SELESAI di bawah
       const as = a.status === "SELESAI" ? 1 : 0;
       const bs = b.status === "SELESAI" ? 1 : 0;
       return as - bs;
@@ -105,6 +108,36 @@ export default function TugasTable({ assignments, userId }) {
     setSelectedTugas(null);
     setUploadedFile(null);
     setModalOpen(false);
+  };
+
+  // ================== Modal Detail Submission ==================
+  const openDetailModal = async (assignment) => {
+    setDetailModalOpen(true);
+    setLoadingDetail(true);
+    setSubmissionDetail(null);
+
+    try {
+      const res = await fetch(
+        `/api/submission-detail?userId=${userId}&tugasId=${assignment.id}`
+      );
+      const data = await res.json();
+
+      if (res.ok) {
+        setSubmissionDetail(data);
+      } else {
+        showAlert(`❌ ${data.error || "Gagal memuat detail"}`);
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      showAlert("❌ Terjadi kesalahan saat memuat detail");
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const closeDetailModal = () => {
+    setDetailModalOpen(false);
+    setSubmissionDetail(null);
   };
 
   // ================== Drag & Drop ==================
@@ -168,7 +201,6 @@ export default function TugasTable({ assignments, userId }) {
       if (res.ok) {
         showAlert("✅ Tugas berhasil dikumpulkan!");
         closeModal();
-        // reload agar status & link ikut ter-update
         window.location.reload();
       } else {
         showAlert(`❌ ${data.error || "Gagal mengunggah."}`);
@@ -216,7 +248,16 @@ export default function TugasTable({ assignments, userId }) {
                   >
                     <td className="p-3">{index + 1}</td>
                     <td className="p-3 font-medium">{kode}</td>
-                    <td className="p-3">{assignment.judul}</td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <span>{assignment.judul}</span>
+                        {assignment.kunciJawaban && (
+                          <div className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-green-500 animate-pulse">
+                            <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
 
                     {/* Deadline */}
                     <td className="p-3">
@@ -234,7 +275,7 @@ export default function TugasTable({ assignments, userId }) {
                       )}
                     </td>
 
-                    {/* Status (Selesai / Terlambat / Belum Selesai) */}
+                    {/* Status */}
                     <td className="p-3">
                       <StatusBadge
                         status={assignment.status}
@@ -264,17 +305,12 @@ export default function TugasTable({ assignments, userId }) {
                     <td className="p-3">
                       {isSelesai ? (
                         assignment.lampiranDikumpulkan ? (
-                          <a
-                            href={assignment.lampiranDikumpulkan.replace(
-                              /['"]+/g,
-                              ""
-                            )}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
+                          <button
+                            onClick={() => openDetailModal(assignment)}
+                            className="text-blue-600 hover:underline font-medium"
                           >
                             📄 Tugas Saya
-                          </a>
+                          </button>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )
@@ -397,6 +433,113 @@ export default function TugasTable({ assignments, userId }) {
                   {isUploading ? "Menyimpan..." : "Simpan"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detail Submission */}
+      {isDetailModalOpen && (
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+              <h2 className="text-2xl font-bold">📝 Detail Tugas Saya</h2>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {loadingDetail ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+              ) : submissionDetail ? (
+                <div className="space-y-6">
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Peringkat */}
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-lg border-2 border-amber-200">
+                      <p className="text-sm text-gray-600 mb-1">Peringkat</p>
+                      <p className="text-2xl font-bold text-amber-700">
+                        {submissionDetail.grade ?? "—"}
+                      </p>
+                    </div>
+
+                    {/* Nilai */}
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-200">
+                      <p className="text-sm text-gray-600 mb-1">Nilai</p>
+                      <p className="text-2xl font-bold text-green-700">
+                        {submissionDetail.score !== null &&
+                        submissionDetail.score !== undefined
+                          ? submissionDetail.score
+                          : "—"}
+                      </p>
+                    </div>
+
+                    {/* Status */}
+                    <div
+                      className={`bg-gradient-to-br p-4 rounded-lg border-2 ${
+                        submissionDetail.grade
+                          ? "from-blue-50 to-indigo-50 border-blue-200"
+                          : "from-gray-50 to-slate-50 border-gray-200"
+                      }`}
+                    >
+                      <p className="text-sm text-gray-600 mb-1">Status</p>
+                      <p
+                        className={`text-lg font-semibold ${
+                          submissionDetail.grade
+                            ? "text-blue-700"
+                            : "text-gray-600"
+                        }`}
+                      >
+                        {submissionDetail.grade
+                          ? "Sudah Dinilai"
+                          : "Belum Dinilai"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Evaluasi */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">
+                      📋 Evaluasi
+                    </p>
+                    <p className="text-gray-800 whitespace-pre-wrap">
+                      {submissionDetail.evaluation || "—"}
+                    </p>
+                  </div>
+
+                  {/* Preview PDF */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <p className="text-sm font-semibold text-gray-700 mb-3">
+                      📄 File Tugas
+                    </p>
+                    {submissionDetail.pdfUrl ? (
+                      <iframe
+                        src={submissionDetail.pdfUrl}
+                        className="w-full h-96 rounded-lg border-2 border-gray-300"
+                        title="Preview PDF"
+                      />
+                    ) : (
+                      <p className="text-gray-500">File tidak tersedia</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 py-12">
+                  Data tidak ditemukan
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end">
+              <button
+                onClick={closeDetailModal}
+                className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>

@@ -11,14 +11,17 @@ const prisma =
   });
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-// ---- Supabase ----
-// Pindahkan KEY & URL ke ENV di production!
-// Di sini tetap gunakan konstanta agar konsisten dengan upload URL.
-const SUPABASE_URL = "https://wgdxgzraacfhfbxvxuzy.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnZHhnenJhYWNmaGZieHZ4dXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTAzNjM5OCwiZXhwIjoyMDU2NjEyMzk4fQ._dVS_wha-keEbaBb1xapdAeSpgJwwEAnWcrdnjDQ9nA";
-// NOTE: gunakan bucket bernama "submissions" (public).
+// ---- Supabase (ambil dari .env melalui process.env) ----
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error("SUPABASE_URL atau SUPABASE_KEY tidak ditemukan di env");
+}
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Webhook target (bisa override via env WEBHOOK_TUGAS_URL)
+const WEBHOOK_URL =
+  process.env.WEBHOOK_TUGAS_URL || "http://0.0.0.0:5678/webhook/nilai-tugas";
 
 export async function POST(req) {
   try {
@@ -37,7 +40,7 @@ export async function POST(req) {
       );
     }
 
-    // Validasi assignment & user ada
+    // Validasi assignment & user ada (ambil juga kunci jawaban)
     const [user, tugas] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
@@ -45,7 +48,7 @@ export async function POST(req) {
       }),
       prisma.assignment.findUnique({
         where: { id: tugasId },
-        select: { id: true, kode: true },
+        select: { id: true, kode: true, kunciJawaban: true },
       }),
     ]);
     if (!user)
@@ -59,7 +62,7 @@ export async function POST(req) {
         { status: 404 }
       );
 
-    // Validasi file
+    // Validasi file PDF
     const type = file.type || "";
     if (!type.includes("pdf")) {
       return NextResponse.json(
@@ -83,7 +86,7 @@ export async function POST(req) {
       .from("submissions")
       .upload(path, buffer, {
         contentType: "application/pdf",
-        upsert: true, // jika file sama di-path sama, timpa
+        upsert: true,
       });
 
     if (upErr) {
@@ -94,25 +97,26 @@ export async function POST(req) {
       );
     }
 
-    // URL publik (gunakan konstanta SUPABASE_URL biar ga mismatch)
+    // URL publik
     const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/submissions/${path}`;
 
-    // Simpan ke AssignmentSubmission:
-    // - Jika sudah ada submission siswa untuk tugas ini → update (biar idempoten)
-    // - Jika belum ada → create
+    // Simpan ke AssignmentSubmission (create atau update)
     const existing = await prisma.assignmentSubmission.findFirst({
       where: { siswaId: userId, tugasId },
       select: { id: true },
     });
 
+    let submissionRow;
     if (existing) {
-      await prisma.assignmentSubmission.update({
+      submissionRow = await prisma.assignmentSubmission.update({
         where: { id: existing.id },
         data: { pdfUrl: publicUrl },
+        select: { id: true, siswaId: true, tugasId: true, pdfUrl: true },
       });
     } else {
-      await prisma.assignmentSubmission.create({
+      submissionRow = await prisma.assignmentSubmission.create({
         data: { siswaId: userId, tugasId, pdfUrl: publicUrl },
+        select: { id: true, siswaId: true, tugasId: true, pdfUrl: true },
       });
     }
 
@@ -133,8 +137,43 @@ export async function POST(req) {
       });
     }
 
+    // --- Kirim webhook ke service eksternal ---
+    // payload: { id, siswaId, tugasId, pdfUrl, answerKeyUrl }
+    (async () => {
+      try {
+        const payload = {
+          id: submissionRow.id,
+          siswaId: submissionRow.siswaId,
+          tugasId: submissionRow.tugasId,
+          pdfUrl: submissionRow.pdfUrl,
+          answerKeyUrl: tugas.kunciJawaban || null,
+        };
+
+        const res = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          console.warn(
+            `Webhook POST failed (${res.status}): ${WEBHOOK_URL} - ${text}`
+          );
+        } else {
+          console.log(`Webhook POST success: ${WEBHOOK_URL}`);
+        }
+      } catch (whErr) {
+        console.error("Webhook error:", whErr);
+      }
+    })();
+
     return NextResponse.json(
-      { message: "Tugas berhasil dikumpulkan!", url: publicUrl },
+      {
+        message: "Tugas berhasil dikumpulkan!",
+        url: publicUrl,
+        submission: submissionRow,
+      },
       { status: 200 }
     );
   } catch (error) {

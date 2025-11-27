@@ -21,8 +21,39 @@ async function dialogManage(userPhone, intent, entities, rawText) {
   const isCancel = /^(batal|cancel)$/i.test(rawText || "");
   if (inGuruWizard && !isSave && !isCancel) intent = "guru_buat_penugasan";
 
-  if (state.lastIntent && intent === "fallback") intent = state.lastIntent;
-  else state.lastIntent = intent;
+  // Jika user sedang dalam dialog (ada lastIntent) dan:
+  // 1. Intent baru adalah fallback, ATAU
+  // 2. User hanya memberikan entity (misal jawab kode saja)
+  //    dan lastIntent membutuhkan entity tersebut
+  if (state.lastIntent) {
+    const lastNeeded = SLOT_RULES[state.lastIntent] || [];
+    const hasKodeEntity =
+      entities.kode || entities.kode_tugas || entities.assignmentCode;
+
+    // Jika intent fallback, lanjutkan intent lama
+    if (intent === "fallback") {
+      intent = state.lastIntent;
+    }
+    // Jika lastIntent butuh kode dan user baru kasih kode (text pendek),
+    // maka override intent ke lastIntent
+    else if (
+      lastNeeded.includes("kode_tugas") &&
+      hasKodeEntity &&
+      rawText.length < 20 &&
+      !/kumpul|detail|info|tugas saya|status/i.test(rawText)
+    ) {
+      console.log(
+        "🔄 Dialog continuation: overriding intent to",
+        state.lastIntent
+      );
+      intent = state.lastIntent;
+    }
+  }
+
+  // Update lastIntent hanya jika bukan fallback
+  if (intent !== "fallback") {
+    state.lastIntent = intent;
+  }
 
   state.slots = { ...state.slots, ...entities };
 
@@ -32,7 +63,24 @@ async function dialogManage(userPhone, intent, entities, rawText) {
   }
 
   const needed = SLOT_RULES[intent] || [];
-  const missing = needed.filter((s) => !state.slots[s]);
+  const missing = needed.filter((s) => {
+    // Cek dengan nama slot asli dan alias
+    if (state.slots[s]) return false;
+    // Cek alias untuk kode_tugas
+    if (
+      s === "kode_tugas" &&
+      (state.slots.kode || state.slots.assignmentCode)
+    ) {
+      // Salin ke slot utama jika belum ada
+      if (!state.slots.kode_tugas && state.slots.kode) {
+        state.slots.kode_tugas = state.slots.kode;
+      } else if (!state.slots.kode_tugas && state.slots.assignmentCode) {
+        state.slots.kode_tugas = state.slots.assignmentCode;
+      }
+      return false;
+    }
+    return true;
+  });
 
   if (missing.length > 0) {
     await setState(userPhone, state);

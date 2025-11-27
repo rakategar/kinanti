@@ -103,26 +103,28 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="max-w-5xl mx-auto bg-white p-4 md:p-6 rounded-xl shadow-xl relative">
+      <div className="max-w-5xl mx-auto bg-white p-4 md:p-6 rounded-xl shadow-xl">
         <KinantiBanner />
-        {/* Tombol Logout */}
-        <button
-          onClick={handleLogout}
-          className="absolute top-4 right-4 flex items-center px-3 py-1 md:px-4 md:py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all"
-        >
-          <FiLogOut className="mr-1 md:mr-2" />
-          <span className="hidden md:inline">Logout</span>
-        </button>
 
-        {/* Judul */}
-        <motion.h1
-          className="text-2xl md:text-3xl font-bold text-gray-800 mb-1"
-          initial={{ y: -8, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.35 }}
-        >
-          Selamat datang, {session?.user?.name}!
-        </motion.h1>
+        {/* Header dengan Judul dan Tombol Logout */}
+        <div className="flex items-center justify-between mb-1">
+          <motion.h1
+            className="text-2xl md:text-3xl font-bold text-gray-800"
+            initial={{ y: -8, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.35 }}
+          >
+            Selamat datang, {session?.user?.name}!
+          </motion.h1>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center px-3 py-1 md:px-4 md:py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all text-sm md:text-base"
+          >
+            <FiLogOut className="mr-1 md:mr-2" />
+            <span className="hidden md:inline">Logout</span>
+          </button>
+        </div>
 
         <motion.p
           className="text-gray-600 flex items-center text-sm md:text-base"
@@ -151,9 +153,21 @@ export default function Dashboard() {
         ) : filtered.length === 0 ? (
           <p className="text-gray-500 mt-4">Tidak ada tugas yang cocok.</p>
         ) : (
-          <div className="overflow-x-auto mt-4">
-            <TugasTable assignments={filtered} userId={session?.user?.id} />
-          </div>
+          <>
+            <div className="overflow-x-auto mt-4">
+              <TugasTable assignments={filtered} userId={session?.user?.id} />
+            </div>
+
+            {/* Keterangan Indikator */}
+            <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+              <div className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-green-500 animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-green-400"></div>
+              </div>
+              <span className="italic">
+                Indikator hijau berarti tugas dinilai secara otomatis
+              </span>
+            </div>
+          </>
         )}
       </div>
     </motion.div>

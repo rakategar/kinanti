@@ -1,20 +1,16 @@
 // src/nlp/entities.js
 // Ekstraksi entitas dasar: kode tugas, kelas, tanggal relatif (placeholder).
 
-// GANTI R_KODE lama dengan ini:
-// huruf 2-8 + opsional '-' + angka 1-4. (huruf saja di grup1, angka di grup2)
-const R_KODE = /\b([a-z]{2,8})[-_]?(\d{1,4})\b/gi;
+// Regex untuk menangkap kode tugas apa adanya (dengan atau tanpa dash)
+// Pattern: 2-8 huruf + optional dash/underscore + 1-4 digit
+const R_KODE = /\b([a-z]{2,8}[-_]?\d{1,4})\b/gi;
 
 // Contoh kelas: X TKJ 1, XI RPL 2, XII PPLG 3, tanpa spasi juga boleh: XTKJ1
 const R_KELAS = /\b(x|xi|xii)\s*([a-z]{2,6})\s*(\d{1,2})\b/gi;
 
-function normalizeKode(seri, num) {
-  const s = String(seri)
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "");
-  const n = String(num).replace(/\D/g, "");
-  // Tidak padding paksa: MTK123 tetap MTK-123 (kalau mau pad 2 digit, aktifkan padStart)
-  return `${s}-${n}`;
+function normalizeKode(raw) {
+  // Uppercase saja, JANGAN ubah format dash
+  return String(raw).toUpperCase().trim();
 }
 
 /**
@@ -43,21 +39,27 @@ function parseRelativeDate(text, now = new Date()) {
 function extractEntities(text) {
   const entities = {
     kode_tugas: null,
+    kode: null, // alias untuk kompatibilitas
+    assignmentCode: null, // alias lain
     kelas: null,
     tanggal: null, // Date jika berhasil parse
   };
 
-  // KODE TUGAS
+  // KODE TUGAS - ambil apa adanya
+  R_KODE.lastIndex = 0; // Reset regex state
   let m;
   while ((m = R_KODE.exec(text)) !== null) {
-    // ambil match pertama yang "masuk akal"
-    const seri = m[1];
-    const num = m[2];
-    entities.kode_tugas = normalizeKode(seri, num);
+    // ambil match pertama, normalize hanya uppercase
+    const raw = m[1];
+    const normalized = normalizeKode(raw);
+    entities.kode_tugas = normalized;
+    entities.kode = normalized;
+    entities.assignmentCode = normalized;
     break;
   }
 
   // KELAS
+  R_KELAS.lastIndex = 0; // Reset regex state
   while ((m = R_KELAS.exec(text)) !== null) {
     const tingkat = m[1];
     const jurusan = m[2];

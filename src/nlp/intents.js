@@ -10,12 +10,18 @@ const INTENTS = {
     keywords: [
       "halo",
       "hai",
+      "hai kinanti",
+      "halo kinanti",
       "assalamualaikum",
+      "assalamu'alaikum kinanti",
       "help",
       "bantuan",
       "menu",
       "mulai",
       "start",
+      "kinanti",
+      "hei kinanti",
+      "hey kinanti",
     ],
   },
 
@@ -67,7 +73,13 @@ const INTENTS = {
 
   // Detail tugas per kode
   siswa_detail_tugas: {
-    keywords: ["detail", "info", "informasi tugas", "lihat detail"],
+    keywords: [
+      "detail",
+      "info tugas",
+      "informasi tugas",
+      "lihat detail",
+      "detail tugas",
+    ],
     // dukung berbagai nama entitas agar kompatibel dengan pipeline yang berbeda
     needEntities: ["kode", "kode_tugas", "assignmentCode"],
   },
@@ -76,12 +88,26 @@ const INTENTS = {
   siswa_kumpul_tugas: {
     keywords: [
       "kumpul",
+      "kumpulkan",
+      "kumpulkan tugas",
       "upload tugas",
       "kirim tugas",
       "setor tugas",
       "ngumpul",
+      "ngumpulin",
+      "mau kumpul",
+      "mau ngumpul",
+      "ingin kumpul",
+      "ingin ngumpul",
+      "mengumpulkan tugas",
+      "mengumpulkan",
+      "mau mengumpulkan",
+      "ingin mengumpulkan",
+      "submit tugas",
+      "submit",
     ],
-    needEntities: ["kode", "kode_tugas", "assignmentCode"],
+    // HAPUS needEntities agar tetap terdeteksi tanpa kode
+    // needEntities: ["kode", "kode_tugas", "assignmentCode"],
   },
 
   // Batalkan sesi kumpul (hanya aktif saat sesi pengumpulan berjalan)

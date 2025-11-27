@@ -1,3 +1,2 @@
-2025/10/20-11:52:21.170 5caa Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Service Worker/Database/MANIFEST-000001
-2025/10/20-11:52:21.174 5caa Recovering log #3
-2025/10/20-11:52:21.181 5caa Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Service Worker/Database/000003.log 
+2025/11/27-13:55:45.179 e133 Creating DB /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Service Worker/Database since it was missing.
+2025/11/27-13:55:45.184 e133 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Service Worker/Database/MANIFEST-000001

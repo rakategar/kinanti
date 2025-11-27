@@ -24,6 +24,7 @@ export async function POST(req) {
       );
     }
 
+    // === OPTIMASI 1: Gabungkan query assignment dengan include ===
     const assignment = await prisma.assignment.findFirst({
       where: { kode, kelas },
       select: {
@@ -34,6 +35,7 @@ export async function POST(req) {
         kelas: true,
       },
     });
+
     if (!assignment) {
       return NextResponse.json(
         { error: "Tugas tidak ditemukan untuk kode/kelas tersebut." },
@@ -41,58 +43,79 @@ export async function POST(req) {
       );
     }
 
-    // Ambil semua siswa di kelas
-    const students = await prisma.user.findMany({
-      where: { role: "siswa", kelas },
-      select: { id: true, nama: true, phone: true },
-      orderBy: [{ nama: "asc" }],
-    });
+    // === OPTIMASI 2: Parallel Query dengan Promise.all ===
+    const [students, statuses, submissions] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: "siswa", kelas },
+        select: { id: true, nama: true, phone: true },
+        orderBy: [{ nama: "asc" }],
+      }),
+      prisma.assignmentStatus.findMany({
+        where: { tugasId: assignment.id },
+        select: { siswaId: true, status: true },
+      }),
+      prisma.assignmentSubmission.findMany({
+        where: { tugasId: assignment.id },
+        select: {
+          siswaId: true,
+          pdfUrl: true,
+          createdAt: true,
+          evaluation: true,
+          grade: true,
+          score: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
-    // Ambil status & submission mereka untuk tugas ini
-    const statuses = await prisma.assignmentStatus.findMany({
-      where: { tugasId: assignment.id },
-      select: { id: true, siswaId: true, status: true },
-    });
-
-    const submissions = await prisma.assignmentSubmission.findMany({
-      where: { tugasId: assignment.id },
-      select: { id: true, siswaId: true, pdfUrl: true, createdAt: true },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Map akses cepat
-    const stBySiswa = new Map();
-    for (const st of statuses) stBySiswa.set(st.siswaId, st.status);
-
+    // === OPTIMASI 3: Map building lebih efisien ===
+    const stBySiswa = new Map(statuses.map((st) => [st.siswaId, st.status]));
     const subBySiswa = new Map();
+
+    // Hanya ambil submission terbaru per siswa
     for (const sub of submissions) {
-      if (!subBySiswa.has(sub.siswaId)) subBySiswa.set(sub.siswaId, sub); // ambil yang terbaru (karena sorted desc)
+      if (!subBySiswa.has(sub.siswaId)) {
+        subBySiswa.set(sub.siswaId, sub);
+      }
     }
 
-    // Buat workbook
+    // ===== ExcelJS Workbook =====
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("Rekap");
+    wb.creator = "LOGICODE";
+    wb.created = new Date();
 
+    const ws = wb.addWorksheet("Rekap", {
+      views: [{ state: "frozen", ySplit: 1 }],
+    });
+
+    // Kolom
     ws.columns = [
       { header: "Kelas", key: "kelas", width: 14 },
-      { header: "Nama Siswa", key: "nama", width: 26 },
-      { header: "No. HP", key: "phone", width: 18 },
+      { header: "Nama Siswa", key: "nama", width: 28 },
+      { header: "No. HP", key: "phone", width: 16 },
       { header: "Kode", key: "kode", width: 12 },
-      { header: "Judul", key: "judul", width: 32 },
+      { header: "Judul", key: "judul", width: 40 },
       { header: "Deadline", key: "deadline", width: 20 },
-      { header: "Status", key: "status", width: 16 },
+      { header: "Status", key: "status", width: 18 },
       { header: "Submitted At", key: "submittedAt", width: 22 },
       { header: "File URL", key: "url", width: 60 },
+      { header: "Evaluation", key: "evaluation", width: 50 },
+      { header: "Grade", key: "grade", width: 12 },
+      { header: "Score", key: "score", width: 12 },
     ];
 
     const deadlineStr = assignment.deadline
-      ? new Date(assignment.deadline).toLocaleString("id-ID")
+      ? new Date(assignment.deadline).toLocaleString("id-ID", {
+          timeZone: "Asia/Jakarta",
+        })
       : "—";
 
-    for (const s of students) {
+    // === OPTIMASI 4: Build rows array terlebih dahulu ===
+    const rows = students.map((s) => {
       const status = stBySiswa.get(s.id) || "BELUM_SELESAI";
       const sub = subBySiswa.get(s.id);
-      ws.addRow({
+
+      return {
         kelas: assignment.kelas || kelas,
         nama: s.nama || `Siswa ${s.id}`,
         phone: s.phone || "",
@@ -101,16 +124,106 @@ export async function POST(req) {
         deadline: deadlineStr,
         status,
         submittedAt: sub?.createdAt
-          ? new Date(sub.createdAt).toLocaleString("id-ID")
+          ? new Date(sub.createdAt).toLocaleString("id-ID", {
+              timeZone: "Asia/Jakarta",
+            })
           : "",
         url: sub?.pdfUrl || "",
+        evaluation: sub?.evaluation || "",
+        grade: sub?.grade ?? "",
+        score: sub?.score !== null && sub?.score !== undefined ? sub.score : "",
+      };
+    });
+
+    // === OPTIMASI 5: Bulk insert rows ===
+    ws.addRows(rows);
+
+    // ===== Styling header =====
+    const header = ws.getRow(1);
+    header.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    header.alignment = { vertical: "middle", horizontal: "center" };
+    header.height = 22;
+    header.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF0EA5E9" },
+      };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FF93C5FD" } },
+        left: { style: "thin", color: { argb: "FF93C5FD" } },
+        bottom: { style: "thin", color: { argb: "FF93C5FD" } },
+        right: { style: "thin", color: { argb: "FF93C5FD" } },
+      };
+    });
+
+    // Wrap text untuk kolom panjang
+    ["judul", "url", "evaluation"].forEach((key) => {
+      const col = ws.getColumn(key);
+      col.alignment = { wrapText: true, vertical: "top" };
+    });
+
+    // Alignment untuk kolom numerik
+    ws.getColumn("score").alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
+    ws.getColumn("grade").alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
+
+    // AutoFilter
+    ws.autoFilter = {
+      from: "A1",
+      to: "L1",
+    };
+
+    // === OPTIMASI 6: Simplified table creation ===
+    // Hindari penggunaan ws.getRows() yang lambat
+    if (rows.length > 0) {
+      const tableRef = `A1:L${rows.length + 1}`;
+      ws.addTable({
+        name: "RekapTable",
+        ref: tableRef,
+        headerRow: true,
+        totalsRow: false,
+        style: {
+          theme: "TableStyleMedium9",
+          showRowStripes: true,
+        },
+        columns: [
+          { name: "Kelas", filterButton: true },
+          { name: "Nama Siswa", filterButton: true },
+          { name: "No. HP", filterButton: true },
+          { name: "Kode", filterButton: true },
+          { name: "Judul", filterButton: true },
+          { name: "Deadline", filterButton: true },
+          { name: "Status", filterButton: true },
+          { name: "Submitted At", filterButton: true },
+          { name: "File URL", filterButton: true },
+          { name: "Evaluation", filterButton: true },
+          { name: "Grade", filterButton: true },
+          { name: "Score", filterButton: true },
+        ],
+        rows: rows.map((row) => [
+          row.kelas,
+          row.nama,
+          row.phone,
+          row.kode,
+          row.judul,
+          row.deadline,
+          row.status,
+          row.submittedAt,
+          row.url,
+          row.evaluation,
+          row.grade,
+          row.score,
+        ]),
       });
     }
 
-    // Styling ringan header
-    ws.getRow(1).font = { bold: true };
-    ws.getRow(1).alignment = { vertical: "middle", horizontal: "center" };
-
+    // === OPTIMASI 7: Stream buffer untuk memory efficiency ===
     const buffer = await wb.xlsx.writeBuffer();
 
     return new NextResponse(buffer, {

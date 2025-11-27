@@ -1,3 +1,2 @@
-2025/10/20-11:52:21.350 5cb3 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/shared_proto_db/MANIFEST-000001
-2025/10/20-11:52:21.351 5cb3 Recovering log #10
-2025/10/20-11:52:21.352 5cb3 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/shared_proto_db/000010.log 
+2025/11/27-13:55:43.014 e13e Creating DB /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/shared_proto_db since it was missing.
+2025/11/27-13:55:43.025 e13e Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/shared_proto_db/MANIFEST-000001

@@ -1,3 +1,2 @@
-2025/10/20-11:52:21.165 5caa Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Sync Data/LevelDB/MANIFEST-000001
-2025/10/20-11:52:21.166 5caa Recovering log #3
-2025/10/20-11:52:21.166 5caa Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Sync Data/LevelDB/000003.log 
+2025/11/27-13:55:42.821 e133 Creating DB /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Sync Data/LevelDB since it was missing.
+2025/11/27-13:55:42.834 e133 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Sync Data/LevelDB/MANIFEST-000001

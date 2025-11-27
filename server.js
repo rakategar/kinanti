@@ -41,6 +41,38 @@ async function getUserRoleByJid(jid) {
 }
 
 // =====================
+// Helper: Sapaan & Menu
+// =====================
+function buildGreetingMessage(userName, role) {
+  const greeting = `👋 Halo, *${userName}*!\n\nSelamat datang di *Kinanti Bot*.\n`;
+
+  if (role === "guru" || role === "teacher") {
+    return (
+      greeting +
+      "\n📚 *Menu Guru:*\n" +
+      "• *buat tugas* — Buat tugas baru\n" +
+      "• *kirim <KODE> <KELAS>* — Broadcast tugas ke kelas\n" +
+      "• *rekap <KODE> <KELAS>* — Download rekap Excel\n" +
+      "• *list siswa* — Daftar siswa di kelas\n" +
+      "• *gambar ke pdf* — Ubah foto jadi PDF\n\n" +
+      "Ketik perintah di atas untuk mulai! 🚀"
+    );
+  } else {
+    // Siswa
+    return (
+      greeting +
+      "\n🎒 *Menu Siswa:*\n" +
+      "• *tugas saya* — Cek tugas belum selesai\n" +
+      "• *status tugas* — Riwayat tugas selesai\n" +
+      "• *detail <KODE>* — Lihat detail tugas\n" +
+      "• *kumpul <KODE>* — Kumpulkan tugas (PDF)\n" +
+      "• *gambar ke pdf* — Ubah foto jadi PDF\n\n" +
+      "Ketik perintah di atas untuk mulai! 🚀"
+    );
+  }
+}
+
+// =====================
 // WhatsApp Message Loop
 // =====================
 waClient.on("message", async (message) => {
@@ -67,6 +99,35 @@ waClient.on("message", async (message) => {
     }
 
     const intent = dialog.to || "";
+
+    // ========== HANDLER SAPAAN ==========
+    if (intent === "sapaan_help") {
+      const phone = phoneFromJid(message.from);
+
+      // Cek apakah user terdaftar
+      const user = await prisma.user.findFirst({
+        where: { phone },
+        select: { nama: true, role: true },
+      });
+
+      if (!user) {
+        // User belum terdaftar
+        return message.reply(
+          "👋 Halo! Sepertinya kamu belum terdaftar di sistem Kinanti.\n\n" +
+            "📝 Silakan daftar terlebih dahulu di:\n" +
+            "🌐 *https://kinantiku.com*\n\n" +
+            "Setelah mendaftar, kamu bisa kembali ke sini dan mulai menggunakan bot ini! 😊"
+        );
+      }
+
+      // User sudah terdaftar, tampilkan menu sesuai role
+      const userName = user.nama || "Pengguna";
+      let userRole = String(user.role || "siswa").toLowerCase();
+      if (userRole === "teacher") userRole = "guru";
+      if (userRole === "student") userRole = "siswa";
+
+      return message.reply(buildGreetingMessage(userName, userRole));
+    }
 
     if (intent === "img_to_pdf" || intent === "guru_img_to_pdf") {
       await startImgToPdf(message);
@@ -131,7 +192,9 @@ console.log("Memulai Bot...");
 
 waClient.on("qr", (qr) => {
   console.log("QR received, scan di WhatsApp!");
-  console.log(qr);
+  console.log("\n=== SCAN QR CODE DI BAWAH INI ===\n");
+  qrcode.generate(qr, { small: true });
+  console.log("\n=================================\n");
 });
 
 waClient.on("ready", () => {

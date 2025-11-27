@@ -27,10 +27,25 @@ function classify(text, entities) {
     // keywords
     score += scoreKeywords(text, cfg.keywords || []);
 
-    // entitas yang disyaratkan
+    // entitas yang disyaratkan - beri skor lebih tinggi jika ada
     if (cfg.needEntities) {
       for (const e of cfg.needEntities) {
         if (entities[e]) score += 1.5;
+      }
+    }
+
+    // Boost untuk siswa_kumpul_tugas jika ada keyword kumpul DAN ada kode
+    if (name === "siswa_kumpul_tugas" && /kumpul/.test(text)) {
+      score += 2; // Boost bahkan tanpa kode
+      if (entities.kode || entities.kode_tugas || entities.assignmentCode) {
+        score += 2; // Boost tambahan jika ada kode
+      }
+    }
+
+    // Boost untuk siswa_detail_tugas jika ada keyword detail/info DAN ada kode
+    if (name === "siswa_detail_tugas" && /detail|info/.test(text)) {
+      if (entities.kode || entities.kode_tugas || entities.assignmentCode) {
+        score += 2;
       }
     }
 

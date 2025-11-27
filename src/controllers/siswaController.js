@@ -1,4 +1,3 @@
-
 // src/controllers/siswaController.js
 // Fitur Siswa: daftar tugas, detail tugas, status tugas, dan kumpul tugas (unggah PDF ke Supabase)
 // + Fitur Umum: Greeting (halo/assalamualaikum) untuk guru & siswa, serta nomor belum terdaftar.
@@ -89,7 +88,7 @@ async function listDoneAssignments(student) {
   return prisma.assignmentStatus.findMany({
     where: { siswaId: student.id, status: "SELESAI" },
     include: { tugas: true },
-    orderBy: { updatedAt: "desc" },
+    orderBy: { id: "desc" },
   });
 }
 
@@ -301,6 +300,12 @@ function detectIntent(body = "") {
 // ========== Handler utama siswa ==========
 async function handleSiswaCommand(message, opts = {}) {
   try {
+    console.log("\n🎓 === SISWA CONTROLLER START ===");
+    console.log("📨 Message from:", message.from);
+    console.log("📝 Message body:", message.body);
+    console.log("🔧 Opts intent:", opts.intent);
+    console.log("🔧 Opts entities:", opts.entities);
+
     // === NEW: Prioritaskan state PENDING lebih dulu ===
     const pending = PENDING.get(message.from);
     if (pending) {
@@ -346,7 +351,8 @@ async function handleSiswaCommand(message, opts = {}) {
 
     const body = String(message.body || "");
     const lbody = body.toLowerCase();
-    const intent = detectIntent(body);
+    // Gunakan intent dari NLP pipeline jika tersedia; fallback ke deteksi sederhana
+    const intent = opts.intent || detectIntent(body);
 
     const needsStudent = () =>
       [
@@ -438,7 +444,12 @@ async function handleSiswaCommand(message, opts = {}) {
     // C. Detail <KODE>
     let detailKode = null;
     if (intent === "siswa_detail_tugas") {
-      detailKode = (opts.entities?.kode || opts.entities?.assignmentCode || "")
+      detailKode = (
+        opts.entities?.kode ||
+        opts.entities?.kode_tugas ||
+        opts.entities?.assignmentCode ||
+        ""
+      )
         .toString()
         .trim();
     }
@@ -467,23 +478,48 @@ async function handleSiswaCommand(message, opts = {}) {
     // D. Kumpul <KODE>
     let kumpulKode = null;
     if (intent === "siswa_kumpul_tugas") {
-      kumpulKode = (opts.entities?.kode || opts.entities?.assignmentCode || "")
-        .toString()
-        .trim();
+      console.log("✅ Intent = siswa_kumpul_tugas");
+      console.log("   opts.entities:", opts.entities);
+      console.log("   opts.entities?.kode:", opts.entities?.kode);
+      console.log("   opts.entities?.kode_tugas:", opts.entities?.kode_tugas);
+      console.log(
+        "   opts.entities?.assignmentCode:",
+        opts.entities?.assignmentCode
+      );
+      const rawKode =
+        opts.entities?.kode ||
+        opts.entities?.kode_tugas ||
+        opts.entities?.assignmentCode;
+      console.log("   rawKode result:", rawKode);
+      console.log("   rawKode type:", typeof rawKode);
+      console.log("   rawKode truthy?:", !!rawKode);
+      if (rawKode) {
+        kumpulKode = String(rawKode).trim();
+        console.log("   ✅ Extracted kumpulKode from entities:", kumpulKode);
+      } else {
+        console.log("   ❌ rawKode is falsy, cannot extract");
+      }
     }
     if (!kumpulKode) {
       const m = lbody.match(/kumpul\s+([a-z0-9_-]+)/i);
-      if (m) kumpulKode = m[1].toUpperCase();
+      if (m) {
+        kumpulKode = m[1].toUpperCase();
+        console.log("   Fallback regex matched:", kumpulKode);
+      }
     }
     if (kumpulKode) {
+      console.log("🔍 Searching for assignment with code:", kumpulKode);
       const found = await findAssignmentForStudentByKode(student, kumpulKode);
       if (!found) {
+        console.log("❌ Assignment not found");
         await message.reply(`😕 Tugas dengan kode *${kumpulKode}* ga ketemu.`);
         return;
       }
+      console.log("✅ Assignment found, starting submission");
       await beginSubmission(message, student, found.assignment);
       return;
     }
+    console.log("⚠️  No kumpulKode extracted, continuing to next handler...");
 
     // E. Menu siswa (fallback bantuan)
     if (
@@ -502,11 +538,13 @@ async function handleSiswaCommand(message, opts = {}) {
     }
 
     // ===== Fallback =====
+    console.log("❓ Reached fallback - perintah tidak dikenali");
+    console.log("🎓 === SISWA CONTROLLER END (FALLBACK) ===\n");
     await message.reply(
       "🤷 Perintah ga dikenali.\nKetik *menu* buat lihat opsi atau *kumpul <KODE>* buat kumpul tugas."
     );
   } catch (e) {
-    console.error("handleSiswaCommand error:", e);
+    console.error("❌ handleSiswaCommand error:", e);
     await message.reply("😵 Aduh, ada error di fitur siswa. Coba lagi ya!");
   }
 }
