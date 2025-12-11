@@ -1,2 +1,3 @@
-2025/11/27-13:55:42.985 e175 Creating DB /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Session Storage since it was missing.
-2025/11/27-13:55:42.992 e175 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Session Storage/MANIFEST-000001
+2025/11/27-22:37:59.901 7941 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Session Storage/MANIFEST-000001
+2025/11/27-22:37:59.902 7941 Recovering log #3
+2025/11/27-22:37:59.903 7941 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Session Storage/000003.log 

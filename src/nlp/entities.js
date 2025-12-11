@@ -1,9 +1,19 @@
 // src/nlp/entities.js
 // Ekstraksi entitas dasar: kode tugas, kelas, tanggal relatif (placeholder).
 
-// Regex untuk menangkap kode tugas apa adanya (dengan atau tanpa dash)
-// Pattern: 2-8 huruf + optional dash/underscore + 1-4 digit
-const R_KODE = /\b([a-z]{2,8}[-_]?\d{1,4})\b/gi;
+// Daftar kata umum yang BUKAN kode tugas
+const COMMON_WORDS = new Set([
+  'kumpul', 'kumpulkan', 'mengumpulkan', 'detail', 'info', 'tugas', 'saya', 
+  'ingin', 'mau', 'status', 'riwayat', 'lihat', 'cek', 'ada', 'yang', 'apa',
+  'tentang', 'untuk', 'dari', 'dengan', 'adalah', 'ini', 'itu', 'guru', 'siswa'
+]);
+
+// Regex untuk menangkap kode tugas apa adanya (dengan atau tanpa dash dan angka)
+// Pattern yang lebih spesifik:
+// 1. Kode dengan angka langsung: MTK001, IPA1, TKJ2
+// 2. Kode dengan dash/underscore: IPA-1, TKJ_2, IPA-SALINAN
+// 3. Kode uppercase minimal 4 huruf tanpa kata umum: TANAMAN, BIOLOGI
+const R_KODE = /\b([A-Z]{2,15}(?:\d+|[-_][A-Z0-9]+)*)\b/g;
 
 // Contoh kelas: X TKJ 1, XI RPL 2, XII PPLG 3, tanpa spasi juga boleh: XTKJ1
 const R_KELAS = /\b(x|xi|xii)\s*([a-z]{2,6})\s*(\d{1,2})\b/gi;
@@ -45,13 +55,24 @@ function extractEntities(text) {
     tanggal: null, // Date jika berhasil parse
   };
 
-  // KODE TUGAS - ambil apa adanya
+  // KODE TUGAS - uppercase dulu karena regex kita uppercase-only
+  const textUpper = text.toUpperCase();
   R_KODE.lastIndex = 0; // Reset regex state
   let m;
-  while ((m = R_KODE.exec(text)) !== null) {
-    // ambil match pertama, normalize hanya uppercase
+  while ((m = R_KODE.exec(textUpper)) !== null) {
     const raw = m[1];
     const normalized = normalizeKode(raw);
+    
+    // Skip jika kata umum
+    if (COMMON_WORDS.has(normalized.toLowerCase())) {
+      continue;
+    }
+    
+    // Skip jika hanya huruf dan terlalu umum (kurang dari 4 karakter)
+    if (!/\d/.test(normalized) && !/[-_]/.test(normalized) && normalized.length < 4) {
+      continue;
+    }
+    
     entities.kode_tugas = normalized;
     entities.kode = normalized;
     entities.assignmentCode = normalized;

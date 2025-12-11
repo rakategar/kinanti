@@ -72,24 +72,61 @@ async function getStudentBySender(senderJid) {
   const phone = phoneFromJid(senderJid);
   return prisma.user.findFirst({
     where: { phone, role: "siswa" },
+    select: { id: true, nama: true, phone: true, kelas: true }, // Include kelas
   });
 }
 
 // Daftar tugas BELUM_SELESAI (untuk menu "tugas saya")
 async function listOpenAssignments(student) {
-  return prisma.assignmentStatus.findMany({
+  // Filter berdasarkan siswaId, status, dan kelas siswa
+  const items = await prisma.assignmentStatus.findMany({
     where: { siswaId: student.id, status: "BELUM_SELESAI" },
     include: { tugas: { include: { guru: true } } },
   });
+
+  // Filter tugas yang kelasnya sesuai dengan kelas siswa
+  if (student.kelas) {
+    const studentKelas = String(student.kelas);
+    return items.filter((item) => {
+      const tugasKelas = String(item.tugas.kelas || "");
+      // Cek apakah kelas tugas cocok dengan kelas siswa
+      return tugasKelas === studentKelas;
+    });
+  }
+
+  // Jika siswa tidak punya kelas, return semua (fallback)
+  return items;
 }
 
 // Riwayat tugas (SELESAI)
 async function listDoneAssignments(student) {
-  return prisma.assignmentStatus.findMany({
+  const items = await prisma.assignmentStatus.findMany({
     where: { siswaId: student.id, status: "SELESAI" },
     include: { tugas: true },
     orderBy: { id: "desc" },
   });
+
+  // Ambil submission untuk mendapatkan grade & score
+  const itemsWithSubmission = await Promise.all(
+    items.map(async (item) => {
+      const submission = await prisma.assignmentSubmission.findFirst({
+        where: { siswaId: student.id, tugasId: item.tugasId },
+        select: { grade: true, score: true },
+      });
+      return { ...item, submission };
+    })
+  );
+
+  // Filter tugas yang kelasnya sesuai dengan kelas siswa
+  if (student.kelas) {
+    const studentKelas = String(student.kelas);
+    return itemsWithSubmission.filter((item) => {
+      const tugasKelas = String(item.tugas.kelas || "");
+      return tugasKelas === studentKelas;
+    });
+  }
+
+  return itemsWithSubmission;
 }
 
 // Dapatkan tugas by kode (yang memang ditugaskan ke siswa tsb)
@@ -100,6 +137,16 @@ async function findAssignmentForStudentByKode(student, kode) {
   });
   if (!asg) return null;
 
+  // Cek apakah kelas tugas sesuai dengan kelas siswa
+  if (student.kelas) {
+    const studentKelas = String(student.kelas);
+    const tugasKelas = String(asg.kelas || "");
+    if (tugasKelas !== studentKelas) {
+      console.log(`⚠️ Tugas ${kode} tidak sesuai kelas. Siswa: ${studentKelas}, Tugas: ${tugasKelas}`);
+      return null;
+    }
+  }
+
   const status = await prisma.assignmentStatus.findFirst({
     where: { tugasId: asg.id, siswaId: student.id },
   });
@@ -109,6 +156,117 @@ async function findAssignmentForStudentByKode(student, kode) {
 }
 
 // ========== Pengumpulan ==========
+
+// Trigger penilaian otomatis via webhook n8n
+async function triggerAutoGrading(
+  submissionId,
+  siswaId,
+  tugasId,
+  pdfUrl,
+  answerKeyUrl,
+  message
+) {
+  const WEBHOOK_URL =
+    process.env.WEBHOOK_TUGAS_URL || "http://0.0.0.0:5678/webhook/nilai-tugas";
+
+  try {
+    console.log(`🤖 Triggering auto-grading for submission ${submissionId}...`);
+
+    const payload = {
+      id: submissionId,
+      siswaId,
+      tugasId,
+      pdfUrl,
+      answerKeyUrl,
+    };
+
+    const res = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.warn(
+        `Webhook POST failed (${res.status}): ${WEBHOOK_URL} - ${text}`
+      );
+      await message.reply(
+        "⚠️ Gagal memproses penilaian otomatis. Guru akan menilai manual."
+      );
+      return;
+    }
+
+    console.log(`✅ Webhook POST success: ${WEBHOOK_URL}`);
+
+    // Polling untuk mendapatkan hasil penilaian (max 30 detik)
+    await pollGradingResult(submissionId, message, 30);
+  } catch (err) {
+    console.error("[triggerAutoGrading] Error:", err);
+    await message.reply(
+      "⚠️ Gagal memproses penilaian otomatis. Guru akan menilai manual."
+    );
+  }
+}
+
+// Poll hasil penilaian dari database
+async function pollGradingResult(submissionId, message, maxSeconds = 120) {
+  const startTime = Date.now();
+  const interval = 10000; // cek setiap 10 detik
+  const maxTime = maxSeconds * 1000;
+
+  while (Date.now() - startTime < maxTime) {
+    await new Promise((resolve) => setTimeout(resolve, interval));
+
+    try {
+      const submission = await prisma.assignmentSubmission.findUnique({
+        where: { id: submissionId },
+        select: { evaluation: true, grade: true, score: true },
+      });
+
+      // Cek apakah sudah ada hasil (grade dan score terisi)
+      if (
+        submission?.grade &&
+        submission?.score !== null &&
+        submission?.score !== undefined
+      ) {
+        console.log(
+          `✅ Grading result received for submission ${submissionId}`
+        );
+
+        // Format grade emoji
+        const gradeEmoji = {
+          A: "🌟",
+          B: "⭐",
+          C: "✨",
+          D: "💫",
+        };
+        const emoji = gradeEmoji[submission.grade] || "📊";
+
+        // Kirim hasil ke siswa
+        await message.reply(
+          `🎓 *HASIL PENILAIAN OTOMATIS*\n\n` +
+            `${emoji} *Grade: ${submission.grade}*\n` +
+            `📊 *Score: ${submission.score}/100*\n\n` +
+            `💬 *Evaluasi:*\n${
+              submission.evaluation || "Tidak ada catatan."
+            }\n\n` +
+            `Semangat terus belajarnya! 🚀`
+        );
+        return;
+      }
+    } catch (err) {
+      console.error("[pollGradingResult] Error:", err);
+      break;
+    }
+  }
+
+  // Timeout - hasil belum tersedia
+  console.warn(`⏱️ Grading timeout for submission ${submissionId}`);
+  await message.reply(
+    "⏱️ Penilaian memakan waktu lebih lama. Hasilnya akan diupdate nanti ya! Cek status tugas secara berkala."
+  );
+}
 
 // Mulai sesi pengumpulan
 async function beginSubmission(message, student, assignment) {
@@ -209,8 +367,14 @@ async function handleMediaWhilePending(message, pending, student) {
       subdir
     );
 
+    // Ambil data assignment untuk cek kunci jawaban
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: pending.assignmentId },
+      select: { kunciJawaban: true },
+    });
+
     // Simpan submission + set status SELESAI
-    await safeUpsertSubmission({
+    const submissionRow = await safeUpsertSubmission({
       tugasId: pending.assignmentId,
       siswaId: student.id,
       data: {
@@ -227,12 +391,40 @@ async function handleMediaWhilePending(message, pending, student) {
     });
 
     PENDING.delete(message.from);
-    await message.reply(
-      "🎉 *Tugas sukses terkumpul!*\n" +
-        `📌 Kode: *${pending.assignmentKode}*\n` +
-        `📂 File: ${fileName}\n` +
-        "Mantap! 🚀 Cek status dengan ketik *status tugas*."
-    );
+
+    // Cek apakah tugas dinilai otomatis
+    const isAutoGraded = assignment?.kunciJawaban ? true : false;
+
+    if (isAutoGraded) {
+      // Kirim notifikasi awal
+      await message.reply(
+        "🎉 *Tugas sukses terkumpul!*\n" +
+          `📌 Kode: *${pending.assignmentKode}*\n` +
+          `📂 File: ${fileName}\n\n` +
+          "🤖 *Tugas ini dinilai otomatis*\n" +
+          "⏳ Sedang diproses oleh AI... mohon tunggu sebentar."
+      );
+
+      // Trigger webhook ke n8n untuk penilaian otomatis (async)
+      triggerAutoGrading(
+        submissionRow.id,
+        student.id,
+        pending.assignmentId,
+        url,
+        assignment.kunciJawaban,
+        message
+      ).catch((err) => {
+        console.error("[siswaController] Auto-grading trigger error:", err);
+      });
+    } else {
+      // Tugas manual
+      await message.reply(
+        "🎉 *Tugas sukses terkumpul!*\n" +
+          `📌 Kode: *${pending.assignmentKode}*\n` +
+          `📂 File: ${fileName}\n` +
+          "Mantap! 🚀 Cek status dengan ketik *status tugas*."
+      );
+    }
   } catch (e) {
     console.error("[siswaController] upload/DB error:", e);
     await message.reply("😢 Oops, gagal simpan tugas. Coba lagi ya.");
@@ -408,8 +600,10 @@ async function handleSiswaCommand(message, opts = {}) {
       }
       const lines = items.map((it, i) => {
         const tg = it.tugas;
+        // Indikator tugas dinilai otomatis (ada kunci jawaban)
+        const autoGradeIndicator = tg.kunciJawaban ? " 🟢" : "";
         return (
-          `${i + 1}. *${tg.kode}* — ${tg.judul}\n` +
+          `${i + 1}. *${tg.kode}*${autoGradeIndicator} — ${tg.judul}\n` +
           `   Guru: ${tg.guru?.nama || "-"} | Deadline: ${fmtDateWIB(
             tg.deadline
           )}`
@@ -418,7 +612,8 @@ async function handleSiswaCommand(message, opts = {}) {
       await message.reply(
         "📚 *Daftar Tugas Kamu* (pilih salah satu kodenya):\n\n" +
           lines.join("\n") +
-          "\n\nKetik *kode tugas* yang ingin direkap. Contoh: _TKJ-09_"
+          "\n\n🟢 = Dinilai otomatis\n" +
+          "Ketik *kode tugas* yang ingin direkap. Contoh: _TKJ-09_"
       );
       return;
     }
@@ -433,11 +628,41 @@ async function handleSiswaCommand(message, opts = {}) {
         await message.reply("Belum ada tugas selesai. Semangat! 💪");
         return;
       }
+      
+      // Emoji untuk grade
+      const gradeEmoji = {
+        A: "🌟",
+        B: "⭐",
+        C: "✨",
+        D: "💫",
+      };
+      
       const lines = items.slice(0, 10).map((it, i) => {
         const tg = it.tugas;
-        return `${i + 1}. *${tg.kode}* — ${tg.judul} (SELESAI)`;
+        const sub = it.submission;
+        
+        // Format nilai dan grade
+        let gradeInfo = "";
+        if (sub?.grade || sub?.score !== null) {
+          const emoji = gradeEmoji[sub?.grade] || "📊";
+          const gradeText = sub?.grade ? `${emoji} ${sub.grade}` : "";
+          const scoreText = sub?.score !== null && sub?.score !== undefined 
+            ? `(${sub.score})` 
+            : "";
+          
+          if (gradeText || scoreText) {
+            gradeInfo = ` | ${gradeText}${gradeText && scoreText ? " " : ""}${scoreText}`;
+          }
+        }
+        
+        return `${i + 1}. *${tg.kode}* — ${tg.judul}${gradeInfo}`;
       });
-      await message.reply("🧾 *Riwayat Tugas Selesai:*\n" + lines.join("\n"));
+      
+      await message.reply(
+        "🧾 *Riwayat Tugas Selesai:*\n\n" + 
+        lines.join("\n") +
+        "\n\n_Nilai & grade muncul untuk tugas yang sudah dinilai_"
+      );
       return;
     }
 
