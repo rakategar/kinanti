@@ -66,11 +66,13 @@ function buildRecapText(s) {
     `• Judul: ${s.judul ?? "-"}\n` +
     `• Deskripsi: ${s.deskripsi ?? "-"}\n` +
     `• Wajib PDF (siswa): ${s.lampirPdf === "ya" ? "Ya" : "Tidak"}\n` +
+    `• Penilaian Otomatis: ${s.penilaianOtomatis === "ya" ? "Ya 🟢" : "Tidak (manual)"}\n` +
     `• Deadline: ${
       s.deadlineHari ? `${s.deadlineHari} hari` : "Belum diatur"
     }\n` +
     `• Kelas: ${s.kelas ?? "-"}\n` +
-    (s.guruPdfReceived ? `• PDF Guru: *${s.guruPdfName || "terlampir"}*\n` : "")
+    (s.guruPdfReceived ? `• PDF Guru: *${s.guruPdfName || "terlampir"}*\n` : "") +
+    (s.kunciJawabanReceived ? `• Kunci Jawaban: *${s.kunciJawabanName || "terlampir"}* 🔑\n` : "")
   );
 }
 
@@ -88,16 +90,25 @@ async function handleGuruBuatPenugasan(message, { user, entities, waClient }) {
       judul: null,
       deskripsi: null,
       lampirPdf: null, // 'ya' | 'tidak' → juga berarti siswa wajib PDF
+      penilaianOtomatis: null, // 'ya' | 'tidak' → apakah pakai auto-grading
       deadlineHari: null, // integer hari
       kelas: entities.kelas || null,
 
-      // alur PDF guru
+      // alur PDF guru (lampiran tugas)
       awaitingPdf: false,
       guruPdfReceived: false,
       guruPdfName: null,
       guruPdfB64: null,
       guruPdfMime: null,
       guruPdfSize: null,
+      
+      // alur kunci jawaban (untuk penilaian otomatis)
+      awaitingKunciJawaban: false,
+      kunciJawabanReceived: false,
+      kunciJawabanName: null,
+      kunciJawabanB64: null,
+      kunciJawabanMime: null,
+      kunciJawabanSize: null,
     };
   } else if (!state.slots.kelas && entities.kelas) {
     state.slots.kelas = entities.kelas;
@@ -116,8 +127,13 @@ async function handleGuruBuatPenugasan(message, { user, entities, waClient }) {
 - Judul: ${s.judul ?? ""}
 - Deskripsi: ${s.deskripsi ?? ""}
 - Lampirkan PDF (ya/tidak): ${s.lampirPdf ?? ""}
+- Penilaian Otomatis (ya/tidak): ${s.penilaianOtomatis ?? ""}
 - Deadline: ${s.deadlineHari ?? "N"} (hari)
-- Kelas: ${s.kelas ? `*${s.kelas}*` : "(ketik kelas, misal: XIITKJ2)"}`;
+- Kelas: ${s.kelas ? `*${s.kelas}*` : "(ketik kelas, misal: XIITKJ2)"}
+
+📌 *Catatan:*
+• Jika *Penilaian Otomatis: ya*, kirim kunci jawaban PDF setelah klik simpan
+• Tugas dengan penilaian otomatis ditandai 🟢`;
 
   return waClient.sendMessage(message.from, form);
 }
@@ -137,6 +153,7 @@ function parseWizardLine(line) {
     judul: "judul",
     deskripsi: "deskripsi",
     "lampirkan pdf": "lampirPdf",
+    "penilaian otomatis": "penilaianOtomatis",
     deadline: "deadlineHari",
     kelas: "kelas",
   };
@@ -217,6 +234,68 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     return true;
   }
 
+  // ——— MENUNGGU KUNCI JAWABAN (untuk penilaian otomatis)
+  if (state.slots?.awaitingKunciJawaban) {
+    if (message.hasMedia) {
+      const media = await message.downloadMedia().catch(() => null);
+      if (!media) {
+        await message.reply(
+          "⚠️ Gagal mengunduh file. Coba kirim ulang kunci jawaban PDF-nya."
+        );
+        return true;
+      }
+      const mime = media.mimetype || "";
+      if (!/^application\/pdf$/i.test(mime)) {
+        await message.reply(
+          "🔑 Kunci jawaban harus *PDF*. Kirim ulang dalam format PDF ya."
+        );
+        return true;
+      }
+
+      const s = state.slots || {};
+      s.kunciJawabanReceived = true;
+      s.awaitingKunciJawaban = false;
+      s.kunciJawabanMime = mime;
+      s.kunciJawabanB64 = media.data;
+      s.kunciJawabanName = media.filename || "kunci_jawaban.pdf";
+      s.kunciJawabanSize = media.filesize || null;
+
+      state.slots = { ...s };
+      await setState(user.phone, state);
+
+      const recap = buildRecapText(s);
+      await message.reply(
+        `✅ *Kunci jawaban diterima:* ${s.kunciJawabanName} 🔑\n\n${recap}\n` +
+          "Jika sudah siap, ketik *simpan* untuk menyelesaikan. 💾"
+      );
+      return true;
+    }
+
+    if (/^lewati$/i.test(raw)) {
+      const s = state.slots || {};
+      s.awaitingKunciJawaban = false;
+      s.kunciJawabanReceived = false;
+      s.kunciJawabanName = null;
+      s.kunciJawabanB64 = null;
+      s.kunciJawabanMime = null;
+      s.kunciJawabanSize = null;
+      s.penilaianOtomatis = "tidak";
+      state.slots = { ...s };
+      await setState(user.phone, state);
+
+      await message.reply(
+        "➡️ Kunci jawaban dibatalkan. Tugas akan dinilai *manual* oleh guru.\n" +
+          "Kamu bisa lanjut isi field lain atau ketik *simpan* jika sudah lengkap."
+      );
+      return true;
+    }
+
+    await message.reply(
+      "⏳ Bot sedang menunggu *kunci jawaban PDF*. Kirim file PDF sekarang, atau ketik *lewati* untuk penilaian manual."
+    );
+    return true;
+  }
+
   // progress form bila ketik "buat tugas" lagi
   if (/^buat\s+tugas(\s+baru)?$/i.test(raw)) {
     const s = state.slots || {};
@@ -224,6 +303,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
 - Judul: ${s.judul ?? ""}
 - Deskripsi: ${s.deskripsi ?? ""}
 - Lampirkan PDF (ya/tidak): ${s.lampirPdf ?? ""}
+- Penilaian Otomatis (ya/tidak): ${s.penilaianOtomatis ?? ""}
 - Deadline: ${s.deadlineHari ?? "N"} (hari)
 - Kelas: ${s.kelas ? `*${s.kelas}*` : "(ketik kelas, misal: XIITKJ2)"}`;
     await message.reply(
@@ -250,6 +330,8 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     if (!s.kelas || !/^(X|XI|XII)[A-Z]{2,8}\d{1,2}$/i.test(String(s.kelas))) {
       missing.push("Kelas");
     }
+    
+    // Validasi lampiran PDF guru (opsional)
     if (s.lampirPdf === "ya" && !s.guruPdfReceived) {
       await message.reply(
         "📎 Kamu memilih *Lampirkan PDF: ya*.\n" +
@@ -260,6 +342,20 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       await setState(user.phone, state);
       return true;
     }
+    
+    // Validasi kunci jawaban (wajib jika penilaian otomatis)
+    if (s.penilaianOtomatis === "ya" && !s.kunciJawabanReceived) {
+      await message.reply(
+        "🔑 Kamu memilih *Penilaian Otomatis: ya*.\n" +
+          "Kirim *kunci jawaban PDF* sekarang (maks ~10MB), lalu ketik *simpan* lagi.\n" +
+          "Atau ketik *lewati* jika ingin penilaian manual."
+      );
+      s.awaitingKunciJawaban = true;
+      state.slots = { ...s };
+      await setState(user.phone, state);
+      return true;
+    }
+    
     if (missing.length) {
       await message.reply(
         `⚠️ Field belum lengkap: ${missing.join(", ")}.\n` +
@@ -323,6 +419,26 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       pdfUrl = await uploadPDFtoSupabase(buffer, fileName, s.guruPdfMime);
     }
 
+    // === Upload Kunci Jawaban (jika ada) ===
+    let kunciJawabanUrl = null;
+    if (s.kunciJawabanReceived && s.kunciJawabanB64 && s.kunciJawabanMime) {
+      const safeKode = String(kodeFinal || "TANPAKODE").replace(
+        /[^A-Za-z0-9_-]/g,
+        ""
+      );
+      const ts = new Date()
+        .toISOString()
+        .replace(/[-:TZ.]/g, "")
+        .slice(0, 14);
+      const baseName = s.kunciJawabanName?.toLowerCase().endsWith(".pdf")
+        ? s.kunciJawabanName
+        : `${safeKode}_kunci.pdf`;
+      const fileName = `kunci_${safeKode}_${ts}_${baseName}`;
+
+      const buffer = Buffer.from(s.kunciJawabanB64, "base64");
+      kunciJawabanUrl = await uploadPDFtoSupabase(buffer, fileName, s.kunciJawabanMime);
+    }
+
     try {
       const created = await prisma.assignment.create({
         data: {
@@ -333,6 +449,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
           kelas: kelasFinal,
           guruId: user.id,
           pdfUrl: pdfUrl || null,
+          kunciJawaban: kunciJawabanUrl || null, // Kunci jawaban untuk auto-grading
         },
       });
 
@@ -355,13 +472,15 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
 
       let recap =
         `✅ *Tugas berhasil dibuat!*\n` +
-        `• Kode: *${created.kode}*\n` +
+        `• Kode: *${created.kode}*${kunciJawabanUrl ? " 🟢" : ""}\n` +
         `• Judul: ${created.judul}\n` +
         `• Kelas: ${created.kelas}\n` +
+        `• Penilaian: ${kunciJawabanUrl ? "*Otomatis* 🤖" : "Manual"}\n` +
         `• Deadline: ${
           created.deadline ? fmtWIB(created.deadline) : "Belum diatur"
         }\n`;
       if (s.guruPdfReceived) recap += `• PDF Guru: *${s.guruPdfName}*\n`;
+      if (s.kunciJawabanReceived) recap += `• Kunci Jawaban: *${s.kunciJawabanName}* 🔑\n`;
       recap += `\nUntuk mengirim ke siswa: ketik *kirim ${created.kode} ${created.kelas}* 📣`;
 
       await message.reply(recap);
@@ -419,6 +538,17 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
         s.guruPdfB64 = null;
         s.guruPdfMime = null;
         s.guruPdfSize = null;
+      }
+    } else if (parsed.field === "penilaianOtomatis") {
+      s.penilaianOtomatis = /^(ya|yes|y)$/i.test(parsed.value) ? "ya" : "tidak";
+      updated++;
+      if (s.penilaianOtomatis === "ya") {
+        s.awaitingKunciJawaban = true;
+        s.kunciJawabanReceived = false;
+        s.kunciJawabanName = null;
+        s.kunciJawabanB64 = null;
+        s.kunciJawabanMime = null;
+        s.kunciJawabanSize = null;
       }
     } else if (parsed.field === "deadlineHari") {
       const n = parseInt(parsed.value.replace(/\D/g, ""), 10);
@@ -866,6 +996,21 @@ async function handleGuruCommand(
       return message.reply(
         `👥 Daftar siswa${kelas ? ` ${kelas}` : ""}:\n` + lines.join("\n")
       );
+    }
+
+    case "guru_help": {
+      // Tampilkan menu guru
+      const userName = user.nama || "Guru";
+      const menuGuru =
+        `👋 Halo, *${userName}*!\n\n` +
+        `📚 *Menu Guru:*\n` +
+        `• *buat tugas* — Buat tugas baru\n` +
+        `• *kirim <KODE> <KELAS>* — Broadcast tugas ke kelas\n` +
+        `• *rekap <KODE>* — Download rekap Excel\n` +
+        `• *list siswa* — Daftar siswa di kelas\n` +
+        `• *gambar ke pdf* — Ubah foto jadi PDF\n\n` +
+        `Ketik perintah di atas untuk mulai! 🚀`;
+      return message.reply(menuGuru);
     }
 
     default:

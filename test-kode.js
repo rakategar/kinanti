@@ -7,7 +7,15 @@ console.log("🧪 ========== TEST KODE TUGAS REGEX ==========\n");
 const COMMON_WORDS = new Set([
   'kumpul', 'kumpulkan', 'mengumpulkan', 'detail', 'info', 'tugas', 'saya', 
   'ingin', 'mau', 'status', 'riwayat', 'lihat', 'cek', 'ada', 'yang', 'apa',
-  'tentang', 'untuk', 'dari', 'dengan', 'adalah', 'ini', 'itu', 'guru', 'siswa'
+  'tentang', 'untuk', 'dari', 'dengan', 'adalah', 'ini', 'itu', 'guru', 'siswa',
+  // Sapaan & nama bot
+  'halo', 'hai', 'hey', 'hei', 'kinanti', 'assalamualaikum', 'help', 'bantuan',
+  'menu', 'mulai', 'start', 'selamat', 'pagi', 'siang', 'sore', 'malam',
+  // Kata kerja umum fitur
+  'buat', 'tambah', 'kirim', 'rekap', 'broadcast', 'sebar', 'umumkan', 'bagikan',
+  'list', 'daftar', 'data', 'gambar', 'foto', 'convert', 'ubah',
+  // Perintah wizard
+  'simpan', 'batal', 'cancel', 'lewati', 'skip', 'selesai', 'done', 'ya', 'tidak'
 ]);
 
 // Regex baru (sama seperti di entities.js)

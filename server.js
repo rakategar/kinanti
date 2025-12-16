@@ -138,12 +138,14 @@ waClient.on("message", async (message) => {
     if (role === "teacher") role = "guru";
     if (role === "student") role = "siswa";
 
+    // Cek apakah guru sedang dalam wizard (buat tugas / rekap)
     if (role === "guru") {
       const phone = phoneFromJid(message.from);
       const st = await getState(phone);
-      if (st?.lastIntent === "guru_rekap_wizard") {
+      // Jika sedang dalam wizard guru, arahkan ke guruController
+      if (st?.lastIntent === "guru_buat_penugasan" || st?.lastIntent === "guru_rekap_wizard") {
         return handleGuruCommand(message, {
-          intent,
+          intent: st.lastIntent, // Gunakan intent dari state, bukan dari classifier
           entities: dialog.slots,
           ctx,
           waClient,
@@ -161,13 +163,11 @@ waClient.on("message", async (message) => {
           excelUtil,
         });
       } else {
-        return handleSiswaCommand(message, {
-          intent,
-          entities: dialog.slots,
-          ctx,
-          supabase,
-          pdfUtil,
-        });
+        // Siswa tidak bisa akses fitur guru
+        return message.reply(
+          "🔒 Maaf, fitur ini khusus untuk *Guru*.\n\n" +
+          "Ketik *halo* untuk melihat menu siswa. 📚"
+        );
       }
     }
 

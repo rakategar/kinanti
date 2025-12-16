@@ -55,7 +55,11 @@ async function dialogManage(userPhone, intent, entities, rawText) {
     state.lastIntent = intent;
   }
 
-  state.slots = { ...state.slots, ...entities };
+  // JANGAN merge entities ke slots jika dalam wizard guru
+  // Wizard guru menangani slot sendiri via guruController
+  if (intent !== "guru_buat_penugasan") {
+    state.slots = { ...state.slots, ...entities };
+  }
 
   if (intent === "guru_buat_penugasan") {
     await setState(userPhone, state);

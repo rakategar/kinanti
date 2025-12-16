@@ -1,3 +1,54 @@
-2025/11/27-22:35:25.713 7511 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/27-22:35:25.714 7511 Recovering log #416
-2025/11/27-22:35:25.735 7511 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000416.log 
+2025/12/11-20:36:54.482 5d5e Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/11-20:36:54.483 5d5e Recovering log #1607
+2025/12/11-20:36:54.483 5d5e Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001607.log 
+2025/12/11-20:37:18.350 5d63 Compacting 1@0 + 0@1 files
+2025/12/11-20:37:18.391 5d63 Generated table #1610@0: 12661 keys, 294072 bytes
+2025/12/11-20:37:18.396 5d63 Generated table #1611@0: 2056 keys, 50462 bytes
+2025/12/11-20:37:18.396 5d63 Compacted 1@0 + 0@1 files => 344534 bytes
+2025/12/11-20:37:18.397 5d63 compacted to: files[ 0 2 14 0 0 0 0 ]
+2025/12/11-20:37:19.167 5d63 Level-0 table #1613: started
+2025/12/11-20:37:19.169 5d63 Level-0 table #1613: 17417 bytes OK
+2025/12/11-20:37:19.171 5d63 Delete type=0 #1607
+2025/12/11-20:37:19.171 5d63 Delete type=2 #1608
+2025/12/11-20:37:19.172 5d60 Manual compaction at level-0 from '\x004\x00\x00\x00' @ 72057594037927935 : 1 .. '\x005\x00\x00\x00' @ 0 : 0; will stop at '\x004\x00\x00\x05' @ 7390250 : 1
+2025/12/11-20:37:19.172 5d60 Compacting 1@0 + 2@1 files
+2025/12/11-20:37:19.195 5d60 Generated table #1614@0: 13084 keys, 303744 bytes
+2025/12/11-20:37:19.199 5d60 Generated table #1615@0: 2056 keys, 50462 bytes
+2025/12/11-20:37:19.199 5d60 Compacted 1@0 + 2@1 files => 354206 bytes
+2025/12/11-20:37:19.201 5d60 compacted to: files[ 0 2 14 0 0 0 0 ]
+2025/12/11-20:37:19.202 5d60 Delete type=2 #1613
+2025/12/11-20:37:19.203 5d60 Manual compaction at level-0 from '\x004\x00\x00\x05' @ 7390250 : 1 .. '\x005\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/12/11-20:37:19.311 5d60 Compacting 1@1 + 10@2 files
+2025/12/11-20:37:19.414 5d60 Generated table #1616@1: 33560 keys, 2314581 bytes
+2025/12/11-20:37:19.561 5d60 Generated table #1617@1: 42310 keys, 2206737 bytes
+2025/12/11-20:37:19.622 5d60 Generated table #1618@1: 10640 keys, 2153558 bytes
+2025/12/11-20:37:19.672 5d60 Generated table #1619@1: 103 keys, 2127794 bytes
+2025/12/11-20:37:19.709 5d60 Generated table #1620@1: 1756 keys, 2133893 bytes
+2025/12/11-20:37:19.781 5d60 Generated table #1621@1: 25990 keys, 2209763 bytes
+2025/12/11-20:37:19.861 5d60 Generated table #1622@1: 33368 keys, 2212062 bytes
+2025/12/11-20:37:19.956 5d60 Generated table #1623@1: 53580 keys, 2258162 bytes
+2025/12/11-20:37:20.027 5d60 Generated table #1624@1: 39247 keys, 2231898 bytes
+2025/12/11-20:37:20.039 5d60 Generated table #1625@1: 2434 keys, 1369468 bytes
+2025/12/11-20:37:20.039 5d60 Compacted 1@1 + 10@2 files => 21217916 bytes
+2025/12/11-20:37:20.040 5d60 compacted to: files[ 0 1 14 0 0 0 0 ]
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1599
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1602
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1604
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1603
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1611
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1610
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1600
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1614
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1596
+2025/12/11-20:37:20.041 5d60 Delete type=2 #1597
+2025/12/11-20:37:20.042 5d60 Delete type=2 #1595
+2025/12/11-20:37:20.042 5d60 Delete type=2 #1601
+2025/12/11-20:37:20.042 5d60 Delete type=2 #1598
+2025/12/11-20:38:06.839 5d60 Compacting 1@1 + 2@2 files
+2025/12/11-20:38:07.257 5d60 Generated table #1626@1: 99019 keys, 2249371 bytes
+2025/12/11-20:38:07.639 5d60 Generated table #1627@1: 92293 keys, 2024789 bytes
+2025/12/11-20:38:07.640 5d60 Compacted 1@1 + 2@2 files => 4274160 bytes
+2025/12/11-20:38:07.642 5d60 compacted to: files[ 0 0 14 0 0 0 0 ]
+2025/12/11-20:38:07.644 5d60 Delete type=2 #1615
+2025/12/11-20:38:07.645 5d60 Delete type=2 #1606
+2025/12/11-20:38:07.646 5d60 Delete type=2 #1605
