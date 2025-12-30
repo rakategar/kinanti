@@ -1,23 +1,30 @@
 # Filter Kelas pada Fitur "Tugas Saya"
 
 ## Problem
+
 Sebelumnya, ketika siswa mengetik **"tugas saya"**, sistem menampilkan SEMUA tugas yang ter-assign ke siswa tersebut, termasuk tugas dari kelas lain yang tidak sesuai dengan kelas siswa.
 
 **Contoh masalah:**
+
 - Siswa A kelas XIITKJ1 mendapat tugas untuk kelas XITKJ2
 - Siswa B kelas XITKJ2 melihat tugas untuk kelas XIITKJ1
 
 ## Solution
+
 Menambahkan filter kelas pada 3 fungsi utama di `siswaController.js`:
 
 ### 1. `getStudentBySender()`
+
 Sekarang menyertakan field `kelas` saat query siswa:
+
 ```javascript
 select: { id: true, nama: true, phone: true, kelas: true }
 ```
 
 ### 2. `listOpenAssignments()`
+
 Filter tugas BELUM_SELESAI berdasarkan kelas siswa:
+
 ```javascript
 if (student.kelas) {
   const studentKelas = String(student.kelas);
@@ -29,10 +36,13 @@ if (student.kelas) {
 ```
 
 ### 3. `listDoneAssignments()`
+
 Filter tugas SELESAI berdasarkan kelas siswa (konsisten dengan open assignments)
 
 ### 4. `findAssignmentForStudentByKode()`
+
 Validasi kelas saat siswa mencari tugas by kode (detail, kumpul):
+
 ```javascript
 if (student.kelas) {
   const studentKelas = String(student.kelas);
@@ -47,6 +57,7 @@ if (student.kelas) {
 ## Behavior
 
 ### Siswa dengan Kelas (Normal Case)
+
 ```
 Siswa: kelas = XIITKJ1
 Tugas di DB:
@@ -56,6 +67,7 @@ Tugas di DB:
 ```
 
 ### Siswa tanpa Kelas (Fallback)
+
 ```
 Siswa: kelas = null
 Behavior: Tampilkan semua tugas (backward compatibility)
@@ -64,11 +76,13 @@ Behavior: Tampilkan semua tugas (backward compatibility)
 ## Testing
 
 ### Unit Test
+
 ```bash
 node test-kelas-filter.js
 ```
 
 **Test Coverage:**
+
 - ✅ Siswa XIITKJ1 hanya lihat tugas kelas XIITKJ1
 - ✅ Siswa XITKJ2 hanya lihat tugas kelas XITKJ2
 - ✅ Siswa tanpa kelas melihat semua (fallback)
@@ -77,11 +91,13 @@ node test-kelas-filter.js
 ### Manual Test via WhatsApp
 
 #### Setup:
+
 1. Buat 2 siswa dengan kelas berbeda (XIITKJ1, XITKJ2)
 2. Buat tugas untuk masing-masing kelas
 3. Assign tugas ke siswa via `AssignmentStatus`
 
 #### Test Flow:
+
 ```
 Siswa XIITKJ1: "tugas saya"
 Expected: Hanya tugas kelas XIITKJ1
@@ -96,11 +112,13 @@ Expected: "😕 Tugas dengan kode IPA-002 ga ketemu."
 ## Impact on Other Features
 
 ### ✅ Tidak Berpengaruh:
+
 - Auto-grading (tetap berjalan normal)
 - Upload PDF (tetap berjalan normal)
 - Notifikasi hasil penilaian (tetap berjalan normal)
 
 ### ✅ Konsisten di Semua Intent:
+
 - `siswa_list_tugas` (tugas saya)
 - `siswa_status_tugas` (riwayat)
 - `siswa_detail_tugas` (detail <KODE>)
@@ -109,6 +127,7 @@ Expected: "😕 Tugas dengan kode IPA-002 ga ketemu."
 ## Database Schema
 
 ### User
+
 ```prisma
 model User {
   kelas Kelas?  // Enum: XTKJ1, XTKJ2, XITKJ1, dll.
@@ -116,6 +135,7 @@ model User {
 ```
 
 ### Assignment
+
 ```prisma
 model Assignment {
   kelas String  // String: "XIITKJ1", "XITKJ2", dll.
@@ -127,6 +147,7 @@ model Assignment {
 ## Logging
 
 Ketika siswa mencoba akses tugas kelas lain:
+
 ```
 ⚠️ Tugas IPA-002 tidak sesuai kelas. Siswa: XIITKJ1, Tugas: XITKJ2
 ```
@@ -134,15 +155,18 @@ Ketika siswa mencoba akses tugas kelas lain:
 ## Edge Cases
 
 ### 1. Siswa Pindah Kelas
+
 **Problem:** Siswa awalnya XITKJ1, pindah ke XIITKJ1  
 **Solution:** Update `User.kelas` di database, filter otomatis menyesuaikan
 
 ### 2. Tugas Multi-Kelas
+
 **Problem:** Guru ingin assign 1 tugas ke beberapa kelas  
 **Current Limitation:** Tidak didukung (1 assignment = 1 kelas)  
 **Workaround:** Buat tugas terpisah per kelas (MTK-001-XIITKJ1, MTK-001-XITKJ2)
 
 ### 3. Kelas String vs Enum
+
 **Problem:** Assignment.kelas (String) vs User.kelas (Enum)  
 **Solution:** Normalisasi dengan `String()` di filter
 
@@ -151,8 +175,9 @@ Ketika siswa mencoba akses tugas kelas lain:
 Jika ada data existing yang salah:
 
 ### Query: Cek siswa yang punya tugas kelas lain
+
 ```sql
-SELECT 
+SELECT
   u.id as siswa_id,
   u.nama,
   u.kelas as siswa_kelas,
@@ -166,6 +191,7 @@ WHERE u.kelas::text != a.kelas
 ```
 
 ### Fix: Hapus assignment status yang salah kelas
+
 ```sql
 DELETE FROM "AssignmentStatus"
 WHERE id IN (
@@ -180,15 +206,17 @@ WHERE id IN (
 
 ## Performance
 
-**Impact:** Minimal  
+**Impact:** Minimal
+
 - Filter di application layer (setelah query)
 - Array filtering O(n) dimana n = jumlah tugas per siswa (biasanya <50)
 - Tidak menambah database query
 
 **Alternative (Future):** Filter di database query untuk performance optimal:
+
 ```javascript
-where: { 
-  siswaId: student.id, 
+where: {
+  siswaId: student.id,
   status: "BELUM_SELESAI",
   tugas: { kelas: String(student.kelas) }
 }
@@ -200,7 +228,7 @@ where: {
 ✅ **Backward Compatible:** Siswa tanpa kelas tetap bisa akses  
 ✅ **Tested:** Unit test dan manual test passed  
 ✅ **Consistent:** Filter applied ke semua fitur tugas  
-✅ **Documented:** Lengkap dengan test dan troubleshooting guide  
+✅ **Documented:** Lengkap dengan test dan troubleshooting guide
 
 ---
 

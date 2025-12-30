@@ -90,7 +90,9 @@ testScores.forEach((score) => {
   else grade = "D";
 
   const emoji = gradeEmoji[grade];
-  console.log(`   Score ${score.toString().padStart(3)} → Grade ${grade} ${emoji}`);
+  console.log(
+    `   Score ${score.toString().padStart(3)} → Grade ${grade} ${emoji}`
+  );
 });
 console.log("✅ Grade conversion OK\n");
 

@@ -5,17 +5,74 @@ console.log("🧪 ========== TEST KODE TUGAS REGEX ==========\n");
 
 // Daftar kata umum (sama seperti di entities.js)
 const COMMON_WORDS = new Set([
-  'kumpul', 'kumpulkan', 'mengumpulkan', 'detail', 'info', 'tugas', 'saya', 
-  'ingin', 'mau', 'status', 'riwayat', 'lihat', 'cek', 'ada', 'yang', 'apa',
-  'tentang', 'untuk', 'dari', 'dengan', 'adalah', 'ini', 'itu', 'guru', 'siswa',
+  "kumpul",
+  "kumpulkan",
+  "mengumpulkan",
+  "detail",
+  "info",
+  "tugas",
+  "saya",
+  "ingin",
+  "mau",
+  "status",
+  "riwayat",
+  "lihat",
+  "cek",
+  "ada",
+  "yang",
+  "apa",
+  "tentang",
+  "untuk",
+  "dari",
+  "dengan",
+  "adalah",
+  "ini",
+  "itu",
+  "guru",
+  "siswa",
   // Sapaan & nama bot
-  'halo', 'hai', 'hey', 'hei', 'kinanti', 'assalamualaikum', 'help', 'bantuan',
-  'menu', 'mulai', 'start', 'selamat', 'pagi', 'siang', 'sore', 'malam',
+  "halo",
+  "hai",
+  "hey",
+  "hei",
+  "kinanti",
+  "assalamualaikum",
+  "help",
+  "bantuan",
+  "menu",
+  "mulai",
+  "start",
+  "selamat",
+  "pagi",
+  "siang",
+  "sore",
+  "malam",
   // Kata kerja umum fitur
-  'buat', 'tambah', 'kirim', 'rekap', 'broadcast', 'sebar', 'umumkan', 'bagikan',
-  'list', 'daftar', 'data', 'gambar', 'foto', 'convert', 'ubah',
+  "buat",
+  "tambah",
+  "kirim",
+  "rekap",
+  "broadcast",
+  "sebar",
+  "umumkan",
+  "bagikan",
+  "list",
+  "daftar",
+  "data",
+  "gambar",
+  "foto",
+  "convert",
+  "ubah",
   // Perintah wizard
-  'simpan', 'batal', 'cancel', 'lewati', 'skip', 'selesai', 'done', 'ya', 'tidak'
+  "simpan",
+  "batal",
+  "cancel",
+  "lewati",
+  "skip",
+  "selesai",
+  "done",
+  "ya",
+  "tidak",
 ]);
 
 // Regex baru (sama seperti di entities.js)
@@ -32,17 +89,21 @@ function extractKode(text) {
   while ((m = R_KODE.exec(textUpper)) !== null) {
     const raw = m[1];
     const normalized = normalizeKode(raw);
-    
+
     // Skip jika kata umum
     if (COMMON_WORDS.has(normalized.toLowerCase())) {
       continue;
     }
-    
+
     // Skip jika hanya huruf dan terlalu umum (kurang dari 4 karakter)
-    if (!/\d/.test(normalized) && !/[-_]/.test(normalized) && normalized.length < 4) {
+    if (
+      !/\d/.test(normalized) &&
+      !/[-_]/.test(normalized) &&
+      normalized.length < 4
+    ) {
       continue;
     }
-    
+
     return normalized;
   }
   return null;
@@ -51,33 +112,89 @@ function extractKode(text) {
 // Test cases
 const testCases = [
   // Format standar dengan angka
-  { input: "kumpul IPA1", expected: "IPA1", description: "Huruf + angka (tanpa dash)" },
-  { input: "kumpul MTK-003", expected: "MTK-003", description: "Huruf + dash + angka" },
-  { input: "kumpul FIS_02", expected: "FIS_02", description: "Huruf + underscore + angka" },
-  
+  {
+    input: "kumpul IPA1",
+    expected: "IPA1",
+    description: "Huruf + angka (tanpa dash)",
+  },
+  {
+    input: "kumpul MTK-003",
+    expected: "MTK-003",
+    description: "Huruf + dash + angka",
+  },
+  {
+    input: "kumpul FIS_02",
+    expected: "FIS_02",
+    description: "Huruf + underscore + angka",
+  },
+
   // Format tanpa angka (PENTING - BUG FIX!)
-  { input: "kumpul TANAMAN", expected: "TANAMAN", description: "Huruf saja (tanpa angka)" },
-  { input: "kumpul BIOLOGI", expected: "BIOLOGI", description: "Huruf panjang" },
-  { input: "TANAMAN", expected: "TANAMAN", description: "Kode saja (tanpa kata kumpul)" },
-  
+  {
+    input: "kumpul TANAMAN",
+    expected: "TANAMAN",
+    description: "Huruf saja (tanpa angka)",
+  },
+  {
+    input: "kumpul BIOLOGI",
+    expected: "BIOLOGI",
+    description: "Huruf panjang",
+  },
+  {
+    input: "TANAMAN",
+    expected: "TANAMAN",
+    description: "Kode saja (tanpa kata kumpul)",
+  },
+
   // Format dengan salinan/suffix
-  { input: "kumpul IPA1-SALINAN1", expected: "IPA1-SALINAN1", description: "Kode + dash + suffix" },
-  { input: "kumpul MTK-003-COPY", expected: "MTK-003-COPY", description: "Kode + dash + text suffix" },
-  
+  {
+    input: "kumpul IPA1-SALINAN1",
+    expected: "IPA1-SALINAN1",
+    description: "Kode + dash + suffix",
+  },
+  {
+    input: "kumpul MTK-003-COPY",
+    expected: "MTK-003-COPY",
+    description: "Kode + dash + text suffix",
+  },
+
   // Format campuran
   { input: "kumpul TKJ2", expected: "TKJ2", description: "3 huruf + 1 angka" },
-  { input: "kumpul RPL20", expected: "RPL20", description: "3 huruf + 2 angka" },
-  { input: "kumpul MTK192", expected: "MTK192", description: "3 huruf + 3 angka" },
-  
+  {
+    input: "kumpul RPL20",
+    expected: "RPL20",
+    description: "3 huruf + 2 angka",
+  },
+  {
+    input: "kumpul MTK192",
+    expected: "MTK192",
+    description: "3 huruf + 3 angka",
+  },
+
   // Case sensitive test
-  { input: "kumpul tanaman", expected: "TANAMAN", description: "Lowercase → uppercase" },
-  { input: "kumpul TANAMAN", expected: "TANAMAN", description: "Uppercase → uppercase" },
-  
+  {
+    input: "kumpul tanaman",
+    expected: "TANAMAN",
+    description: "Lowercase → uppercase",
+  },
+  {
+    input: "kumpul TANAMAN",
+    expected: "TANAMAN",
+    description: "Uppercase → uppercase",
+  },
+
   // Dalam kalimat penuh
-  { input: "saya ingin mengumpulkan tugas TANAMAN", expected: "TANAMAN", description: "Dalam kalimat panjang" },
-  
+  {
+    input: "saya ingin mengumpulkan tugas TANAMAN",
+    expected: "TANAMAN",
+    description: "Dalam kalimat panjang",
+  },
+
   // Edge cases
-  { input: "kumpul A", expected: null, description: "Terlalu pendek (1 huruf)" },
+  {
+    input: "kumpul A",
+    expected: null,
+    description: "Terlalu pendek (1 huruf)",
+  },
   { input: "kumpul AB", expected: "AB", description: "Minimal 2 huruf OK" },
 ];
 
@@ -90,7 +207,7 @@ console.log("📝 Test Results:\n");
 testCases.forEach((test, index) => {
   const result = extractKode(test.input);
   const isPass = result === test.expected;
-  
+
   if (isPass) {
     passed++;
     console.log(`✅ Test ${index + 1}: ${test.description}`);
@@ -117,7 +234,11 @@ if (failed === 0) {
 console.log("\n🐛 ========== BUG FIX VERIFICATION ==========");
 console.log("Original Bug: 'kumpul TANAMAN' tidak terdeteksi\n");
 
-const bugTests = ["kumpul TANAMAN", "TANAMAN", "saya ingin mengumpulkan tugas TANAMAN"];
+const bugTests = [
+  "kumpul TANAMAN",
+  "TANAMAN",
+  "saya ingin mengumpulkan tugas TANAMAN",
+];
 let allFixed = true;
 
 bugTests.forEach((input) => {

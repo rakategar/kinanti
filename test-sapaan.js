@@ -5,12 +5,48 @@ console.log("🧪 ========== TEST SAPAAN vs KODE TUGAS ==========\n");
 
 // Daftar kata umum (sama seperti di entities.js)
 const COMMON_WORDS = new Set([
-  'kumpul', 'kumpulkan', 'mengumpulkan', 'detail', 'info', 'tugas', 'saya', 
-  'ingin', 'mau', 'status', 'riwayat', 'lihat', 'cek', 'ada', 'yang', 'apa',
-  'tentang', 'untuk', 'dari', 'dengan', 'adalah', 'ini', 'itu', 'guru', 'siswa',
+  "kumpul",
+  "kumpulkan",
+  "mengumpulkan",
+  "detail",
+  "info",
+  "tugas",
+  "saya",
+  "ingin",
+  "mau",
+  "status",
+  "riwayat",
+  "lihat",
+  "cek",
+  "ada",
+  "yang",
+  "apa",
+  "tentang",
+  "untuk",
+  "dari",
+  "dengan",
+  "adalah",
+  "ini",
+  "itu",
+  "guru",
+  "siswa",
   // Sapaan & nama bot
-  'halo', 'hai', 'hey', 'hei', 'kinanti', 'assalamualaikum', 'help', 'bantuan',
-  'menu', 'mulai', 'start', 'selamat', 'pagi', 'siang', 'sore', 'malam'
+  "halo",
+  "hai",
+  "hey",
+  "hei",
+  "kinanti",
+  "assalamualaikum",
+  "help",
+  "bantuan",
+  "menu",
+  "mulai",
+  "start",
+  "selamat",
+  "pagi",
+  "siang",
+  "sore",
+  "malam",
 ]);
 
 // Regex baru (sama seperti di entities.js)
@@ -27,17 +63,21 @@ function extractKode(text) {
   while ((m = R_KODE.exec(textUpper)) !== null) {
     const raw = m[1];
     const normalized = normalizeKode(raw);
-    
+
     // Skip jika kata umum
     if (COMMON_WORDS.has(normalized.toLowerCase())) {
       continue;
     }
-    
+
     // Skip jika hanya huruf dan terlalu umum (kurang dari 4 karakter)
-    if (!/\d/.test(normalized) && !/[-_]/.test(normalized) && normalized.length < 4) {
+    if (
+      !/\d/.test(normalized) &&
+      !/[-_]/.test(normalized) &&
+      normalized.length < 4
+    ) {
       continue;
     }
-    
+
     return normalized;
   }
   return null;
@@ -57,7 +97,11 @@ const sapaanTests = [
   { input: "selamat pagi kinanti", expected: null, desc: "Sapaan waktu" },
   { input: "halo", expected: null, desc: "Sapaan halo saja" },
   // Tetap harus bisa detect kode tugas yang valid
-  { input: "hai kinanti, kumpul IPA1", expected: "IPA1", desc: "Sapaan + kode valid" },
+  {
+    input: "hai kinanti, kumpul IPA1",
+    expected: "IPA1",
+    desc: "Sapaan + kode valid",
+  },
   { input: "detail TANAMAN", expected: "TANAMAN", desc: "Kode tugas TANAMAN" },
   { input: "kumpul BIOLOGI", expected: "BIOLOGI", desc: "Kode tugas BIOLOGI" },
 ];
@@ -70,7 +114,7 @@ console.log("📝 Test Results:\n");
 sapaanTests.forEach((t, i) => {
   const result = extractKode(t.input);
   const ok = result === t.expected;
-  
+
   if (ok) {
     console.log(`✅ Test ${i + 1}: ${t.desc}`);
     console.log(`   Input: "${t.input}" → ${result ?? "null"}`);
@@ -78,7 +122,9 @@ sapaanTests.forEach((t, i) => {
   } else {
     console.log(`❌ Test ${i + 1}: ${t.desc}`);
     console.log(`   Input: "${t.input}"`);
-    console.log(`   Expected: ${t.expected ?? "null"}, Got: ${result ?? "null"}`);
+    console.log(
+      `   Expected: ${t.expected ?? "null"}, Got: ${result ?? "null"}`
+    );
     failed++;
   }
 });

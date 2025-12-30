@@ -38,7 +38,7 @@ function broadcastRouteFactory(waClient) {
           ? `📎 *Lampiran PDF guru:* ${pdfUrl}\n`
           : `📎 *Lampiran PDF guru:* -\n`) +
         `\n🧭 *Cara mengumpulkan:*\n` +
-        `1) Balas chat ini dengan: *kumpul ${kode}*\n` +
+        `1) Balas chat ini dengan: *pilih menu 3, lalu pilih tugas ${kode}*\n` +
         `2) (Jika diminta) lampirkan *PDF* tugasmu\n` +
         `3) Tekan kirim dan tunggu konfirmasi ✅`;
 

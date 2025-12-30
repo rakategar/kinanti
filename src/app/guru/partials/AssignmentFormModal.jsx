@@ -19,7 +19,7 @@ function toast({ icon = "info", title = "", text = "", timer = 2200 }) {
 // Daftar kelas yang tersedia
 const KELAS_OPTIONS = [
   "XTKJ1",
-  "XTKJJ2",
+  "XTKJ2",
   "XITKJ1",
   "XITKJ2",
   "XIITKJ1",

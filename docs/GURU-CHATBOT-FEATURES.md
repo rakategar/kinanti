@@ -1,119 +1,190 @@
 # 📚 Dokumentasi Fitur Chatbot Guru - Kinanti Bot
 
-> **Tanggal Update:** 11 Desember 2025  
+> **Tanggal Update:** 27 Desember 2025  
 > **Branch:** New-NLP
 
 ---
 
-## 📋 Daftar Fitur Chatbot Guru
+## � Perubahan Alur (27 Desember 2025)
 
-| No | Fitur | Intent | Keyword Trigger | Status |
-|----|-------|--------|-----------------|--------|
-| 1 | Sapaan & Menu | `sapaan_help` | halo, hai, kinanti, help, bantuan, menu | ✅ Aktif |
-| 2 | Buat Tugas (Wizard) | `guru_buat_penugasan` | buat tugas, penugasan, tugas baru, assignment | ✅ Aktif |
-| 3 | Broadcast Tugas | `guru_broadcast_tugas` | kirim tugas, broadcast tugas, sebar tugas, umumkan | ✅ Aktif |
-| 4 | Rekap Excel (Wizard) | `guru_rekap_excel` | rekap, rekapan, rekap excel, excel tugas | ✅ Aktif |
-| 5 | List Siswa | `guru_list_siswa` | list siswa, daftar siswa, lihat siswa, data siswa | ✅ Aktif |
-| 6 | Gambar ke PDF | `guru_img_to_pdf` / `img_to_pdf` | gambar ke pdf, foto ke pdf | ✅ Aktif |
-| 7 | Menu Guru | `guru_help` | bantuan guru, menu guru | ✅ Aktif |
+### Sebelumnya (NLP-Based)
+
+Guru mengetik perintah langsung seperti "buat tugas", "rekap", dll. dan NLP mendeteksi intent.
+
+### Sekarang (Menu-Based)
+
+Guru memilih fitur dengan mengetik **angka** dari menu yang ditampilkan.
+
+```
+┌─────────────────────────────────────────────────────┐
+│                 ALUR BARU GURU                      │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  Guru: "halo" / "mulai" / "kinanti"                │
+│         │                                           │
+│         ▼                                           │
+│  ┌─────────────────────────────────────┐           │
+│  │ Bot menampilkan Menu:               │           │
+│  │ 1. Buat Tugas Baru                  │           │
+│  │ 2. Broadcast Tugas ke Kelas         │           │
+│  │ 3. Rekap Excel Pengumpulan          │           │
+│  │ 4. Lihat Daftar Siswa               │           │
+│  │ 5. Gambar ke PDF                    │           │
+│  │ 6. Bantuan                          │           │
+│  │ 0. Keluar                           │           │
+│  └──────────────┬──────────────────────┘           │
+│                 │                                   │
+│                 ▼                                   │
+│  Guru: "1" (memilih Buat Tugas)                    │
+│         │                                           │
+│         ▼                                           │
+│  Bot menjalankan wizard buat tugas                 │
+│  (alur sama seperti sebelumnya)                    │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## �📋 Daftar Fitur Chatbot Guru
+
+| No  | Menu            | Intent                 | Deskripsi                  | Status   |
+| --- | --------------- | ---------------------- | -------------------------- | -------- |
+| 1   | Buat Tugas Baru | `guru_buat_penugasan`  | Wizard form interaktif     | ✅ Aktif |
+| 2   | Broadcast Tugas | `guru_broadcast_tugas` | Kirim tugas ke kelas       | ✅ Aktif |
+| 3   | Rekap Excel     | `guru_rekap_excel`     | Download rekap pengumpulan | ✅ Aktif |
+| 4   | Daftar Siswa    | `guru_list_siswa`      | Lihat siswa per kelas      | ✅ Aktif |
+| 5   | Gambar ke PDF   | `img_to_pdf`           | Convert gambar ke PDF      | ✅ Aktif |
+| 6   | Bantuan         | `guru_help`            | Penjelasan tiap menu       | ✅ Aktif |
+| 0   | Keluar          | `guru_exit_menu`       | Keluar dari menu           | ✅ Aktif |
 
 ---
 
 ## 🔍 Detail Setiap Fitur
 
-### 1. Sapaan & Menu (`sapaan_help`)
+### 0. Masuk ke Menu (Trigger)
 
-**Deskripsi:** Menampilkan menu bantuan sesuai role user (guru/siswa).
+**Cara Masuk Menu:**
+Guru mengetik salah satu kata sapaan:
 
-**File:** `server.js` (lines 103-131)
+- `halo`, `hai`, `hey`, `hei`
+- `mulai`, `start`, `menu`
+- `kinanti`, `assalamualaikum`
 
-**Alur:**
-1. User ketik: "halo", "kinanti", "help", dll
-2. Bot cek user di database
-3. Jika belum terdaftar → tampilkan link registrasi
-4. Jika guru → tampilkan menu guru
-5. Jika siswa → tampilkan menu siswa
+**Response Bot:**
 
-**Menu Guru yang Ditampilkan:**
 ```
-📚 Menu Guru:
-• buat tugas — Buat tugas baru
-• kirim <KODE> <KELAS> — Broadcast tugas ke kelas
-• rekap <KODE> <KELAS> — Download rekap Excel
-• list siswa — Daftar siswa di kelas
-• gambar ke pdf — Ubah foto jadi PDF
+👋 Halo, *[Nama Guru]*!
+
+Selamat datang di *Kinanti Bot*.
+
+📚 *Menu Guru:*
+*1.* 📝 Buat Tugas Baru
+*2.* 📢 Broadcast Tugas ke Kelas
+*3.* 📊 Rekap Excel Pengumpulan
+*4.* 👥 Lihat Daftar Siswa
+*5.* 🖼️ Gambar ke PDF
+*6.* ❓ Bantuan
+*0.* 🚪 Keluar
+
+📌 *Balas dengan angka* untuk memilih menu.
 ```
+
+**State:** `menuMode: "guru_menu_selection"`
 
 ---
 
-### 2. Buat Tugas - Wizard (`guru_buat_penugasan`)
+### 1. Buat Tugas - Wizard (`guru_buat_penugasan`)
+
+**Trigger:** Ketik `1` dari menu
 
 **Deskripsi:** Wizard interaktif untuk membuat tugas baru dengan multi-step form, termasuk opsi penilaian otomatis.
 
 **File:** `src/controllers/guruController.js` (lines 77-490)
 
 **Keywords di `intents.js`:**
+
 - penugasan, buat tugas, tambah tugas, assignment, tugas baru, create assignment
 
 **Alur Wizard:**
-1. Guru ketik "buat tugas"
-2. Bot tampilkan form kosong
-3. Guru isi field satu per satu atau sekaligus:
-   - `Kode: MTK-001`
-   - `Judul: Tugas Matematika BAB 1`
-   - `Deskripsi: Kerjakan soal halaman 50`
-   - `Lampirkan PDF (ya/tidak): ya`
-   - `Penilaian Otomatis (ya/tidak): ya` ← **BARU**
-   - `Deadline: 3` (hari)
-   - `Kelas: XIITKJ2`
-4. Jika `Lampirkan PDF: ya` → bot minta kirim file PDF
-5. **Jika `Penilaian Otomatis: ya` → bot minta kirim kunci jawaban PDF** 🔑
-6. Guru ketik "simpan"
+
+1. Guru pilih menu `1` dari menu utama
+2. Bot tampilkan form kosong dengan opsi:
+
+   ```
+   - Kode:
+   - Judul:
+   - Deskripsi:
+   - Lampirkan PDF (ya/tidak):
+   - Penilaian Otomatis (ya/tidak):
+   - Deadline: N (hari)
+   - Kelas: (ketik kelas, misal: XIITKJ2)
+
+   📌 *Jika sudah lengkap:*
+   *1.* ✅ Simpan tugas
+   *0.* ❌ Batalkan
+   ```
+
+3. Guru isi field satu per satu atau sekaligus
+4. Jika `Lampirkan PDF: ya` → bot minta kirim file PDF (ketik `0` untuk lewati)
+5. Jika `Penilaian Otomatis: ya` → bot minta kirim kunci jawaban PDF (ketik `0` untuk lewati)
+6. Guru ketik `1` untuk simpan
 7. Bot validasi dan simpan ke database (termasuk `kunciJawaban` URL)
 8. Bot otomatis buat `AssignmentStatus` untuk semua siswa di kelas tersebut
 
 **Validasi:**
+
 - Kode wajib unik (cek duplikat)
 - Format kelas: X/XI/XII + JURUSAN + NOMOR (contoh: XIITKJ2)
 - PDF maks ~10MB
 - **Kunci jawaban wajib jika penilaian otomatis = ya**
 
 **State Management:**
+
 - Menggunakan `getState`/`setState` dari `services/state.js`
 - State key: `guru_buat_penugasan`
 
-**Perintah Khusus dalam Wizard:**
-- `simpan` → Simpan tugas
-- `batal` → Batalkan wizard
-- `lewati` → Skip lampiran PDF / kunci jawaban
+**Perintah dalam Wizard (berbasis angka):**
+
+| Angka | Aksi                            |
+| ----- | ------------------------------- |
+| `1`   | Simpan tugas                    |
+| `0`   | Batalkan / Lewati (kontekstual) |
 
 **Fitur Penilaian Otomatis:**
+
 - Jika guru upload kunci jawaban, field `assignment.kunciJawaban` akan terisi URL
 - Siswa yang mengumpulkan tugas ini akan dinilai otomatis via n8n + Gemini AI
 - Tugas dengan penilaian otomatis ditandai 🟢 di daftar tugas siswa
 
 ---
 
-### 3. Broadcast Tugas (`guru_broadcast_tugas`)
+### 2. Broadcast Tugas (`guru_broadcast_tugas`)
+
+**Trigger:** Ketik `2` dari menu
 
 **Deskripsi:** Mengirim pengumuman tugas ke semua siswa di kelas tertentu.
 
 **File:** `src/controllers/guruController.js` (lines 524-588)
 
 **Keywords di `intents.js`:**
+
 - kirim tugas, broadcast tugas, sebar tugas, umumkan tugas, bagikan tugas
 
 **Slot Required (di `dialogManager.js`):**
+
 - `kode_tugas` — Kode tugas yang akan dibroadcast
 - `kelas` — Kelas tujuan
 
 **Contoh Penggunaan:**
+
 ```
 kirim tugas BD-03 untuk XIITKJ2
 broadcast tugas MTK-001 XIRPL1
 ```
 
 **Alur:**
+
 1. Guru ketik perintah dengan kode dan kelas
 2. Bot validasi kode tugas ada di database
 3. Bot ambil semua siswa di kelas tersebut
@@ -126,6 +197,7 @@ broadcast tugas MTK-001 XIRPL1
    - Instruksi cara mengumpulkan
 
 **Format Broadcast ke Siswa:**
+
 ```
 📢 *Tugas dari [Nama Guru]*
 🔖 *Kode:* MTK-001
@@ -144,37 +216,45 @@ broadcast tugas MTK-001 XIRPL1
 
 ---
 
-### 4. Rekap Excel - Wizard (`guru_rekap_excel`)
+### 3. Rekap Excel - Wizard (`guru_rekap_excel`)
+
+**Trigger:** Ketik `3` dari menu
 
 **Deskripsi:** Download rekap pengumpulan tugas dalam format Excel.
 
 **File:** `src/controllers/guruController.js` (lines 590-789)
 
 **Keywords di `intents.js`:**
+
 - rekap, rekapan, rekap excel, excel tugas, export excel
 
 **Alur Wizard (3 Step):**
 
 **Step 1 - Start Wizard:**
-1. Guru ketik "rekap"
+
+1. Guru pilih menu `3` dari menu utama
 2. Bot tampilkan daftar semua tugas milik guru
 3. Bot minta pilih kode tugas
 
 **Step 2 - Pick Code:**
+
 1. Guru ketik kode tugas (misal: "MTK-001")
 2. Bot validasi kode ada di database
 3. Bot minta pilih kelas
 
 **Step 3 - Pick Class:**
+
 1. Guru ketik kelas (misal: "XIITKJ2")
 2. Bot generate rekap:
    - Daftar siswa yang **belum mengumpulkan** (teks)
    - File Excel lengkap dengan semua siswa
 
 **Shortcut:**
+
 ```
 rekap MTK-001
 ```
+
 → Langsung ke Step 2 (skip daftar tugas)
 
 **Format Excel:**
@@ -184,24 +264,30 @@ rekap MTK-001
 | XIITKJ2 | Budi | MTK-001 | Tugas MTK | BELUM_SELESAI | - |
 
 **State Management:**
+
 - Menggunakan `REKAP_WIZ` Map (in-memory)
 - State key: `guru_rekap_wizard`
 
 **Perintah Khusus:**
+
 - `batal` → Batalkan wizard rekap
 
 ---
 
-### 5. List Siswa (`guru_list_siswa`)
+### 4. List Siswa (`guru_list_siswa`)
+
+**Trigger:** Ketik `4` dari menu
 
 **Deskripsi:** Melihat daftar siswa, bisa filter per kelas.
 
 **File:** `src/controllers/guruController.js` (lines 854-868)
 
 **Keywords di `intents.js`:**
+
 - list siswa, daftar siswa, lihat siswa, data siswa
 
 **Contoh Penggunaan:**
+
 ```
 list siswa
 daftar siswa XIITKJ2
@@ -209,6 +295,7 @@ lihat siswa XI TKJ 1
 ```
 
 **Output:**
+
 ```
 👥 Daftar siswa XIITKJ2:
 1. Ahmad — XIITKJ2
@@ -218,22 +305,27 @@ lihat siswa XI TKJ 1
 ```
 
 **Fitur:**
+
 - Tanpa parameter → tampilkan semua siswa (max 200)
 - Dengan kelas → filter siswa di kelas tersebut
 
 ---
 
-### 6. Gambar ke PDF (`img_to_pdf` / `guru_img_to_pdf`)
+### 5. Gambar ke PDF (`img_to_pdf`)
+
+**Trigger:** Ketik `5` dari menu
 
 **Deskripsi:** Mengubah beberapa gambar menjadi 1 file PDF.
 
 **File:** `src/features/imgToPdf.js`
 
 **Keywords di `intents.js`:**
+
 - gambar ke pdf, foto ke pdf, img to pdf, gambar jadi pdf, convert gambar ke pdf
 
 **Alur:**
-1. Guru ketik "gambar ke pdf"
+
+1. Guru pilih menu `5` dari menu utama
 2. Bot masuk mode terima gambar
 3. Guru kirim gambar (bisa multiple)
 4. Guru ketik "selesai"
@@ -244,65 +336,115 @@ lihat siswa XI TKJ 1
 
 ---
 
-### 7. Menu Guru (`guru_help`) ✅
+### 6. Bantuan (`guru_help`)
 
-**Deskripsi:** Menampilkan menu bantuan khusus untuk guru.
+**Trigger:** Ketik `6` dari menu
 
-**File:** `src/controllers/guruController.js`
-
-**Keywords di `intents.js`:**
-- bantuan guru, menu guru
+**Deskripsi:** Menampilkan penjelasan detail setiap menu.
 
 **Output:**
+
 ```
-👋 Halo, *[Nama Guru]*!
+❓ *Bantuan Menu Guru*
 
-📚 *Menu Guru:*
-• *buat tugas* — Buat tugas baru
-• *kirim <KODE> <KELAS>* — Broadcast tugas ke kelas
-• *rekap <KODE>* — Download rekap Excel
-• *list siswa* — Daftar siswa di kelas
-• *gambar ke pdf* — Ubah foto jadi PDF
+*1. Buat Tugas Baru*
+   Membuat tugas baru dengan form interaktif.
+   Bisa dengan/tanpa penilaian otomatis.
 
-Ketik perintah di atas untuk mulai! 🚀
+*2. Broadcast Tugas*
+   Kirim pengumuman tugas ke semua siswa di kelas.
+
+*3. Rekap Excel*
+   Download rekap pengumpulan tugas dalam format Excel.
+
+*4. Lihat Daftar Siswa*
+   Melihat daftar siswa, bisa filter per kelas.
+
+*5. Gambar ke PDF*
+   Menggabungkan beberapa gambar menjadi 1 file PDF.
+
+📌 Ketik angka untuk memilih menu, atau *0* untuk keluar.
 ```
-
-**Status:** ✅ Sudah diperbaiki (11 Desember 2025)
 
 ---
 
-## ⚠️ Temuan & Perbaikan: Fitur yang Bertumpuk / Overlap
+### 0. Keluar (`guru_exit_menu`)
 
-### 1. `guru_help` vs `sapaan_help` ✅ DIPERBAIKI
+**Trigger:** Ketik `0` dari menu
 
-**Problem Awal:**
-- `guru_help` (bantuan guru, menu guru) tidak ada handler
-- `sapaan_help` sudah handle menu untuk guru
+**Deskripsi:** Keluar dari menu mode.
 
-**Solusi yang Diterapkan:**
-- ✅ Menambahkan handler `guru_help` di `guruController.js`
-- Sekarang kedua intent bekerja:
-  - `sapaan_help` → menu umum (detect role otomatis)
-  - `guru_help` → menu khusus guru
+**Output:**
 
-### 2. `guru_img_to_pdf` vs `img_to_pdf`
+```
+👋 Sampai jumpa! Ketik *halo* atau *mulai* kapan saja untuk kembali ke menu.
+```
 
-**Problem:**
-- Dua intent berbeda untuk fitur yang sama
-- Di `server.js` sudah di-handle bersama:
-  ```javascript
-  if (intent === "img_to_pdf" || intent === "guru_img_to_pdf") {
-    await startImgToPdf(message);
-    return;
-  }
-  ```
+---
 
-**Status:** ✅ Sudah ditangani dengan baik (tidak perlu perbaikan)
+## 🔄 Perubahan Arsitektur (27 Desember 2025)
 
-### 3. Wizard State Conflict
+### Sebelum: NLP-Based
 
-**Problem Potensial:**
-- `guru_buat_penugasan` menggunakan `getState`/`setState`
+```
+Guru → NLP Pipeline → Intent Detection → Controller
+```
+
+### Sesudah: Menu-Based + NLP Hybrid
+
+```
+Guru → Sapaan → Menu Selection Mode
+         │
+         ├── Ketik angka → Route ke Controller
+         │
+         └── Dalam Wizard → NLP untuk parsing form
+```
+
+### State Management Baru
+
+```javascript
+// server.js
+const GURU_MENU_MAP = {
+  1: "guru_buat_penugasan",
+  2: "guru_broadcast_tugas",
+  3: "guru_rekap_excel",
+  4: "guru_list_siswa",
+  5: "img_to_pdf",
+  6: "guru_help",
+  0: "guru_exit_menu",
+};
+
+// State untuk menu selection
+state = {
+  menuMode: "guru_menu_selection", // ← BARU
+  lastIntent: null,
+  slots: {},
+};
+```
+
+### Keuntungan Alur Baru
+
+1. **Lebih intuitif** - User tidak perlu mengingat keyword
+2. **Mengurangi error NLP** - Tidak ada false positive dari nama file/kata umum
+3. **Backward compatible** - Siswa tetap menggunakan NLP
+4. **Wizard tetap sama** - Setelah pilih menu, alur wizard tidak berubah
+
+---
+
+## ⚠️ Catatan Penting
+
+### 1. Guru HARUS Ketik Sapaan Dulu
+
+Guru tidak bisa langsung ketik "1" tanpa melihat menu. Harus ketik "halo" / "mulai" dulu.
+
+### 2. Wizard Tetap Menggunakan NLP
+
+Setelah masuk wizard (misal buat tugas), parsing field seperti `Kode: MTK-001` tetap menggunakan NLP/regex.
+
+### 3. Siswa Tidak Terpengaruh
+
+Alur siswa tetap sama - menggunakan NLP untuk semua perintah.
+
 - `guru_rekap_excel` menggunakan `REKAP_WIZ` Map terpisah
 
 **Status:** ✅ Tidak bertabrakan karena menggunakan storage berbeda
@@ -310,6 +452,7 @@ Ketik perintah di atas untuk mulai! 🚀
 ### 4. Routing Intent Guru di `server.js` ✅ DIPERBAIKI
 
 **Problem Awal:**
+
 ```javascript
 if (intent.startsWith("guru_")) {
   if (role === "guru") {
@@ -321,6 +464,7 @@ if (intent.startsWith("guru_")) {
 ```
 
 **Solusi yang Diterapkan:**
+
 ```javascript
 if (intent.startsWith("guru_")) {
   if (role === "guru") {
@@ -345,6 +489,7 @@ if (intent.startsWith("guru_")) {
 **File:** `src/controllers/guruController.js`
 
 Menambahkan case baru di switch statement:
+
 ```javascript
 case "guru_help": {
   const userName = user.nama || "Guru";
@@ -358,6 +503,7 @@ case "guru_help": {
 **File:** `server.js`
 
 Siswa yang mencoba akses fitur guru sekarang mendapat pesan:
+
 ```
 🔒 Maaf, fitur ini khusus untuk *Guru*.
 
@@ -368,25 +514,25 @@ Ketik *halo* untuk melihat menu siswa. 📚
 
 ## 📊 Ringkasan Status Fitur
 
-| Fitur | Intent | Handler | State | Status |
-|-------|--------|---------|-------|--------|
-| Sapaan | `sapaan_help` | server.js | - | ✅ |
-| Buat Tugas | `guru_buat_penugasan` | guruController | getState | ✅ |
-| Broadcast | `guru_broadcast_tugas` | guruController | dialogManager | ✅ |
-| Rekap Excel | `guru_rekap_excel` | guruController | REKAP_WIZ | ✅ |
-| List Siswa | `guru_list_siswa` | guruController | - | ✅ |
-| Gambar ke PDF | `img_to_pdf` | imgToPdf.js | - | ✅ |
-| Menu Guru | `guru_help` | guruController | - | ✅ |
+| Menu | Fitur         | Intent                 | Trigger            | Status |
+| ---- | ------------- | ---------------------- | ------------------ | ------ |
+| -    | Masuk Menu    | -                      | halo/mulai/kinanti | ✅     |
+| 1    | Buat Tugas    | `guru_buat_penugasan`  | Ketik `1`          | ✅     |
+| 2    | Broadcast     | `guru_broadcast_tugas` | Ketik `2`          | ✅     |
+| 3    | Rekap Excel   | `guru_rekap_excel`     | Ketik `3`          | ✅     |
+| 4    | Daftar Siswa  | `guru_list_siswa`      | Ketik `4`          | ✅     |
+| 5    | Gambar ke PDF | `img_to_pdf`           | Ketik `5`          | ✅     |
+| 6    | Bantuan       | `guru_help`            | Ketik `6`          | ✅     |
+| 0    | Keluar        | `guru_exit_menu`       | Ketik `0`          | ✅     |
 
 ---
 
 ## 📁 File Terkait
 
-- `src/nlp/intents.js` — Definisi intent & keywords
-- `src/nlp/classifier.js` — Klasifikasi intent
-- `src/nlp/dialogManager.js` — Slot filling & routing
-- `src/nlp/pipeline.js` — Pipeline NLP
+- `server.js` — Router utama & menu handler (DIUBAH)
+- `src/services/state.js` — State management
 - `src/controllers/guruController.js` — Handler fitur guru
 - `src/features/imgToPdf.js` — Fitur gambar ke PDF
-- `src/services/state.js` — State management
-- `server.js` — Router utama & WhatsApp listener
+- `src/nlp/intents.js` — Definisi intent & keywords (untuk siswa)
+- `src/nlp/dialogManager.js` — Slot filling & routing
+- `src/nlp/pipeline.js` — Pipeline NLP

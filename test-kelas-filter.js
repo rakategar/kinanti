@@ -99,7 +99,8 @@ filtered1.forEach((item) => {
     `   - ${item.tugas.kode}${indicator} (${item.tugas.kelas}) - ${item.tugas.judul}`
   );
 });
-const test1Pass = filtered1.length === 2 &&
+const test1Pass =
+  filtered1.length === 2 &&
   filtered1.every((item) => item.tugas.kelas === "XIITKJ1");
 console.log(`   Result: ${test1Pass ? "✅ PASS" : "❌ FAIL"}\n`);
 
@@ -116,8 +117,8 @@ filtered2.forEach((item) => {
     `   - ${item.tugas.kode}${indicator} (${item.tugas.kelas}) - ${item.tugas.judul}`
   );
 });
-const test2Pass = filtered2.length === 1 &&
-  filtered2[0].tugas.kelas === "XITKJ2";
+const test2Pass =
+  filtered2.length === 1 && filtered2[0].tugas.kelas === "XITKJ2";
 console.log(`   Result: ${test2Pass ? "✅ PASS" : "❌ FAIL"}\n`);
 
 // Test 3: Siswa tanpa kelas (fallback)
@@ -136,7 +137,11 @@ const siswaXIITKJ1Tugas = filterByKelas(tugasSiswa1, siswaXIITKJ1);
 const hasSalahKelas = siswaXIITKJ1Tugas.some(
   (item) => item.tugas.kelas !== "XIITKJ1"
 );
-console.log(`   Siswa XIITKJ1 mendapat tugas kelas lain? ${hasSalahKelas ? "YES ❌" : "NO ✅"}`);
+console.log(
+  `   Siswa XIITKJ1 mendapat tugas kelas lain? ${
+    hasSalahKelas ? "YES ❌" : "NO ✅"
+  }`
+);
 const test4Pass = !hasSalahKelas;
 console.log(`   Result: ${test4Pass ? "✅ PASS" : "❌ FAIL"}\n`);
 

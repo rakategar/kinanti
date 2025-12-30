@@ -82,21 +82,22 @@ const mockDoneAssignments = [
 function formatStatusLine(item, index) {
   const tg = item.tugas;
   const sub = item.submission;
-  
+
   // Format nilai dan grade
   let gradeInfo = "";
   if (sub?.grade || (sub?.score !== null && sub?.score !== undefined)) {
     const emoji = gradeEmoji[sub?.grade] || "📊";
     const gradeText = sub?.grade ? `${emoji} ${sub.grade}` : "";
-    const scoreText = sub?.score !== null && sub?.score !== undefined 
-      ? `(${sub.score})` 
-      : "";
-    
+    const scoreText =
+      sub?.score !== null && sub?.score !== undefined ? `(${sub.score})` : "";
+
     if (gradeText || scoreText) {
-      gradeInfo = ` | ${gradeText}${gradeText && scoreText ? " " : ""}${scoreText}`;
+      gradeInfo = ` | ${gradeText}${
+        gradeText && scoreText ? " " : ""
+      }${scoreText}`;
     }
   }
-  
+
   return `${index + 1}. *${tg.kode}* — ${tg.judul}${gradeInfo}`;
 }
 
@@ -105,7 +106,7 @@ console.log("📝 Test 1: Format Output untuk Berbagai Kondisi\n");
 mockDoneAssignments.forEach((item, i) => {
   const line = formatStatusLine(item, i);
   console.log(line);
-  
+
   // Verifikasi
   const sub = item.submission;
   if (sub?.grade && sub?.score !== null) {
@@ -119,8 +120,8 @@ mockDoneAssignments.forEach((item, i) => {
 // Test 2: Output lengkap WhatsApp
 console.log("📱 Test 2: Output WhatsApp Lengkap\n");
 const lines = mockDoneAssignments.map((it, i) => formatStatusLine(it, i));
-const whatsappOutput = 
-  "🧾 *Riwayat Tugas Selesai:*\n\n" + 
+const whatsappOutput =
+  "🧾 *Riwayat Tugas Selesai:*\n\n" +
   lines.join("\n") +
   "\n\n_Nilai & grade muncul untuk tugas yang sudah dinilai_";
 
@@ -188,7 +189,9 @@ const formattedLines = largeDataset.map((it, i) => formatStatusLine(it, i));
 const duration = Date.now() - start;
 
 console.log(`   Formatted ${largeDataset.length} items in ${duration}ms`);
-console.log(`   Average: ${(duration / largeDataset.length).toFixed(2)}ms per item`);
+console.log(
+  `   Average: ${(duration / largeDataset.length).toFixed(2)}ms per item`
+);
 console.log(`   ✅ Performance OK (should be < 100ms total)\n`);
 
 // Summary

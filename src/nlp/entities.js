@@ -3,23 +3,107 @@
 
 // Daftar kata umum yang BUKAN kode tugas
 const COMMON_WORDS = new Set([
-  'kumpul', 'kumpulkan', 'mengumpulkan', 'detail', 'info', 'tugas', 'saya', 
-  'ingin', 'mau', 'status', 'riwayat', 'lihat', 'cek', 'ada', 'yang', 'apa',
-  'tentang', 'untuk', 'dari', 'dengan', 'adalah', 'ini', 'itu', 'guru', 'siswa',
+  "kumpul",
+  "kumpulkan",
+  "mengumpulkan",
+  "detail",
+  "info",
+  "tugas",
+  "saya",
+  "ingin",
+  "mau",
+  "status",
+  "riwayat",
+  "lihat",
+  "cek",
+  "ada",
+  "yang",
+  "apa",
+  "tentang",
+  "untuk",
+  "dari",
+  "dengan",
+  "adalah",
+  "ini",
+  "itu",
+  "guru",
+  "siswa",
   // Sapaan & nama bot
-  'halo', 'hai', 'hey', 'hei', 'kinanti', 'assalamualaikum', 'help', 'bantuan',
-  'menu', 'mulai', 'start', 'selamat', 'pagi', 'siang', 'sore', 'malam',
+  "halo",
+  "hai",
+  "hey",
+  "hei",
+  "kinanti",
+  "assalamualaikum",
+  "help",
+  "bantuan",
+  "menu",
+  "mulai",
+  "start",
+  "selamat",
+  "pagi",
+  "siang",
+  "sore",
+  "malam",
   // Kata kerja umum fitur
-  'buat', 'tambah', 'kirim', 'rekap', 'broadcast', 'sebar', 'umumkan', 'bagikan',
-  'list', 'daftar', 'data', 'gambar', 'foto', 'convert', 'ubah',
+  "buat",
+  "tambah",
+  "kirim",
+  "rekap",
+  "broadcast",
+  "sebar",
+  "umumkan",
+  "bagikan",
+  "list",
+  "daftar",
+  "data",
+  "gambar",
+  "foto",
+  "convert",
+  "ubah",
   // Perintah wizard
-  'simpan', 'batal', 'cancel', 'lewati', 'skip', 'selesai', 'done', 'ya', 'tidak',
+  "simpan",
+  "batal",
+  "cancel",
+  "lewati",
+  "skip",
+  "selesai",
+  "done",
+  "ya",
+  "tidak",
   // Kata umum dari nama file
-  'soal', 'jawaban', 'kunci', 'ujian', 'latihan', 'materi', 'modul', 'buku',
-  'uraian', 'pilihan', 'ganda', 'essay', 'dokumen', 'file', 'lampiran',
+  "soal",
+  "jawaban",
+  "kunci",
+  "ujian",
+  "latihan",
+  "materi",
+  "modul",
+  "buku",
+  "uraian",
+  "pilihan",
+  "ganda",
+  "essay",
+  "dokumen",
+  "file",
+  "lampiran",
   // Kata umum lainnya (bisa dari nama file)
-  'bunga', 'hewan', 'tumbuhan', 'manusia', 'alam', 'dunia', 'indonesia', 'bahasa',
-  'contoh', 'hasil', 'nilai', 'test', 'quiz', 'ulangan', 'praktik', 'teori'
+  "bunga",
+  "hewan",
+  "tumbuhan",
+  "manusia",
+  "alam",
+  "dunia",
+  "indonesia",
+  "bahasa",
+  "contoh",
+  "hasil",
+  "nilai",
+  "test",
+  "quiz",
+  "ulangan",
+  "praktik",
+  "teori",
 ]);
 
 // Regex untuk menangkap kode tugas apa adanya (dengan atau tanpa dash dan angka)
@@ -76,17 +160,21 @@ function extractEntities(text) {
   while ((m = R_KODE.exec(textUpper)) !== null) {
     const raw = m[1];
     const normalized = normalizeKode(raw);
-    
+
     // Skip jika kata umum
     if (COMMON_WORDS.has(normalized.toLowerCase())) {
       continue;
     }
-    
+
     // Skip jika hanya huruf dan terlalu umum (kurang dari 4 karakter)
-    if (!/\d/.test(normalized) && !/[-_]/.test(normalized) && normalized.length < 4) {
+    if (
+      !/\d/.test(normalized) &&
+      !/[-_]/.test(normalized) &&
+      normalized.length < 4
+    ) {
       continue;
     }
-    
+
     entities.kode_tugas = normalized;
     entities.kode = normalized;
     entities.assignmentCode = normalized;

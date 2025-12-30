@@ -5,30 +5,37 @@
 ### Problem: Siswa tidak dapat notifikasi hasil penilaian
 
 #### Checklist
+
 1. **Cek webhook berhasil trigger?**
+
    ```bash
    # Lihat log server
    grep "Triggering auto-grading" /path/to/server.log
    grep "Webhook POST success" /path/to/server.log
    ```
+
    - ✅ Ada log: Webhook triggered
    - ❌ Tidak ada: Bug di `triggerAutoGrading()`
 
 2. **Cek n8n workflow running?**
+
    ```bash
    curl http://0.0.0.0:5678/webhook/nilai-tugas
    ```
+
    - ✅ HTTP 200: Workflow aktif
    - ❌ Connection refused: n8n down
    - ❌ 404: Webhook path salah
 
 3. **Cek database ter-update?**
+
    ```sql
    SELECT id, grade, score, evaluation, "updatedAt"
    FROM "AssignmentSubmission"
    WHERE id = <submission_id>
    ORDER BY "updatedAt" DESC;
    ```
+
    - ✅ grade & score terisi: Database OK
    - ❌ Masih null: n8n tidak update
 
@@ -48,6 +55,7 @@
 **Cause:** Webhook POST gagal
 
 **Debug Steps:**
+
 ```bash
 # Test webhook manual
 curl --location 'http://0.0.0.0:5678/webhook/nilai-tugas' \
@@ -56,6 +64,7 @@ curl --location 'http://0.0.0.0:5678/webhook/nilai-tugas' \
 ```
 
 **Solutions:**
+
 1. Pastikan n8n running: `docker ps | grep n8n` atau `pm2 list | grep n8n`
 2. Cek WEBHOOK_TUGAS_URL di `.env`
 3. Cek firewall/network: `telnet 0.0.0.0 5678`
@@ -67,21 +76,24 @@ curl --location 'http://0.0.0.0:5678/webhook/nilai-tugas' \
 **Cause:** Polling timeout (>30s), hasil belum ada di database
 
 **Debug Steps:**
+
 ```sql
 -- Cek status submission
-SELECT 
-  id, 
-  "siswaId", 
-  "tugasId", 
-  grade, 
-  score, 
+SELECT
+  id,
+  "siswaId",
+  "tugasId",
+  grade,
+  score,
   "updatedAt"
 FROM "AssignmentSubmission"
 WHERE id = <submission_id>;
 ```
 
 **Solutions:**
+
 1. **Jika grade/score null:** n8n workflow stuck
+
    - Cek n8n execution logs
    - Cek Gemini API quota
    - Cek PDF URL accessible
@@ -100,6 +112,7 @@ WHERE id = <submission_id>;
 **Cause:** Gemini API error, Supabase error, atau parsing error
 
 **Debug Steps:**
+
 1. Akses n8n dashboard: `http://0.0.0.0:5678`
 2. Lihat execution history
 3. Cek error di node mana
@@ -107,18 +120,21 @@ WHERE id = <submission_id>;
 **Common Errors:**
 
 #### Error: "API key not valid"
+
 ```
 Solution: Configure Gemini API credentials
 Settings → Credentials → Google Gemini (PaLM) API
 ```
 
 #### Error: "Invalid PDF URL"
+
 ```
 Solution: Pastikan Supabase bucket "submissions" public
 Supabase Dashboard → Storage → submissions → Make public
 ```
 
 #### Error: "JSON parse failed"
+
 ```
 Solution: Gemini output format salah
 - Cek prompt di node "Analyze document"
@@ -132,6 +148,7 @@ Solution: Gemini output format salah
 **Cause:** n8n Code node logic salah
 
 **Debug Steps:**
+
 ```javascript
 // Cek output Gemini (di n8n execution log)
 // Pastikan format JSON:
@@ -145,7 +162,9 @@ Solution: Gemini output format salah
 ```
 
 **Solutions:**
+
 1. Verifikasi grade conversion logic di Code node:
+
    ```javascript
    if (score >= 90) grade = "A";
    else if (score >= 80) grade = "B";
@@ -165,6 +184,7 @@ Solution: Gemini output format salah
 **Cause:** Supabase credentials salah atau permissions issue
 
 **Debug Steps:**
+
 ```bash
 # Test Supabase connection
 curl '<SUPABASE_URL>/rest/v1/AssignmentSubmission?id=eq.9' \
@@ -173,6 +193,7 @@ curl '<SUPABASE_URL>/rest/v1/AssignmentSubmission?id=eq.9' \
 ```
 
 **Solutions:**
+
 1. Verifikasi Supabase credentials di n8n
 2. Cek RLS (Row Level Security) policies:
    - Supabase Dashboard → Authentication → Policies
@@ -185,6 +206,7 @@ curl '<SUPABASE_URL>/rest/v1/AssignmentSubmission?id=eq.9' \
 ### Issue: Grading Lambat (>30s)
 
 **Diagnosis:**
+
 ```bash
 # Timing breakdown:
 # - Upload PDF: 2-5s
@@ -197,11 +219,13 @@ curl '<SUPABASE_URL>/rest/v1/AssignmentSubmission?id=eq.9' \
 **Solutions:**
 
 #### 1. Optimize Gemini Processing
+
 - Reduce prompt length
 - Use smaller PDF (compress sebelum upload)
 - Use faster Gemini model (e.g., `gemini-1.5-flash`)
 
 #### 2. Increase Timeout
+
 ```javascript
 // File: src/controllers/siswaController.js
 // Line: ~260
@@ -209,6 +233,7 @@ await pollGradingResult(submissionId, message, 60); // 30 → 60 detik
 ```
 
 #### 3. Async Notification (No Polling)
+
 ```javascript
 // Alternative: Webhook callback dari n8n ke bot
 // n8n workflow tambah node "Send WhatsApp Message"
@@ -220,15 +245,17 @@ await pollGradingResult(submissionId, message, 60); // 30 → 60 detik
 ## Monitoring Commands
 
 ### Real-time Logs
+
 ```bash
 # Monitor auto-grading activities
 tail -f /path/to/server.log | grep -E "🤖|✅|⏱️"
 ```
 
 ### Statistics Query
+
 ```sql
 -- Auto-graded submissions per hari
-SELECT 
+SELECT
   DATE("updatedAt") as date,
   COUNT(*) as total,
   AVG(score) as avg_score,
@@ -244,9 +271,10 @@ ORDER BY date DESC;
 ```
 
 ### Success Rate
+
 ```sql
 -- Webhook success rate
-SELECT 
+SELECT
   COUNT(*) FILTER (WHERE grade IS NOT NULL) as success,
   COUNT(*) FILTER (WHERE grade IS NULL) as failed,
   ROUND(100.0 * COUNT(*) FILTER (WHERE grade IS NOT NULL) / COUNT(*), 2) as success_rate
@@ -259,6 +287,7 @@ WHERE "createdAt" >= NOW() - INTERVAL '24 hours';
 ## Emergency Actions
 
 ### 1. Disable Auto-Grading (Temporary)
+
 ```javascript
 // File: src/controllers/siswaController.js
 // Line: ~220, comment out:
@@ -274,9 +303,10 @@ const isAutoGraded = false; // Force disable
 ```
 
 ### 2. Manual Grading Fallback
+
 ```sql
 -- Siswa yang belum dinilai otomatis
-SELECT 
+SELECT
   s.id as submission_id,
   u.nama as siswa_nama,
   a.kode as tugas_kode,
@@ -290,6 +320,7 @@ ORDER BY s."createdAt" DESC;
 ```
 
 ### 3. Retry Failed Grading
+
 ```bash
 # Script untuk retry
 for id in $(psql $DATABASE_URL -t -c "SELECT id FROM \"AssignmentSubmission\" WHERE grade IS NULL AND \"createdAt\" >= NOW() - INTERVAL '1 day'"); do
@@ -304,13 +335,13 @@ done
 
 ## Contact & Escalation
 
-| Issue Type | First Response | Escalation |
-|-----------|----------------|------------|
-| Bot down | Restart server | Check infrastructure |
-| n8n down | Restart n8n | Check Docker/PM2 |
-| Database issue | Check connections | Contact DBA |
-| Gemini API issue | Check quota | Contact Google Support |
-| High error rate | Check logs | Rollback deployment |
+| Issue Type       | First Response    | Escalation             |
+| ---------------- | ----------------- | ---------------------- |
+| Bot down         | Restart server    | Check infrastructure   |
+| n8n down         | Restart n8n       | Check Docker/PM2       |
+| Database issue   | Check connections | Contact DBA            |
+| Gemini API issue | Check quota       | Contact Google Support |
+| High error rate  | Check logs        | Rollback deployment    |
 
 ---
 

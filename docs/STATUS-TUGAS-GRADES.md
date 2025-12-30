@@ -1,11 +1,13 @@
 # Tampilan Nilai & Grade pada Status Tugas
 
 ## Fitur Baru
+
 Ketika siswa mengetik **"status tugas"**, sistem sekarang menampilkan nilai (score) dan grade untuk tugas yang sudah dinilai.
 
 ## Before & After
 
 ### Before (Tanpa Nilai)
+
 ```
 🧾 Riwayat Tugas Selesai:
 
@@ -15,6 +17,7 @@ Ketika siswa mengetik **"status tugas"**, sistem sekarang menampilkan nilai (sco
 ```
 
 ### After (Dengan Nilai & Grade)
+
 ```
 🧾 Riwayat Tugas Selesai:
 
@@ -30,7 +33,7 @@ _Nilai & grade muncul untuk tugas yang sudah dinilai_
 ## Grade Emoji System
 
 | Grade | Score Range | Emoji | Warna Makna |
-|-------|-------------|-------|-------------|
+| ----- | ----------- | ----- | ----------- |
 | A     | 90-100      | 🌟    | Gold Star   |
 | B     | 80-89       | ⭐    | Silver Star |
 | C     | 70-79       | ✨    | Sparkle     |
@@ -40,20 +43,22 @@ _Nilai & grade muncul untuk tugas yang sudah dinilai_
 
 ### Kondisi Tampilan
 
-| Kondisi | Tampilan | Contoh |
-|---------|----------|--------|
+| Kondisi           | Tampilan    | Contoh                       |
+| ----------------- | ----------- | ---------------------------- |
 | Grade + Score ada | `🌟 A (95)` | MTK-001 — Judul \| 🌟 A (95) |
-| Grade saja | `🌟 A` | MTK-001 — Judul \| 🌟 A |
-| Score saja | `(95)` | MTK-001 — Judul \| (95) |
-| Keduanya null | Kosong | MTK-001 — Judul |
-| Submission null | Kosong | MTK-001 — Judul |
+| Grade saja        | `🌟 A`      | MTK-001 — Judul \| 🌟 A      |
+| Score saja        | `(95)`      | MTK-001 — Judul \| (95)      |
+| Keduanya null     | Kosong      | MTK-001 — Judul              |
+| Submission null   | Kosong      | MTK-001 — Judul              |
 
 ### Format String
+
 ```javascript
-`${index}. *${kode}* — ${judul}${gradeInfo}`
+`${index}. *${kode}* — ${judul}${gradeInfo}`;
 ```
 
 Dimana `gradeInfo`:
+
 - Jika ada grade/score: ` | ${emoji} ${grade} (${score})`
 - Jika kosong: `""` (empty string)
 
@@ -62,7 +67,9 @@ Dimana `gradeInfo`:
 ### Modified Functions
 
 #### 1. `listDoneAssignments(student)`
+
 **Before:**
+
 ```javascript
 const items = await prisma.assignmentStatus.findMany({
   where: { siswaId: student.id, status: "SELESAI" },
@@ -72,6 +79,7 @@ const items = await prisma.assignmentStatus.findMany({
 ```
 
 **After:**
+
 ```javascript
 const items = await prisma.assignmentStatus.findMany({
   where: { siswaId: student.id, status: "SELESAI" },
@@ -92,6 +100,7 @@ const itemsWithSubmission = await Promise.all(
 ```
 
 #### 2. Display Logic (in `handleSiswaCommand`)
+
 ```javascript
 const gradeEmoji = {
   A: "🌟",
@@ -103,21 +112,22 @@ const gradeEmoji = {
 const lines = items.slice(0, 10).map((it, i) => {
   const tg = it.tugas;
   const sub = it.submission;
-  
+
   // Format nilai dan grade
   let gradeInfo = "";
   if (sub?.grade || sub?.score !== null) {
     const emoji = gradeEmoji[sub?.grade] || "📊";
     const gradeText = sub?.grade ? `${emoji} ${sub.grade}` : "";
-    const scoreText = sub?.score !== null && sub?.score !== undefined 
-      ? `(${sub.score})` 
-      : "";
-    
+    const scoreText =
+      sub?.score !== null && sub?.score !== undefined ? `(${sub.score})` : "";
+
     if (gradeText || scoreText) {
-      gradeInfo = ` | ${gradeText}${gradeText && scoreText ? " " : ""}${scoreText}`;
+      gradeInfo = ` | ${gradeText}${
+        gradeText && scoreText ? " " : ""
+      }${scoreText}`;
     }
   }
-  
+
   return `${i + 1}. *${tg.kode}* — ${tg.judul}${gradeInfo}`;
 });
 ```
@@ -125,6 +135,7 @@ const lines = items.slice(0, 10).map((it, i) => {
 ## Database Schema
 
 ### AssignmentSubmission
+
 ```prisma
 model AssignmentSubmission {
   id         Int       @id @default(autoincrement())
@@ -138,6 +149,7 @@ model AssignmentSubmission {
 ```
 
 ### Query Strategy
+
 - Join `AssignmentStatus` dengan `AssignmentSubmission`
 - Filter by `siswaId` dan `tugasId`
 - Select hanya `grade` dan `score` untuk efisiensi
@@ -145,44 +157,56 @@ model AssignmentSubmission {
 ## Edge Cases
 
 ### 1. Tugas Belum Dinilai
+
 ```javascript
 submission: { grade: null, score: null }
 ```
+
 **Display:** `1. *MTK-001* — Aljabar Linear`  
 **Behavior:** Tidak tampilkan info nilai
 
 ### 2. Penilaian Manual (Score 0)
+
 ```javascript
 submission: { grade: "D", score: 0 }
 ```
+
 **Display:** `1. *MTK-001* — Aljabar Linear | 💫 D (0)`  
 **Behavior:** Tampilkan score 0 (valid)
 
 ### 3. Submission Data Tidak Ada
+
 ```javascript
-submission: null
+submission: null;
 ```
+
 **Display:** `1. *MTK-001* — Aljabar Linear`  
 **Behavior:** Tidak tampilkan info nilai
 
 ### 4. Grade Tanpa Score
+
 ```javascript
 submission: { grade: "A", score: null }
 ```
+
 **Display:** `1. *MTK-001* — Aljabar Linear | 🌟 A`  
 **Behavior:** Tampilkan grade saja
 
 ### 5. Score Tanpa Grade
+
 ```javascript
 submission: { grade: null, score: 90 }
 ```
+
 **Display:** `1. *MTK-001* — Aljabar Linear | (90)`  
 **Behavior:** Tampilkan score saja
 
 ## Performance Considerations
 
 ### Query Optimization
+
 **Current:** N+1 queries (1 untuk status + N untuk submissions)
+
 ```javascript
 await Promise.all(items.map(async (item) => {
   const submission = await prisma.assignmentSubmission.findFirst({...});
@@ -192,37 +216,41 @@ await Promise.all(items.map(async (item) => {
 **Limitation:** Prisma tidak support nested include pada kondisi ini karena AssignmentStatus tidak punya direct relation ke AssignmentSubmission.
 
 **Performance Impact:**
+
 - 10 tugas = 11 queries (1 + 10)
 - Average query time: ~5ms
 - Total: ~55ms (acceptable)
 
 **Future Optimization (if needed):**
+
 ```javascript
 // Single query with JOIN
 const submissions = await prisma.assignmentSubmission.findMany({
-  where: { 
+  where: {
     siswaId: student.id,
-    tugasId: { in: items.map(it => it.tugasId) }
+    tugasId: { in: items.map((it) => it.tugasId) },
   },
-  select: { tugasId: true, grade: true, score: true }
+  select: { tugasId: true, grade: true, score: true },
 });
 
 // Map to items
-const submissionMap = new Map(submissions.map(s => [s.tugasId, s]));
-const itemsWithSubmission = items.map(item => ({
+const submissionMap = new Map(submissions.map((s) => [s.tugasId, s]));
+const itemsWithSubmission = items.map((item) => ({
   ...item,
-  submission: submissionMap.get(item.tugasId)
+  submission: submissionMap.get(item.tugasId),
 }));
 ```
 
 ## Testing
 
 ### Unit Test
+
 ```bash
 node test-status-tugas.js
 ```
 
 **Coverage:**
+
 - ✅ Grade + Score display
 - ✅ Grade only display
 - ✅ Score only display
@@ -233,6 +261,7 @@ node test-status-tugas.js
 ### Manual Test via WhatsApp
 
 #### Scenario 1: Tugas Dinilai Otomatis
+
 ```
 User: status tugas
 Bot:  🧾 Riwayat Tugas Selesai:
@@ -241,6 +270,7 @@ Bot:  🧾 Riwayat Tugas Selesai:
 ```
 
 #### Scenario 2: Tugas Belum Dinilai
+
 ```
 User: status tugas
 Bot:  🧾 Riwayat Tugas Selesai:
@@ -249,6 +279,7 @@ Bot:  🧾 Riwayat Tugas Selesai:
 ```
 
 #### Scenario 3: Mix (Dinilai & Belum Dinilai)
+
 ```
 User: status tugas
 Bot:  🧾 Riwayat Tugas Selesai:
@@ -261,12 +292,15 @@ Bot:  🧾 Riwayat Tugas Selesai:
 ## User Experience
 
 ### Before
+
 Siswa tidak tahu nilai tugas yang sudah dikumpulkan tanpa membuka web dashboard.
 
 ### After
+
 Siswa langsung tahu nilai dan grade dari WhatsApp, meningkatkan transparency dan engagement.
 
 ### Benefit
+
 - ✅ Instant feedback
 - ✅ No need to open web
 - ✅ Visual clarity (emoji grade)
@@ -287,11 +321,13 @@ Fitur ini perfectly integrated dengan auto-grading:
 ## Footer Message
 
 Setiap tampilan status tugas sekarang include footer:
+
 ```
 _Nilai & grade muncul untuk tugas yang sudah dinilai_
 ```
 
 **Purpose:**
+
 - Inform user bahwa nilai akan muncul jika sudah dinilai
 - Manage expectation untuk tugas yang belum dinilai
 - Clear & transparent communication
@@ -299,12 +335,15 @@ _Nilai & grade muncul untuk tugas yang sudah dinilai_
 ## Related Features
 
 ### Status Tugas (siswa_status_tugas)
+
 - ✅ Show grade & score ← **NEW**
 
 ### Tugas Saya (siswa_list_tugas)
+
 - ✅ Show 🟢 indicator for auto-graded tasks
 
 ### Detail Tugas (siswa_detail_tugas)
+
 - Currently: Show assignment details only
 - Future: Could add grade/score here too
 
@@ -314,7 +353,7 @@ _Nilai & grade muncul untuk tugas yang sudah dinilai_
 ✅ **Tested:** All edge cases handled gracefully  
 ✅ **User-Friendly:** Visual emoji + clear formatting  
 ✅ **Performance:** Acceptable (<100ms for 10 items)  
-✅ **Integrated:** Works seamlessly with auto-grading  
+✅ **Integrated:** Works seamlessly with auto-grading
 
 ---
 

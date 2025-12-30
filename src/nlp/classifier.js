@@ -35,12 +35,18 @@ function classify(text, entities) {
     }
 
     // Boost untuk sapaan_help - prioritas tinggi untuk greeting
-    if (name === "sapaan_help" && /halo|hai|hey|hei|kinanti|help|bantuan|menu|assalamualaikum/.test(text)) {
+    if (
+      name === "sapaan_help" &&
+      /halo|hai|hey|hei|kinanti|help|bantuan|menu|assalamualaikum/.test(text)
+    ) {
       score += 3; // Boost kuat untuk sapaan
     }
 
     // Boost untuk guru_buat_penugasan - prioritas tinggi
-    if (name === "guru_buat_penugasan" && /buat tugas|penugasan|tugas baru|tambah tugas/.test(text)) {
+    if (
+      name === "guru_buat_penugasan" &&
+      /buat tugas|penugasan|tugas baru|tambah tugas/.test(text)
+    ) {
       score += 4; // Boost kuat untuk buat tugas
     }
 
@@ -50,12 +56,18 @@ function classify(text, entities) {
     }
 
     // Boost untuk guru_list_siswa
-    if (name === "guru_list_siswa" && /list siswa|daftar siswa|data siswa/.test(text)) {
+    if (
+      name === "guru_list_siswa" &&
+      /list siswa|daftar siswa|data siswa/.test(text)
+    ) {
       score += 3;
     }
 
     // Boost untuk guru_broadcast_tugas
-    if (name === "guru_broadcast_tugas" && /kirim tugas|broadcast|sebar tugas|umumkan/.test(text)) {
+    if (
+      name === "guru_broadcast_tugas" &&
+      /kirim tugas|broadcast|sebar tugas|umumkan/.test(text)
+    ) {
       score += 3;
     }
 

@@ -1,11 +1,13 @@
 # Penilaian Otomatis Tugas via WhatsApp Bot
 
 ## Overview
+
 Fitur penilaian otomatis menggunakan AI (Google Gemini via n8n) untuk menilai tugas siswa yang memiliki kunci jawaban. Sistem akan otomatis mengirim hasil penilaian (grade, score, evaluasi) ke siswa via WhatsApp.
 
 ## Alur Kerja
 
 ### 1. Deteksi Tugas Dinilai Otomatis
+
 ```javascript
 // Tugas dinilai otomatis jika assignment.kunciJawaban tidak null
 const isAutoGraded = assignment?.kunciJawaban ? true : false;
@@ -14,6 +16,7 @@ const isAutoGraded = assignment?.kunciJawaban ? true : false;
 ### 2. Proses Pengumpulan
 
 #### A. Tugas Manual (kunciJawaban = null)
+
 ```
 Siswa: kumpul MTK-001
 Bot: [kirim PDF]
@@ -24,13 +27,14 @@ Bot: 🎉 Tugas sukses terkumpul!
 ```
 
 #### B. Tugas Otomatis (kunciJawaban != null)
+
 ```
 Siswa: kumpul MTK-001
 Bot: [kirim PDF]
 Bot: 🎉 Tugas sukses terkumpul!
      📌 Kode: MTK-001
      📂 File: MTK-001_timestamp.pdf
-     
+
      🤖 Tugas ini dinilai otomatis
      ⏳ Sedang diproses oleh AI... mohon tunggu sebentar.
 
@@ -38,36 +42,40 @@ Bot: 🎉 Tugas sukses terkumpul!
 [Polling hasil setiap 2 detik, max 30 detik]
 
 Bot: 🎓 HASIL PENILAIAN OTOMATIS
-     
+
      🌟 Grade: A
      📊 Score: 90/100
-     
+
      💬 Evaluasi:
      Jawaban siswa sangat komprehensif...
-     
+
      Semangat terus belajarnya! 🚀
 ```
 
 ### 3. Webhook Integration
 
 #### Endpoint
+
 ```
 POST http://0.0.0.0:5678/webhook/nilai-tugas
 ```
 
 #### Request Payload
+
 ```json
 {
-  "id": 9,                    // AssignmentSubmission.id
-  "siswaId": 3,               // User.id (siswa)
-  "tugasId": 12,              // Assignment.id
-  "pdfUrl": "https://...",    // URL jawaban siswa
+  "id": 9, // AssignmentSubmission.id
+  "siswaId": 3, // User.id (siswa)
+  "tugasId": 12, // Assignment.id
+  "pdfUrl": "https://...", // URL jawaban siswa
   "answerKeyUrl": "https://..." // URL kunci jawaban
 }
 ```
 
 #### Response Expected
+
 n8n workflow akan:
+
 1. Analyze document menggunakan Gemini AI
 2. Parse JSON result
 3. Update `AssignmentSubmission` dengan:
@@ -76,6 +84,7 @@ n8n workflow akan:
    - `score` (0-100)
 
 ### 4. Polling Mechanism
+
 - Interval: 2 detik
 - Timeout: 30 detik
 - Cek field: `grade` dan `score` di `AssignmentSubmission`
@@ -84,7 +93,7 @@ n8n workflow akan:
 ## Grade Conversion
 
 | Score Range | Grade | Emoji |
-|-------------|-------|-------|
+| ----------- | ----- | ----- |
 | 90 - 100    | A     | 🌟    |
 | 80 - 89     | B     | ⭐    |
 | 70 - 79     | C     | ✨    |
@@ -93,16 +102,20 @@ n8n workflow akan:
 ## File yang Dimodifikasi
 
 ### src/controllers/siswaController.js
+
 Fungsi baru:
+
 - `triggerAutoGrading()` - Kirim webhook ke n8n
 - `pollGradingResult()` - Poll hasil penilaian dari DB
 
 Fungsi dimodifikasi:
+
 - `handleMediaWhilePending()` - Tambah logik deteksi & trigger auto-grading
 
 ## Environment Variables
 
 Tambahkan ke `.env`:
+
 ```env
 WEBHOOK_TUGAS_URL=http://0.0.0.0:5678/webhook/nilai-tugas
 ```
@@ -117,6 +130,7 @@ Workflow terdiri dari 4 nodes:
 4. **Update a row (Supabase)** - Update database
 
 ### Output dari Code Node
+
 ```json
 {
   "id": 9,
@@ -133,11 +147,13 @@ Workflow terdiri dari 4 nodes:
 ## Testing
 
 ### 1. Unit Test
+
 ```bash
 node test-auto-grading.js
 ```
 
 ### 2. Manual Webhook Test
+
 ```bash
 curl --location 'http://0.0.0.0:5678/webhook/nilai-tugas' \
 --header 'Content-Type: application/json' \
@@ -151,6 +167,7 @@ curl --location 'http://0.0.0.0:5678/webhook/nilai-tugas' \
 ```
 
 ### 3. End-to-End Test via WhatsApp
+
 1. Buat tugas dengan kunci jawaban di web dashboard
 2. Pastikan field `assignment.kunciJawaban` terisi
 3. Via WhatsApp: `kumpul <KODE>`
@@ -162,20 +179,23 @@ curl --location 'http://0.0.0.0:5678/webhook/nilai-tugas' \
 ## Error Handling
 
 ### Webhook Gagal
+
 ```
 ⚠️ Gagal memproses penilaian otomatis. Guru akan menilai manual.
 ```
 
 ### Timeout (>30 detik)
+
 ```
-⏱️ Penilaian memakan waktu lebih lama. 
-Hasilnya akan diupdate nanti ya! 
+⏱️ Penilaian memakan waktu lebih lama.
+Hasilnya akan diupdate nanti ya!
 Cek status tugas secara berkala.
 ```
 
 ## Database Schema Impact
 
 ### AssignmentSubmission
+
 ```prisma
 model AssignmentSubmission {
   id         Int       @id @default(autoincrement())
@@ -191,6 +211,7 @@ model AssignmentSubmission {
 ```
 
 ### Assignment
+
 ```prisma
 model Assignment {
   id           Int       @id @default(autoincrement())
@@ -203,6 +224,7 @@ model Assignment {
 ## Monitoring & Logs
 
 Log markers untuk debugging:
+
 ```
 🤖 Triggering auto-grading for submission X...
 ✅ Webhook POST success: <URL>

@@ -20,7 +20,7 @@ const {
   onIncomingMedia,
   onIncomingText,
 } = require("./src/features/imgToPdf");
-const { getState } = require("./src/services/state");
+const { getState, setState, clearState } = require("./src/services/state");
 const { setupSchedules } = require("./src/controllers/scheduleController");
 const qrcode = require("qrcode-terminal");
 
@@ -28,14 +28,34 @@ const qrcode = require("qrcode-terminal");
 function phoneFromJid(jid = "") {
   return String(jid || "").replace(/@c\.us$/i, "");
 }
+
+// Helper: retry database operation with exponential backoff
+async function retryDbOperation(operation, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (err) {
+      console.warn(
+        `[server] DB attempt ${attempt}/${maxRetries} failed:`,
+        err.message
+      );
+      if (attempt === maxRetries) throw err;
+      // Wait before retry (exponential backoff)
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
+    }
+  }
+}
+
 async function getUserRoleByJid(jid) {
   try {
     if (!prisma?.user?.findFirst) return null;
     const phone = phoneFromJid(jid);
-    const user = await prisma.user.findFirst({ where: { phone } });
+    const user = await retryDbOperation(() =>
+      prisma.user.findFirst({ where: { phone } })
+    );
     return user?.role ? String(user.role).toLowerCase() : null;
   } catch (e) {
-    console.warn("[server] getUserRoleByJid error:", e);
+    console.warn("[server] getUserRoleByJid error after retries:", e.message);
     return null;
   }
 }
@@ -50,26 +70,99 @@ function buildGreetingMessage(userName, role) {
     return (
       greeting +
       "\n📚 *Menu Guru:*\n" +
-      "• *buat tugas* — Buat tugas baru\n" +
-      "• *kirim <KODE> <KELAS>* — Broadcast tugas ke kelas\n" +
-      "• *rekap <KODE> <KELAS>* — Download rekap Excel\n" +
-      "• *list siswa* — Daftar siswa di kelas\n" +
-      "• *gambar ke pdf* — Ubah foto jadi PDF\n\n" +
-      "Ketik perintah di atas untuk mulai! 🚀"
+      "*1.* 📝 Buat Tugas Baru\n" +
+      "*2.* 📢 Broadcast Tugas ke Kelas\n" +
+      "*3.* 📊 Rekap Excel Pengumpulan\n" +
+      "*4.* 👥 Lihat Daftar Siswa\n" +
+      "*5.* 🖼️ Gambar ke PDF\n" +
+      "*6.* ❓ Bantuan\n" +
+      "*0.* 🚪 Keluar\n\n" +
+      "📌 *Balas dengan angka* untuk memilih menu."
     );
   } else {
-    // Siswa
+    // Siswa - berbasis angka
     return (
       greeting +
       "\n🎒 *Menu Siswa:*\n" +
-      "• *tugas saya* — Cek tugas belum selesai\n" +
-      "• *status tugas* — Riwayat tugas selesai\n" +
-      "• *detail <KODE>* — Lihat detail tugas\n" +
-      "• *kumpul <KODE>* — Kumpulkan tugas (PDF)\n" +
-      "• *gambar ke pdf* — Ubah foto jadi PDF\n\n" +
-      "Ketik perintah di atas untuk mulai! 🚀"
+      "*1.* 📚 Tugas Saya (Belum Selesai)\n" +
+      "*2.* ✅ Status Tugas (Riwayat)\n" +
+      "*3.* 📝 Kumpul Tugas\n" +
+      "*4.* 🖼️ Gambar ke PDF\n" +
+      "*5.* ❓ Bantuan\n" +
+      "*0.* 🚪 Keluar\n\n" +
+      "📌 *Balas dengan angka* untuk memilih menu."
     );
   }
+}
+
+// =====================
+// Helper: Guru Menu Selection
+// =====================
+const GURU_MENU_MAP = {
+  1: "guru_buat_penugasan",
+  2: "guru_broadcast_tugas",
+  3: "guru_rekap_excel",
+  4: "guru_list_siswa",
+  5: "img_to_pdf",
+  6: "guru_help",
+  0: "guru_exit_menu",
+};
+
+// =====================
+// Helper: Siswa Menu Selection
+// =====================
+const SISWA_MENU_MAP = {
+  1: "siswa_tugas_saya",
+  2: "siswa_status_tugas",
+  3: "siswa_kumpul_tugas",
+  4: "img_to_pdf",
+  5: "siswa_help",
+  0: "siswa_exit_menu",
+};
+
+/**
+ * Cek apakah guru sedang dalam mode menu selection
+ */
+async function isGuruInMenuMode(phone) {
+  const state = await getState(phone);
+  return state?.menuMode === "guru_menu_selection";
+}
+
+/**
+ * Set guru ke mode menu selection
+ */
+async function setGuruMenuMode(phone) {
+  let state = (await getState(phone)) || {};
+  state.menuMode = "guru_menu_selection";
+  state.lastIntent = null; // Reset intent
+  await setState(phone, state);
+}
+
+/**
+ * Cek apakah siswa sedang dalam mode menu selection
+ */
+async function isSiswaInMenuMode(phone) {
+  const state = await getState(phone);
+  return state?.menuMode === "siswa_menu_selection";
+}
+
+/**
+ * Set siswa ke mode menu selection
+ */
+async function setSiswaMenuMode(phone) {
+  let state = (await getState(phone)) || {};
+  state.menuMode = "siswa_menu_selection";
+  state.lastIntent = null;
+  await setState(phone, state);
+}
+
+/**
+ * Clear guru menu mode
+ */
+async function clearGuruMenuMode(phone) {
+  let state = (await getState(phone)) || {};
+  delete state.menuMode;
+  await setState(phone, state);
 }
 
 // =====================
@@ -77,6 +170,260 @@ function buildGreetingMessage(userName, role) {
 // =====================
 waClient.on("message", async (message) => {
   try {
+    const phone = phoneFromJid(message.from);
+    const rawText = (message.body || "").trim();
+
+    // ========== CEK ROLE USER TERLEBIH DAHULU ==========
+    let role = await getUserRoleByJid(message.from);
+    console.log(`🔵 [server] Phone: ${phone}, Role: ${role}`);
+    if (role === "teacher") role = "guru";
+    if (role === "student") role = "siswa";
+
+    // ========== GURU: CEK STATE KHUSUS ==========
+    if (role === "guru") {
+      const st = await getState(phone);
+      console.log(`🔵 [server] Guru state:`, JSON.stringify(st));
+
+      // 1) Cek apakah guru sedang dalam wizard (buat tugas / rekap / after create / broadcast / list siswa)
+      if (
+        st?.lastIntent === "guru_buat_penugasan" ||
+        st?.lastIntent === "guru_rekap_wizard" ||
+        st?.lastIntent === "guru_after_create" ||
+        st?.lastIntent === "guru_broadcast_wizard" ||
+        st?.lastIntent === "guru_listsiswa_wizard"
+      ) {
+        console.log(
+          `🔵 [server] Routing to guru wizard handler for intent: ${st.lastIntent}`
+        );
+        // Handle media untuk wizard
+        const isImageLike =
+          message.hasMedia ||
+          message.type === "image" ||
+          (message.type === "document" &&
+            /^image\//i.test(
+              message._data?.mimetype || message.mimetype || ""
+            ));
+
+        if (isImageLike) {
+          const handled = await onIncomingMedia(message);
+          if (handled) return;
+        }
+
+        // Lanjutkan ke wizard handler
+        const ctx = await nlpPipeline(message);
+        return handleGuruCommand(message, {
+          intent: st.lastIntent,
+          entities: ctx.dialog.slots,
+          ctx,
+          waClient,
+          excelUtil,
+        });
+      }
+
+      // 2) Cek apakah guru sedang dalam menu selection mode
+      if (st?.menuMode === "guru_menu_selection") {
+        // Cek apakah input adalah angka menu
+        const menuChoice = rawText.replace(/[^0-9]/g, ""); // Ambil angka saja
+
+        if (GURU_MENU_MAP[menuChoice]) {
+          const selectedIntent = GURU_MENU_MAP[menuChoice];
+
+          // Handle exit menu
+          if (selectedIntent === "guru_exit_menu") {
+            await clearState(phone);
+            return message.reply(
+              "👋 Sampai jumpa! Ketik *halo* atau *mulai* kapan saja untuk kembali ke menu."
+            );
+          }
+
+          // Handle img_to_pdf (shared feature)
+          if (selectedIntent === "img_to_pdf") {
+            await clearGuruMenuMode(phone);
+            await startImgToPdf(message);
+            return;
+          }
+
+          // Handle guru_help - tampilkan bantuan detail
+          if (selectedIntent === "guru_help") {
+            return message.reply(
+              "❓ *Bantuan Menu Guru*\n\n" +
+                "*1. Buat Tugas Baru*\n" +
+                "   Membuat tugas baru dengan form interaktif.\n" +
+                "   Bisa dengan/tanpa penilaian otomatis.\n\n" +
+                "*2. Broadcast Tugas*\n" +
+                "   Kirim pengumuman tugas ke semua siswa di kelas.\n\n" +
+                "*3. Rekap Excel*\n" +
+                "   Download rekap pengumpulan tugas dalam format Excel.\n\n" +
+                "*4. Lihat Daftar Siswa*\n" +
+                "   Melihat daftar siswa, bisa filter per kelas.\n\n" +
+                "*5. Gambar ke PDF*\n" +
+                "   Menggabungkan beberapa gambar menjadi 1 file PDF.\n\n" +
+                "Kalau ada kendala yang lain, hubungi Admin yaa\n0895378394020 Raka (Admin) 😆\n\n" +
+                "📌 Ketik angka untuk memilih menu, atau *0* untuk keluar."
+            );
+          }
+
+          // Clear menu mode dan route ke fitur guru
+          await clearGuruMenuMode(phone);
+
+          const ctx = await nlpPipeline(message);
+          return handleGuruCommand(message, {
+            intent: selectedIntent,
+            entities: ctx.dialog.slots || {},
+            ctx,
+            waClient,
+            excelUtil,
+          });
+        } else {
+          // Input bukan angka menu yang valid
+          return message.reply(
+            "⚠️ Pilihan tidak valid.\n\n" +
+              "📌 Balas dengan *angka 0-6* untuk memilih menu:\n" +
+              "*1.* Buat Tugas | *2.* Broadcast | *3.* Rekap\n" +
+              "*4.* Daftar Siswa | *5.* Gambar ke PDF | *6.* Bantuan\n" +
+              "*0.* Keluar"
+          );
+        }
+      }
+
+      // 3) Cek apakah guru mengetik sapaan untuk masuk ke menu
+      const isSapaan =
+        /^(halo|hai|hey|hei|mulai|start|menu|kinanti|assalamualaikum)/i.test(
+          rawText
+        );
+      if (isSapaan) {
+        // Set guru ke menu mode
+        await setGuruMenuMode(phone);
+
+        // Ambil nama user
+        const user = await prisma.user.findFirst({
+          where: { phone },
+          select: { nama: true },
+        });
+        const userName = user?.nama || "Guru";
+
+        return message.reply(buildGreetingMessage(userName, "guru"));
+      }
+    }
+
+    // ========== SISWA: CEK STATE KHUSUS ==========
+    if (role === "siswa") {
+      const st = await getState(phone);
+      console.log(`🔵 [server] Siswa state:`, JSON.stringify(st));
+
+      // 1) Cek apakah siswa sedang dalam wizard (kumpul tugas / status / gambar ke pdf)
+      if (
+        st?.lastIntent === "siswa_kumpul_wizard" ||
+        st?.lastIntent === "siswa_status_wizard" ||
+        st?.lastIntent === "siswa_imgtopdf"
+      ) {
+        console.log(
+          `🔵 [server] Routing to siswa wizard handler for intent: ${st.lastIntent}`
+        );
+
+        // Handle media untuk wizard
+        const isImageLike =
+          message.hasMedia ||
+          message.type === "image" ||
+          (message.type === "document" &&
+            /^image\//i.test(
+              message._data?.mimetype || message.mimetype || ""
+            ));
+
+        if (isImageLike) {
+          if (st?.lastIntent === "siswa_imgtopdf") {
+            const handled = await onIncomingMedia(message);
+            if (handled) return;
+          }
+        }
+
+        // Lanjutkan ke siswa handler
+        return handleSiswaCommand(message, {
+          intent: st.lastIntent,
+          entities: st.slots || {},
+          waClient,
+        });
+      }
+
+      // 2) Cek apakah siswa sedang dalam menu selection mode
+      if (st?.menuMode === "siswa_menu_selection") {
+        const menuChoice = rawText.replace(/[^0-9]/g, "");
+
+        if (SISWA_MENU_MAP[menuChoice]) {
+          const selectedIntent = SISWA_MENU_MAP[menuChoice];
+
+          // Handle exit menu
+          if (selectedIntent === "siswa_exit_menu") {
+            await clearState(phone);
+            return message.reply(
+              "👋 Sampai jumpa! Ketik *halo* kapan saja untuk kembali ke menu. 😊"
+            );
+          }
+
+          // Handle img_to_pdf
+          if (selectedIntent === "img_to_pdf") {
+            await startImgToPdf(message);
+            return;
+          }
+
+          // Handle siswa_help
+          if (selectedIntent === "siswa_help") {
+            return message.reply(
+              `❓ *Bantuan Kinanti Bot - Siswa*\n\n` +
+                `📚 *Daftar Menu:*\n` +
+                `*1.* 📚 Tugas Saya — Lihat tugas yang belum selesai\n` +
+                `*2.* ✅ Status Tugas — Lihat riwayat tugas yang sudah dikumpul\n` +
+                `*3.* 📝 Kumpul Tugas — Kumpulkan tugas dengan upload PDF\n` +
+                `*4.* 🖼️ Gambar ke PDF — Konversi foto menjadi file PDF\n` +
+                `*5.* ❓ Bantuan — Menampilkan halaman ini\n` +
+                `*0.* 🚪 Keluar — Keluar dari menu\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `📞 *Kontak Admin Kinanti:*\n` +
+                `wa.me/62895378394020\n\n` +
+                `Jika ada kendala terkait penggunaan atau ada yang ingin ditanyakan, silakan hubungi nomor admin di atas.\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `Ketik *halo* untuk kembali ke menu utama.`
+            );
+          }
+
+          // Route ke siswa handler
+          return handleSiswaCommand(message, {
+            intent: selectedIntent,
+            entities: {},
+            waClient,
+          });
+        } else {
+          // Input bukan angka menu yang valid
+          return message.reply(
+            "⚠️ Pilihan tidak valid.\n\n" +
+              "📌 Balas dengan *angka 0-5* untuk memilih menu:\n" +
+              "*1.* Tugas Saya | *2.* Status Tugas | *3.* Kumpul Tugas\n" +
+              "*4.* Gambar ke PDF | *5.* Bantuan | *0.* Keluar"
+          );
+        }
+      }
+
+      // 3) Cek apakah siswa mengetik sapaan untuk masuk ke menu
+      const isSapaan =
+        /^(halo|hai|hey|hei|mulai|start|menu|kinanti|assalamualaikum)/i.test(
+          rawText
+        );
+      if (isSapaan) {
+        // Set siswa ke menu mode
+        await setSiswaMenuMode(phone);
+
+        // Ambil nama user
+        const user = await prisma.user.findFirst({
+          where: { phone },
+          select: { nama: true },
+        });
+        const userName = user?.nama || "Siswa";
+
+        return message.reply(buildGreetingMessage(userName, "siswa"));
+      }
+    }
+
+    // ========== NON-REGISTERED USER & FALLBACK ==========
     const isImageLike =
       message.hasMedia ||
       message.type === "image" ||
@@ -100,10 +447,8 @@ waClient.on("message", async (message) => {
 
     const intent = dialog.to || "";
 
-    // ========== HANDLER SAPAAN ==========
+    // ========== HANDLER SAPAAN (untuk user belum terdaftar & siswa) ==========
     if (intent === "sapaan_help") {
-      const phone = phoneFromJid(message.from);
-
       // Cek apakah user terdaftar
       const user = await prisma.user.findFirst({
         where: { phone },
@@ -120,11 +465,16 @@ waClient.on("message", async (message) => {
         );
       }
 
-      // User sudah terdaftar, tampilkan menu sesuai role
+      // User sudah terdaftar (siswa), tampilkan menu
       const userName = user.nama || "Pengguna";
       let userRole = String(user.role || "siswa").toLowerCase();
       if (userRole === "teacher") userRole = "guru";
       if (userRole === "student") userRole = "siswa";
+
+      // Jika guru, masukkan ke menu mode (fallback jika belum ke-handle di atas)
+      if (userRole === "guru") {
+        await setGuruMenuMode(phone);
+      }
 
       return message.reply(buildGreetingMessage(userName, userRole));
     }
@@ -134,25 +484,7 @@ waClient.on("message", async (message) => {
       return;
     }
 
-    let role = await getUserRoleByJid(message.from);
-    if (role === "teacher") role = "guru";
-    if (role === "student") role = "siswa";
-
-    // Cek apakah guru sedang dalam wizard (buat tugas / rekap)
-    if (role === "guru") {
-      const phone = phoneFromJid(message.from);
-      const st = await getState(phone);
-      // Jika sedang dalam wizard guru, arahkan ke guruController
-      if (st?.lastIntent === "guru_buat_penugasan" || st?.lastIntent === "guru_rekap_wizard") {
-        return handleGuruCommand(message, {
-          intent: st.lastIntent, // Gunakan intent dari state, bukan dari classifier
-          entities: dialog.slots,
-          ctx,
-          waClient,
-          excelUtil,
-        });
-      }
-    }
+    // ========== HANDLER INTENT GURU (jika ada guru yang langsung ketik perintah) ==========
     if (intent.startsWith("guru_")) {
       if (role === "guru") {
         return handleGuruCommand(message, {
@@ -166,11 +498,12 @@ waClient.on("message", async (message) => {
         // Siswa tidak bisa akses fitur guru
         return message.reply(
           "🔒 Maaf, fitur ini khusus untuk *Guru*.\n\n" +
-          "Ketik *halo* untuk melihat menu siswa. 📚"
+            "Ketik *halo* untuk melihat menu siswa. 📚"
         );
       }
     }
 
+    // ========== HANDLER SISWA ==========
     return handleSiswaCommand(message, {
       intent,
       entities: dialog.slots,

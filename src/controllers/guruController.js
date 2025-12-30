@@ -66,13 +66,19 @@ function buildRecapText(s) {
     `• Judul: ${s.judul ?? "-"}\n` +
     `• Deskripsi: ${s.deskripsi ?? "-"}\n` +
     `• Wajib PDF (siswa): ${s.lampirPdf === "ya" ? "Ya" : "Tidak"}\n` +
-    `• Penilaian Otomatis: ${s.penilaianOtomatis === "ya" ? "Ya 🟢" : "Tidak (manual)"}\n` +
+    `• Penilaian Otomatis: ${
+      s.penilaianOtomatis === "ya" ? "Ya 🟢" : "Tidak (manual)"
+    }\n` +
     `• Deadline: ${
       s.deadlineHari ? `${s.deadlineHari} hari` : "Belum diatur"
     }\n` +
     `• Kelas: ${s.kelas ?? "-"}\n` +
-    (s.guruPdfReceived ? `• PDF Guru: *${s.guruPdfName || "terlampir"}*\n` : "") +
-    (s.kunciJawabanReceived ? `• Kunci Jawaban: *${s.kunciJawabanName || "terlampir"}* 🔑\n` : "")
+    (s.guruPdfReceived
+      ? `• PDF Guru: *${s.guruPdfName || "terlampir"}*\n`
+      : "") +
+    (s.kunciJawabanReceived
+      ? `• Kunci Jawaban: *${s.kunciJawabanName || "terlampir"}* 🔑\n`
+      : "")
   );
 }
 
@@ -101,7 +107,7 @@ async function handleGuruBuatPenugasan(message, { user, entities, waClient }) {
       guruPdfB64: null,
       guruPdfMime: null,
       guruPdfSize: null,
-      
+
       // alur kunci jawaban (untuk penilaian otomatis)
       awaitingKunciJawaban: false,
       kunciJawabanReceived: false,
@@ -116,12 +122,7 @@ async function handleGuruBuatPenugasan(message, { user, entities, waClient }) {
 
   await setState(user.phone, state);
 
-  await message.reply(
-    "📝 *Mulai buat penugasan*\n" +
-      "Ketik sesuai format berikut (boleh satu per satu).\n" +
-      "Jika sudah lengkap, balas: *simpan* (atau *batal* untuk membatalkan)."
-  );
-
+  // Tampilkan form dengan format yang benar
   const s = state.slots;
   const form = `- Kode: ${s.kode ?? ""}
 - Judul: ${s.judul ?? ""}
@@ -129,12 +130,12 @@ async function handleGuruBuatPenugasan(message, { user, entities, waClient }) {
 - Lampirkan PDF (ya/tidak): ${s.lampirPdf ?? ""}
 - Penilaian Otomatis (ya/tidak): ${s.penilaianOtomatis ?? ""}
 - Deadline: ${s.deadlineHari ?? "N"} (hari)
-- Kelas: ${s.kelas ? `*${s.kelas}*` : "(ketik kelas, misal: XIITKJ2)"}
+- Kelas: ${s.kelas ? `*${s.kelas}*` : "(ketik kelas, misal: XIITKJ2)"}`;
 
-📌 *Catatan:*
-• Jika *Penilaian Otomatis: ya*, kirim kunci jawaban PDF setelah klik simpan
-• Tugas dengan penilaian otomatis ditandai 🟢`;
-
+  await message.reply(
+    "🧭 *Progress pengisian form*\n" +
+      "Ketik sesuai format berikut (boleh satu per satu)."
+  );
   return waClient.sendMessage(message.from, form);
 }
 
@@ -205,12 +206,13 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       const recap = buildRecapText(s);
       await message.reply(
         `✅ *PDF diterima:* ${s.guruPdfName}\n\n${recap}\n` +
-          "Jika sudah siap, ketik *simpan* untuk menyelesaikan. 💾"
+          "*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan"
       );
       return true;
     }
 
-    if (/^lewati$/i.test(raw)) {
+    // Ketik 0 untuk lewati/batal
+    if (/^0$/i.test(raw)) {
       const s = state.slots || {};
       s.awaitingPdf = false;
       s.guruPdfReceived = false;
@@ -223,13 +225,15 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       await setState(user.phone, state);
 
       await message.reply(
-        "➡️ Lampiran PDF dibatalkan. Kamu bisa lanjut isi field lain atau ketik *simpan* jika sudah lengkap."
+        "➡️ Lampiran PDF dibatalkan.\n\n*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan semua"
       );
       return true;
     }
 
     await message.reply(
-      "⏳ Bot sedang menunggu *file PDF* dari guru. Kirim file PDF sekarang, atau ketik *lewati* untuk batal melampirkan."
+      "⏳ Bot menunggu *file PDF* dari guru.\n\n" +
+        "📎 Kirim file PDF sekarang (maks ~10MB)\n\n" +
+        "*0.* Lewati (tidak melampirkan PDF)"
     );
     return true;
   }
@@ -266,12 +270,13 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       const recap = buildRecapText(s);
       await message.reply(
         `✅ *Kunci jawaban diterima:* ${s.kunciJawabanName} 🔑\n\n${recap}\n` +
-          "Jika sudah siap, ketik *simpan* untuk menyelesaikan. 💾"
+          "*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan"
       );
       return true;
     }
 
-    if (/^lewati$/i.test(raw)) {
+    // Ketik 0 untuk lewati/batal kunci jawaban
+    if (/^0$/i.test(raw)) {
       const s = state.slots || {};
       s.awaitingKunciJawaban = false;
       s.kunciJawabanReceived = false;
@@ -284,44 +289,29 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       await setState(user.phone, state);
 
       await message.reply(
-        "➡️ Kunci jawaban dibatalkan. Tugas akan dinilai *manual* oleh guru.\n" +
-          "Kamu bisa lanjut isi field lain atau ketik *simpan* jika sudah lengkap."
+        "➡️ Kunci jawaban dibatalkan. Tugas akan dinilai *manual* oleh guru.\n\n" +
+          "*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan semua"
       );
       return true;
     }
 
     await message.reply(
-      "⏳ Bot sedang menunggu *kunci jawaban PDF*. Kirim file PDF sekarang, atau ketik *lewati* untuk penilaian manual."
+      "⏳ Bot menunggu *kunci jawaban PDF*.\n" +
+        "🔑 Kirim file PDF sekarang\n\n" +
+        "*0.* Lewati (penilaian manual)"
     );
     return true;
   }
 
-  // progress form bila ketik "buat tugas" lagi
-  if (/^buat\s+tugas(\s+baru)?$/i.test(raw)) {
-    const s = state.slots || {};
-    const form = `- Kode: ${s.kode ?? ""}
-- Judul: ${s.judul ?? ""}
-- Deskripsi: ${s.deskripsi ?? ""}
-- Lampirkan PDF (ya/tidak): ${s.lampirPdf ?? ""}
-- Penilaian Otomatis (ya/tidak): ${s.penilaianOtomatis ?? ""}
-- Deadline: ${s.deadlineHari ?? "N"} (hari)
-- Kelas: ${s.kelas ? `*${s.kelas}*` : "(ketik kelas, misal: XIITKJ2)"}`;
-    await message.reply(
-      "🧭 *Progress pengisian form*\nKetik sesuai format berikut (boleh satu per satu).\n" +
-        "Jika sudah lengkap, balas: *simpan* (atau *batal* untuk membatalkan)."
-    );
-    await message.reply(form);
-    return true;
-  }
-
-  // perintah khusus
-  if (/^(batal|cancel)$/i.test(raw)) {
+  // Perintah batalkan semua (0 tanpa sedang menunggu PDF)
+  if (/^0$/i.test(raw)) {
     await clearState(user.phone);
     await message.reply("❎ Pembuatan penugasan dibatalkan.");
     return true;
   }
 
-  if (/^simpan$/i.test(raw)) {
+  // Perintah simpan (1)
+  if (/^1$/i.test(raw)) {
     const s = state.slots || {};
     const missing = [];
     if (!s.kode) missing.push("Kode");
@@ -330,36 +320,37 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     if (!s.kelas || !/^(X|XI|XII)[A-Z]{2,8}\d{1,2}$/i.test(String(s.kelas))) {
       missing.push("Kelas");
     }
-    
+
     // Validasi lampiran PDF guru (opsional)
     if (s.lampirPdf === "ya" && !s.guruPdfReceived) {
-      await message.reply(
-        "📎 Kamu memilih *Lampirkan PDF: ya*.\n" +
-          "Kirim file PDF sekarang (maks ~10MB), lalu ketik *simpan* lagi. Atau ketik *lewati* jika batal melampirkan."
-      );
       s.awaitingPdf = true;
       state.slots = { ...s };
       await setState(user.phone, state);
+      await message.reply(
+        "⏳ Bot menunggu *file PDF* dari guru.\n\n" +
+          "📎 Kirim file PDF sekarang (maks ~10MB)\n" +
+          "*0.* Lewati (tidak melampirkan PDF)"
+      );
       return true;
     }
-    
+
     // Validasi kunci jawaban (wajib jika penilaian otomatis)
     if (s.penilaianOtomatis === "ya" && !s.kunciJawabanReceived) {
-      await message.reply(
-        "🔑 Kamu memilih *Penilaian Otomatis: ya*.\n" +
-          "Kirim *kunci jawaban PDF* sekarang (maks ~10MB), lalu ketik *simpan* lagi.\n" +
-          "Atau ketik *lewati* jika ingin penilaian manual."
-      );
       s.awaitingKunciJawaban = true;
       state.slots = { ...s };
       await setState(user.phone, state);
+      await message.reply(
+        "⏳ Bot menunggu *kunci jawaban PDF*.\n\n" +
+          "🔑 Kirim file PDF sekarang\n" +
+          "*0.* Lewati (penilaian manual)"
+      );
       return true;
     }
-    
+
     if (missing.length) {
       await message.reply(
-        `⚠️ Field belum lengkap: ${missing.join(", ")}.\n` +
-          "Lengkapi dulu, lalu ketik *simpan*."
+        `⚠️ Field belum lengkap: ${missing.join(", ")}.\n\n` +
+          "Lengkapi dulu, lalu ketik *1* untuk simpan."
       );
       return true;
     }
@@ -379,8 +370,8 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
           `• Kelas: ${dup.kelas}`,
           `• Deadline: ${dup.deadline ? fmtWIB(dup.deadline) : "Belum diatur"}`,
           "",
-          "Silakan membuat tugas dengan *kode baru*.",
-          "Ketik misal: `Kode: MTK124` lalu *simpan* lagi. ✏️",
+          "Silakan ubah dengan *kode baru*.",
+          "Ketik misal: `Kode: MTK124` lalu *1* untuk simpan. ✏️",
         ].join("\n")
       );
       return true;
@@ -436,7 +427,11 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       const fileName = `kunci_${safeKode}_${ts}_${baseName}`;
 
       const buffer = Buffer.from(s.kunciJawabanB64, "base64");
-      kunciJawabanUrl = await uploadPDFtoSupabase(buffer, fileName, s.kunciJawabanMime);
+      kunciJawabanUrl = await uploadPDFtoSupabase(
+        buffer,
+        fileName,
+        s.kunciJawabanMime
+      );
     }
 
     try {
@@ -468,7 +463,18 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
         });
       }
 
-      await clearState(user.phone); // keluar wizard
+      // Simpan state untuk opsi kirim tugas
+      state.lastIntent = "guru_after_create";
+      state.slots = {
+        createdKode: created.kode,
+        createdKelas: created.kelas,
+      };
+      console.log(
+        "🔵 [wizard] Saving guru_after_create state with phone:",
+        user.phone
+      );
+      console.log("🔵 [wizard] State to save:", JSON.stringify(state));
+      await setState(user.phone, state);
 
       let recap =
         `✅ *Tugas berhasil dibuat!*\n` +
@@ -480,8 +486,12 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
           created.deadline ? fmtWIB(created.deadline) : "Belum diatur"
         }\n`;
       if (s.guruPdfReceived) recap += `• PDF Guru: *${s.guruPdfName}*\n`;
-      if (s.kunciJawabanReceived) recap += `• Kunci Jawaban: *${s.kunciJawabanName}* 🔑\n`;
-      recap += `\nUntuk mengirim ke siswa: ketik *kirim ${created.kode} ${created.kelas}* 📣`;
+      if (s.kunciJawabanReceived)
+        recap += `• Kunci Jawaban: *${s.kunciJawabanName}* 🔑\n`;
+
+      recap += `\n📌 *Pilih aksi:*\n`;
+      recap += `*1.* 📣 Kirim tugas ke kelas ${created.kelas}\n`;
+      recap += `*2.* 🏠 Kembali ke menu utama`;
 
       await message.reply(recap);
       return true;
@@ -502,8 +512,8 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
                 existing.deadline ? fmtWIB(existing.deadline) : "Belum diatur"
               }`,
               "",
-              "Silakan membuat tugas dengan *kode baru*.",
-              "Ketik misal: `Kode: MTK124` lalu *simpan* lagi. ✏️",
+              "Silakan ubah dengan *kode baru*.",
+              "Ketik misal: `Kode: MTK124` lalu *1* untuk simpan. ✏️",
             ].join("\n")
           );
           return true;
@@ -590,8 +600,8 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
               existed.deadline ? fmtWIB(existed.deadline) : "Belum diatur"
             }`,
             "",
-            "Silakan membuat tugas dengan *kode baru*.",
-            "Ketik misal: `Kode: MTK124` lalu *simpan* jika sudah lengkap. ✏️",
+            "Silakan ubah dengan *kode baru*.",
+            "Ketik misal: `Kode: MTK124` lalu *1* untuk simpan. ✏️",
           ].join("\n")
         );
 
@@ -610,13 +620,14 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     if (s.awaitingPdf && !s.guruPdfReceived) {
       await message.reply(
         "📎 *Lampirkan PDF di pesan berikutnya.*\n" +
-          "Kirim file *PDF* (maks ~10MB). Setelah terkirim, bot akan menampilkan rangkuman dan kamu bisa ketik *simpan*."
+          "Kirim file *PDF* (maks ~10MB).\n" +
+          "*0.* Lewati (tidak melampirkan PDF)"
       );
       return true;
     }
 
     await message.reply(
-      `✔️ *${updated} field* disimpan. Ketik *simpan* jika sudah lengkap, atau lanjut isi field lain.`
+      `✔️ *${updated} field* disimpan.\n\n*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan`
     );
     return true;
   }
@@ -640,7 +651,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       const recap = buildRecapText(s2);
       await message.reply(
         `✅ *PDF diterima:* ${s2.guruPdfName}\n\n${recap}\n` +
-          "Jika sudah siap, ketik *simpan* untuk menyelesaikan. 💾"
+          "*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan"
       );
       return true;
     }
@@ -650,77 +661,449 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     "❓ Format tidak dikenali. Gunakan format: *Field: nilai* (misal: `Kode: BD-03`).\n" +
       "Contoh kirim sekaligus:\n" +
       "- Kode: MTK123\n- Judul: Tugas MTK\n- Deskripsi: …\n- Lampirkan PDF: ya\n- Deadline: 3\n- Kelas: XIITKJ2\n\n" +
-      "Ketik *simpan* jika sudah lengkap atau *batal* untuk membatalkan."
+      "*1.* ✅ Simpan tugas | *0.* ❌ Batalkan"
   );
   return true;
 }
 
 // ===== Broadcast tugas (teks ke siswa diperjelas)
-async function handleGuruBroadcast(message, { entities, waClient }) {
-  const { kode_tugas, kelas } = entities;
-  if (!kode_tugas || !kelas) {
+async function handleGuruBroadcast(message, { entities, waClient, user }) {
+  const phoneKey = normalizePhone(phoneFromJid(message.from));
+
+  // Cek apakah sudah dalam wizard broadcast
+  const currentState = await getState(phoneKey);
+
+  // Jika sudah dalam wizard dan ada pilihan
+  if (currentState?.lastIntent === "guru_broadcast_wizard") {
+    const raw = (message.body || "").trim();
+    const tugasList = currentState.slots?.tugasList || [];
+
+    // Opsi 0 = batal
+    if (raw === "0") {
+      await clearState(phoneKey);
+      await setState(phoneKey, { menuMode: "guru_menu_selection" });
+      return message.reply(
+        "❌ Broadcast dibatalkan.\n\n" +
+          "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
+      );
+    }
+
+    // Cek apakah input adalah nomor valid
+    const choice = parseInt(raw, 10);
+    if (isNaN(choice) || choice < 1 || choice > tugasList.length) {
+      return message.reply(
+        `⚠️ Pilihan tidak valid. Ketik angka *1-${tugasList.length}* atau *0* untuk batal.`
+      );
+    }
+
+    // Ambil tugas yang dipilih
+    const selectedTugas = tugasList[choice - 1];
+    const { kode, kelas } = selectedTugas;
+
+    // Clear state
+    await clearState(phoneKey);
+
+    // Lakukan broadcast
+    const asg = await prisma.assignment.findUnique({
+      where: { kode },
+      include: { guru: true },
+    });
+
+    if (!asg) {
+      return message.reply(`❌ Tugas *${kode}* tidak ditemukan.`);
+    }
+
+    const siswa = await prisma.user.findMany({
+      where: { role: "siswa", kelas },
+    });
+
+    if (!siswa.length) {
+      return message.reply(`ℹ️ Tidak ada siswa di kelas *${kelas}*.`);
+    }
+
+    const guruNama = asg.guru?.nama || "Guru";
+
+    // Build broadcast message
+    let header = `📢 *Tugas dari ${guruNama}*\n\n`;
+    header += `🔖 *Kode:* ${asg.kode}\n`;
+    header += `📚 *Judul:* ${asg.judul}\n`;
+    header += `🗓️ *Deadline:* ${
+      asg.deadline ? fmtWIB(asg.deadline) : "Belum ditentukan"
+    }\n`;
+
+    // Tambahkan link lampiran PDF guru (bukan kunci jawaban)
+    if (asg.pdfUrl) {
+      header += `📎 *Lampiran:* ${asg.pdfUrl}\n`;
+    }
+
+    header += `\n🧭 *Cara mengumpulkan:*\n`;
+    header += `1) Ketik: *kumpul ${asg.kode}*\n`;
+
+    let sent = 0;
+    for (const s of siswa) {
+      if (!s.phone) continue;
+      const jid = `${s.phone}@c.us`;
+      try {
+        await waClient.sendMessage(jid, header);
+        sent++;
+      } catch (e) {
+        console.error("broadcast fail to", jid, e.message);
+      }
+    }
+
     return message.reply(
-      'Butuh *kode_tugas* dan *kelas*. Contoh: "kirim tugas BD-03 untuk XIITKJ2".'
+      `✅ Tugas *${asg.kode}* berhasil dikirim ke *${sent}* siswa di kelas *${kelas}*! 📣\n\n` +
+        `Ketik *halo* untuk kembali ke menu utama.`
     );
   }
 
-  const asg = await prisma.assignment.findUnique({
-    where: { kode: kode_tugas.toUpperCase() },
-    include: { guru: true },
+  // Jika belum dalam wizard, tampilkan daftar tugas guru
+  const guru = user || (await getGuruByJid(message.from));
+  if (!guru) {
+    return message.reply("🔒 Fitur ini khusus *Guru*.");
+  }
+
+  const tugas = await prisma.assignment.findMany({
+    where: { guruId: guru.id },
+    select: { kode: true, judul: true, kelas: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+    take: 20,
   });
-  if (!asg)
-    return message.reply(`❌ Kode tugas *${kode_tugas}* tidak ditemukan.`);
 
-  const siswa = await prisma.user.findMany({ where: { role: "siswa", kelas } });
-  if (!siswa.length)
-    return message.reply(`ℹ️ Tidak ada siswa di kelas *${kelas}*.`);
+  if (!tugas.length) {
+    return message.reply(
+      "ℹ️ Kamu belum punya tugas. Buat tugas dulu dengan menu *1. Buat Tugas Baru*."
+    );
+  }
 
-  const mustPdf = /\[Wajib melampirkan PDF/i.test(asg.deskripsi || "");
-  const guruNama = asg.guru?.nama || "Guru";
+  // Simpan state wizard
+  await setState(phoneKey, {
+    lastIntent: "guru_broadcast_wizard",
+    slots: { tugasList: tugas },
+  });
 
-  const header =
-    `📢 *Tugas dari ${guruNama}*\n` +
-    `🔖 *Kode:* ${asg.kode}\n` +
-    `📚 *Judul:* ${asg.judul}\n` +
-    `📝 *Deskripsi:*\n${asg.deskripsi || "-"}\n` +
-    (asg.deadline
-      ? `🗓️ *Deadline:* ${fmtWIB(asg.deadline)}\n`
-      : `🗓️ *Deadline:* Belum diatur\n`) +
-    (asg.pdfUrl
-      ? `📎 *Lampiran PDF guru:* ${asg.pdfUrl}\n`
-      : `📎 *Lampiran PDF guru:* -\n`) +
-    `🧾 *Harus mengumpulkan PDF:* ${mustPdf ? "Ya" : "Tidak"}\n\n` +
-    `🧭 *Cara mengumpulkan:*\n` +
-    `1) Balas chat ini dengan: *kumpul ${asg.kode}*\n` +
-    `2) ${
-      mustPdf
-        ? "Lampirkan *PDF* tugasmu (maks ~10MB)"
-        : "Kirim jawaban sesuai instruksi guru"
-    }\n` +
-    `3) Tekan kirim dan tunggu konfirmasi ✅`;
+  // Tampilkan daftar tugas
+  let teks = "📢 *Pilih Tugas untuk Broadcast:*\n";
+  tugas.forEach((t, i) => {
+    teks += `\n*${i + 1}.* ${t.kode} — ${t.judul} (${t.kelas || "-"})`;
+  });
+  teks += `\n\n*0.* ❌ Batal\n`;
+  teks += `\n📌 *Balas dengan angka* untuk memilih tugas.`;
 
-  for (const s of siswa) {
-    const jid = `${s.phone}@c.us`;
+  return message.reply(teks);
+}
+
+// --- List Siswa: Tampilkan daftar kelas guru lalu siswa per kelas ---
+async function handleGuruListSiswa(message, { user }) {
+  const phoneKey = normalizePhone(phoneFromJid(message.from));
+
+  // Cek apakah sudah dalam wizard list siswa
+  const currentState = await getState(phoneKey);
+
+  // Jika sudah dalam wizard dan ada pilihan
+  if (currentState?.lastIntent === "guru_listsiswa_wizard") {
+    const raw = (message.body || "").trim();
+    const kelasList = currentState.slots?.kelasList || [];
+
+    // Opsi 0 = batal
+    if (raw === "0") {
+      await clearState(phoneKey);
+      await setState(phoneKey, { menuMode: "guru_menu_selection" });
+      return message.reply(
+        "❌ Dibatalkan.\n\n" +
+          "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
+      );
+    }
+
+    // Cek apakah input adalah nomor valid
+    const choice = parseInt(raw, 10);
+
+    if (isNaN(choice) || choice < 1 || choice > kelasList.length) {
+      return message.reply(
+        `⚠️ Pilihan tidak valid. Ketik angka *1-${kelasList.length}* atau *0* untuk batal.`
+      );
+    }
+
+    // Clear state
+    await clearState(phoneKey);
+    await setState(phoneKey, { menuMode: "guru_menu_selection" });
+
+    // Ambil kelas yang dipilih
+    const selectedKelas = kelasList[choice - 1];
+
+    // Query siswa
+    const siswaList = await prisma.user.findMany({
+      where: {
+        role: "siswa",
+        kelas: selectedKelas,
+      },
+      select: { nama: true, phone: true, kelas: true },
+      orderBy: [{ nama: "asc" }],
+      take: 200,
+    });
+
+    if (!siswaList.length) {
+      return message.reply(`ℹ️ Tidak ada siswa di kelas *${selectedKelas}*.`);
+    }
+
+    // Format output
+    let teks = `👥 *Daftar Siswa - ${selectedKelas}*\n`;
+    teks += `📊 Total: ${siswaList.length} siswa\n\n`;
+
+    siswaList.forEach((s, i) => {
+      teks += `${i + 1}. ${s.nama || "-"}\n`;
+    });
+
+    teks += `\nKetik *halo* untuk kembali ke menu.`;
+
+    return message.reply(teks);
+  }
+
+  // Jika belum dalam wizard, tampilkan daftar kelas
+  const guru = user || (await getGuruByJid(message.from));
+  if (!guru) {
+    return message.reply("🔒 Fitur ini khusus *Guru*.");
+  }
+
+  // Ambil daftar kelas unik dari tugas yang pernah dibuat guru
+  const tugasKelas = await prisma.assignment.findMany({
+    where: { guruId: guru.id },
+    select: { kelas: true },
+    distinct: ["kelas"],
+  });
+
+  const kelasList = tugasKelas
+    .map((t) => t.kelas)
+    .filter((k) => k) // filter null/empty
+    .sort();
+
+  if (!kelasList.length) {
+    return message.reply(
+      "ℹ️ Kamu belum punya tugas di kelas manapun.\n" +
+        "Buat tugas dulu dengan menu *1. Buat Tugas Baru*."
+    );
+  }
+
+  // Simpan state wizard
+  await setState(phoneKey, {
+    lastIntent: "guru_listsiswa_wizard",
+    slots: { kelasList },
+  });
+
+  // Tampilkan daftar kelas
+  let teks = "👥 *Pilih Kelas untuk Lihat Daftar Siswa:*\n";
+  kelasList.forEach((k, i) => {
+    teks += `\n*${i + 1}.* 🏫 ${k}`;
+  });
+  teks += `\n\n*0.* ❌ Batal\n`;
+  teks += `\n📌 *Balas dengan angka* untuk memilih.`;
+
+  return message.reply(teks);
+}
+
+// --- Rekap Excel: Tampilkan list tugas untuk dipilih ---
+async function handleGuruRekapExcel(message, { user, excelUtil }) {
+  const phoneKey = normalizePhone(phoneFromJid(message.from));
+
+  // Cek apakah sudah dalam wizard rekap
+  const currentState = await getState(phoneKey);
+
+  // Jika sudah dalam wizard dan ada pilihan
+  if (currentState?.lastIntent === "guru_rekap_wizard") {
+    const raw = (message.body || "").trim();
+    const tugasList = currentState.slots?.tugasList || [];
+
+    // Opsi 0 = batal
+    if (raw === "0") {
+      await clearState(phoneKey);
+      await setState(phoneKey, { menuMode: "guru_menu_selection" });
+      return message.reply(
+        "❌ Rekap dibatalkan.\n\n" +
+          "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
+      );
+    }
+
+    // Cek apakah input adalah nomor valid
+    const choice = parseInt(raw, 10);
+    if (isNaN(choice) || choice < 1 || choice > tugasList.length) {
+      return message.reply(
+        `⚠️ Pilihan tidak valid. Ketik angka *1-${tugasList.length}* atau *0* untuk batal.`
+      );
+    }
+
+    // Ambil tugas yang dipilih
+    const selectedTugas = tugasList[choice - 1];
+    const { kode, kelas } = selectedTugas;
+
+    // Clear state
+    await clearState(phoneKey);
+
+    // Kirim notifikasi sedang memproses
+    await message.reply(`⏳ Sedang membuat rekap untuk tugas *${kode}*...`);
+
+    // Generate Excel rekap
     try {
-      await waClient.sendMessage(jid, header);
-      // Jika nanti pdfUrl aktif dan ingin kirim file:
-      if (asg.pdfUrl) {
-        const media = await MessageMedia.fromUrl(asg.pdfUrl);
-        await waClient.sendMessage(jid, media, {
-          caption: `📎 Lampiran: ${asg.judul}`,
-        });
+      // Ambil data assignment
+      const assignment = await prisma.assignment.findFirst({
+        where: { kode, kelas },
+        select: {
+          id: true,
+          kode: true,
+          judul: true,
+          deadline: true,
+          kelas: true,
+        },
+      });
+
+      if (!assignment) {
+        return message.reply(`❌ Tugas *${kode}* tidak ditemukan.`);
       }
-    } catch (e) {
-      console.error("broadcast fail to", jid, e.message);
+
+      // Parallel query
+      const [students, statuses, submissions] = await Promise.all([
+        prisma.user.findMany({
+          where: { role: "siswa", kelas },
+          select: { id: true, nama: true, phone: true },
+          orderBy: [{ nama: "asc" }],
+        }),
+        prisma.assignmentStatus.findMany({
+          where: { tugasId: assignment.id },
+          select: { siswaId: true, status: true },
+        }),
+        prisma.assignmentSubmission.findMany({
+          where: { tugasId: assignment.id },
+          select: {
+            siswaId: true,
+            pdfUrl: true,
+            createdAt: true,
+            evaluation: true,
+            grade: true,
+            score: true,
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+      ]);
+
+      if (!students.length) {
+        return message.reply(`ℹ️ Tidak ada siswa di kelas *${kelas}*.`);
+      }
+
+      // Build maps
+      const stBySiswa = new Map(statuses.map((st) => [st.siswaId, st.status]));
+      const subBySiswa = new Map();
+      for (const sub of submissions) {
+        if (!subBySiswa.has(sub.siswaId)) {
+          subBySiswa.set(sub.siswaId, sub);
+        }
+      }
+
+      // Generate Excel menggunakan excelUtil
+      const deadlineStr = assignment.deadline
+        ? new Date(assignment.deadline).toLocaleString("id-ID", {
+            timeZone: "Asia/Jakarta",
+          })
+        : "—";
+
+      const rows = students.map((s) => {
+        const status = stBySiswa.get(s.id) || "BELUM_SELESAI";
+        const sub = subBySiswa.get(s.id);
+        return {
+          kelas: assignment.kelas || kelas,
+          nama: s.nama || `Siswa ${s.id}`,
+          phone: s.phone || "",
+          kode: assignment.kode,
+          judul: assignment.judul,
+          deadline: deadlineStr,
+          status,
+          submittedAt: sub?.createdAt
+            ? new Date(sub.createdAt).toLocaleString("id-ID", {
+                timeZone: "Asia/Jakarta",
+              })
+            : "",
+          url: sub?.pdfUrl || "",
+          evaluation: sub?.evaluation || "",
+          grade: sub?.grade ?? "",
+          score:
+            sub?.score !== null && sub?.score !== undefined ? sub.score : "",
+        };
+      });
+
+      // Hitung statistik
+      const sudahKumpul = rows.filter((r) => r.status === "SELESAI").length;
+      const belumKumpul = rows.length - sudahKumpul;
+
+      // Generate Excel file
+      const buffer = await excelUtil.generateRekapExcel({
+        assignment,
+        rows,
+        kelas,
+      });
+
+      // Kirim file Excel via WhatsApp
+      const media = new MessageMedia(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        buffer.toString("base64"),
+        `rekap_${kode}_${kelas}.xlsx`
+      );
+
+      await message.reply(media, null, {
+        caption:
+          `📊 *Rekap Tugas ${kode}*\n\n` +
+          `📚 Judul: ${assignment.judul}\n` +
+          `🏫 Kelas: ${kelas}\n` +
+          `👥 Total Siswa: ${rows.length}\n` +
+          `✅ Sudah Kumpul: ${sudahKumpul}\n` +
+          `❌ Belum Kumpul: ${belumKumpul}\n\n` +
+          `Ketik *halo* untuk kembali ke menu.`,
+      });
+
+      return;
+    } catch (err) {
+      console.error("🔴 [guru_rekap] Error generating Excel:", err);
+      return message.reply(
+        `❌ Gagal membuat rekap: ${err.message}\n\n` +
+          `Silakan coba lagi dengan memilih menu *3*.`
+      );
     }
   }
 
-  return message.reply(
-    `✅ Broadcast *${asg.kode}* terkirim ke kelas *${kelas}* (${siswa.length} siswa).`
-  );
+  // Jika belum dalam wizard, tampilkan daftar tugas guru
+  const guru = user || (await getGuruByJid(message.from));
+  if (!guru) {
+    return message.reply("🔒 Fitur ini khusus *Guru*.");
+  }
+
+  const tugas = await prisma.assignment.findMany({
+    where: { guruId: guru.id },
+    select: { kode: true, judul: true, kelas: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  if (!tugas.length) {
+    return message.reply(
+      "ℹ️ Kamu belum punya tugas. Buat tugas dulu dengan menu *1. Buat Tugas Baru*."
+    );
+  }
+
+  // Simpan state wizard
+  await setState(phoneKey, {
+    lastIntent: "guru_rekap_wizard",
+    slots: { tugasList: tugas },
+  });
+
+  // Tampilkan daftar tugas
+  let teks = "📊 *Pilih Tugas untuk Rekap Excel:*\n";
+  tugas.forEach((t, i) => {
+    teks += `\n*${i + 1}.* ${t.kode} — ${t.judul} (${t.kelas || "-"})`;
+  });
+  teks += `\n\n*0.* ❌ Batal\n`;
+  teks += `\n📌 *Balas dengan angka* untuk memilih tugas.`;
+
+  return message.reply(teks);
 }
 
-// --- Langkah 1: mulai wizard / daftar kode tugas milik guru ---
+// --- Langkah 1: mulai wizard / daftar kode tugas milik guru (OLD - kept for backward compatibility) ---
 async function startRekapWizard(message) {
   const guru = await getGuruByJid(message.from);
   if (!guru) {
@@ -872,10 +1255,10 @@ async function onPickClass(message, excelUtil) {
   if (guru?.phone) await clearState(guru.phone);
 }
 
-// --- Router kecil untuk fitur rekap ----
+// --- Router kecil untuk fitur rekap (LEGACY - hanya untuk shortcut "rekap <KODE>") ----
 async function routeGuruRekap(message, { intent, entities, excelUtil }) {
   const body = String(message.body || "").trim();
-  // >>> ADD: suport batal
+  // >>> ADD: suport batal untuk legacy wizard
   if (REKAP_WIZ.has(message.from) && /^batal$/i.test(body)) {
     REKAP_WIZ.delete(message.from);
     // hapus state wizard
@@ -883,20 +1266,22 @@ async function routeGuruRekap(message, { intent, entities, excelUtil }) {
     if (guru?.phone) await clearState(guru.phone);
     return message.reply("❎ Wizard rekap dibatalkan.");
   }
-  // 1) Kalau sedang di wizard, teruskan step
+  // 1) Kalau sedang di legacy wizard (REKAP_WIZ Map), teruskan step
   if (REKAP_WIZ.has(message.from)) {
     const { step } = REKAP_WIZ.get(message.from);
     if (step === "pick_code") return onPickCode(message, excelUtil);
     if (step === "pick_class") return onPickClass(message, excelUtil);
   }
 
-  if (
-    intent === "guru_rekap_excel" || // <— intent dari intents.js kamu sekarang
-    intent === "guru_rekap" || // jaga-jaga
-    /^rekap\s*$/i.test(body)
-  ) {
-    return startRekapWizard(message);
-  }
+  // NOTE: guru_rekap_excel sekarang ditangani oleh handleGuruRekapExcel (wizard baru dengan pilih angka)
+  // Jangan tangkap intent guru_rekap_excel di sini, biarkan handler baru yang jalan
+  // if (
+  //   intent === "guru_rekap_excel" ||
+  //   intent === "guru_rekap" ||
+  //   /^rekap\s*$/i.test(body)
+  // ) {
+  //   return startRekapWizard(message);
+  // }
 
   // 3) Shortcut: "rekap <KODE>" → langsung minta kelas
   const m = body.match(/^rekap\s+([^\s]+)$/i);
@@ -938,21 +1323,181 @@ async function handleGuruCommand(
   // Ambil nomor pengirim (chat pribadi → @c.us) dan normalisasi ke 62…
   const phoneRaw = jid.replace(/@c\.us$/i, "");
   const phoneKey = normalizePhone(phoneRaw);
+  console.log("🔵 [handleGuruCommand] phoneKey:", phoneKey);
+
   const user = await getUserByPhone(phoneKey);
+  console.log("🔵 [handleGuruCommand] user:", user ? user.nama : "null");
+
   const takenByRekap = await routeGuruRekap(message, { intent, excelUtil });
   if (takenByRekap !== false) return;
 
   try {
     ensureGuru(user);
   } catch (e) {
+    console.log("🔵 [handleGuruCommand] ensureGuru error:", e.code);
     if (e.code === "ROLE_FORBIDDEN") {
       return message.reply("🔒 Fitur ini khusus *Guru*.");
     }
     throw e;
   }
 
-  // prioritas wizard
-  const currentState = await getState(user.phone);
+  // prioritas wizard - gunakan phoneKey untuk konsistensi dengan server.js
+  const currentState = await getState(phoneKey);
+  console.log(
+    "🔵 [handleGuruCommand] currentState:",
+    JSON.stringify(currentState)
+  );
+
+  // Handler untuk setelah buat tugas (pilih kirim atau kembali ke menu)
+  if (currentState?.lastIntent === "guru_after_create") {
+    console.log("🔵 [guru_after_create] Handler triggered");
+    console.log("🔵 [guru_after_create] waClient available:", !!waClient);
+    const raw = (message.body || "").trim();
+    const { createdKode, createdKelas } = currentState.slots || {};
+    console.log(
+      "🔵 [guru_after_create] raw:",
+      raw,
+      "createdKode:",
+      createdKode,
+      "createdKelas:",
+      createdKelas
+    );
+
+    if (/^1$/.test(raw)) {
+      console.log(
+        "🔵 [guru_after_create] User chose option 1 - sending to class"
+      );
+
+      try {
+        console.log("� [guru_after_create] Fetching assignment...");
+        // Kirim tugas ke kelas - tanpa retry untuk simplifikasi
+        const asg = await prisma.assignment.findUnique({
+          where: { kode: createdKode },
+          include: { guru: true },
+        });
+        console.log(
+          "🔵 [guru_after_create] Assignment found:",
+          asg ? asg.kode : "null"
+        );
+
+        if (!asg) {
+          await clearState(phoneKey);
+          return message.reply(
+            `❌ Kode tugas *${createdKode}* tidak ditemukan.`
+          );
+        }
+
+        console.log("🔵 [guru_after_create] Fetching students...");
+        const siswa = await prisma.user.findMany({
+          where: { role: "siswa", kelas: createdKelas },
+        });
+        console.log("🔵 [guru_after_create] Students found:", siswa.length);
+
+        if (!siswa.length) {
+          await clearState(phoneKey);
+          return message.reply(
+            `ℹ️ Tidak ada siswa di kelas *${createdKelas}*.`
+          );
+        }
+
+        const guruNama = asg.guru?.nama || "Guru";
+
+        // Build broadcast message
+        let header = `📢 *Tugas dari ${guruNama}*\n\n`;
+        header += `🔖 *Kode:* ${asg.kode}\n`;
+        header += `📚 *Judul:* ${asg.judul}\n`;
+        header += `🗓️ *Deadline:* ${
+          asg.deadline ? fmtWIB(asg.deadline) : "Belum ditentukan"
+        }\n`;
+
+        // Tambahkan link lampiran PDF guru (bukan kunci jawaban)
+        if (asg.pdfUrl) {
+          header += `📎 *Lampiran:* ${asg.pdfUrl}\n`;
+        }
+
+        header += `\n🧭 *Cara mengumpulkan:*\n`;
+        header += `1) Ketik: *kumpul ${asg.kode}*\n`;
+
+        console.log("🔵 [guru_after_create] Sending to students...");
+        let sent = 0;
+        for (const st of siswa) {
+          if (!st.phone) continue;
+          const jidSiswa = `${st.phone}@c.us`;
+          try {
+            await waClient.sendMessage(jidSiswa, header);
+            sent++;
+            console.log(`🔵 [guru_after_create] Sent to ${jidSiswa}`);
+          } catch (sendErr) {
+            console.error(
+              `🔴 [guru_after_create] Failed to send to ${jidSiswa}:`,
+              sendErr.message
+            );
+          }
+        }
+
+        console.log("🔵 [guru_after_create] Clearing state and replying...");
+        await clearState(phoneKey);
+        await message.reply(
+          `✅ Tugas *${createdKode}* berhasil dikirim ke *${sent}* siswa di kelas *${createdKelas}*! 📣\n\n` +
+            `Ketik *halo* untuk kembali ke menu utama.`
+        );
+        console.log("🔵 [guru_after_create] Done!");
+        return;
+      } catch (err) {
+        console.error("🔴 [guru_after_create] Error:", err);
+        return message.reply(
+          `❌ *Gagal mengirim tugas:* ${err.message}\n\n` +
+            `Silakan coba lagi dengan mengetik *1* untuk kirim, atau *2* untuk kembali ke menu.`
+        );
+      }
+    }
+
+    if (/^2$/.test(raw)) {
+      // Kembali ke menu utama
+      await clearState(phoneKey);
+
+      // Set ke menu mode
+      await setState(phoneKey, { menuMode: "guru_menu_selection" });
+
+      const userName = user.nama || "Guru";
+      const menuGuru =
+        `👋 Halo, *${userName}*!\n\n` +
+        `Selamat datang di *Kinanti Bot*.\n\n` +
+        `📚 *Menu Guru:*\n` +
+        `*1.* 📝 Buat Tugas Baru\n` +
+        `*2.* 📢 Broadcast Tugas ke Kelas\n` +
+        `*3.* 📊 Rekap Excel Pengumpulan\n` +
+        `*4.* 👥 Lihat Daftar Siswa\n` +
+        `*5.* 🖼️ Gambar ke PDF\n` +
+        `*6.* ❓ Bantuan\n` +
+        `*0.* 🚪 Keluar\n\n` +
+        `📌 *Balas dengan angka* untuk memilih menu.`;
+      return message.reply(menuGuru);
+    }
+
+    // Input tidak valid
+    return message.reply(
+      `⚠️ Pilihan tidak valid.\n\n` +
+        `*1.* 📣 Kirim tugas ke kelas ${createdKelas}\n` +
+        `*2.* 🏠 Kembali ke menu utama`
+    );
+  }
+
+  // Handler untuk broadcast wizard (pilih tugas untuk broadcast)
+  if (currentState?.lastIntent === "guru_broadcast_wizard") {
+    return handleGuruBroadcast(message, { entities, waClient, user });
+  }
+
+  // Handler untuk rekap wizard (pilih tugas untuk rekap Excel)
+  if (currentState?.lastIntent === "guru_rekap_wizard") {
+    return handleGuruRekapExcel(message, { user, excelUtil });
+  }
+
+  // Handler untuk list siswa wizard (pilih kelas untuk lihat daftar siswa)
+  if (currentState?.lastIntent === "guru_listsiswa_wizard") {
+    return handleGuruListSiswa(message, { user });
+  }
+
   if (currentState?.lastIntent === "guru_buat_penugasan") {
     const handled = await handleGuruWizardMessage(message, { user, waClient });
     if (handled) return;
@@ -977,40 +1522,33 @@ async function handleGuruCommand(
   // fitur lain
   switch (intent) {
     case "guru_broadcast_tugas":
-      return handleGuruBroadcast(message, { entities, waClient });
+      return handleGuruBroadcast(message, { entities, waClient, user });
 
-    case "guru_list_siswa": {
-      const kelas = entities.kelas || null;
-      const list = await prisma.user.findMany({
-        where: { role: "siswa", ...(kelas ? { kelas } : {}) },
-        orderBy: { nama: "asc" },
-        take: 200,
-      });
-      if (!list.length)
-        return message.reply(
-          `ℹ️ Tidak ada siswa${kelas ? ` di kelas *${kelas}*` : ""}.`
-        );
-      const lines = list.map(
-        (s, i) => `${i + 1}. ${s.nama} — ${s.kelas || "-"}`
-      );
-      return message.reply(
-        `👥 Daftar siswa${kelas ? ` ${kelas}` : ""}:\n` + lines.join("\n")
-      );
-    }
+    case "guru_rekap_excel":
+      return handleGuruRekapExcel(message, { user, excelUtil });
+
+    case "guru_list_siswa":
+      return handleGuruListSiswa(message, { user });
 
     case "guru_help": {
-      // Tampilkan menu guru
-      const userName = user.nama || "Guru";
-      const menuGuru =
-        `👋 Halo, *${userName}*!\n\n` +
-        `📚 *Menu Guru:*\n` +
-        `• *buat tugas* — Buat tugas baru\n` +
-        `• *kirim <KODE> <KELAS>* — Broadcast tugas ke kelas\n` +
-        `• *rekap <KODE>* — Download rekap Excel\n` +
-        `• *list siswa* — Daftar siswa di kelas\n` +
-        `• *gambar ke pdf* — Ubah foto jadi PDF\n\n` +
-        `Ketik perintah di atas untuk mulai! 🚀`;
-      return message.reply(menuGuru);
+      // Tampilkan bantuan dan kontak admin
+      const bantuanTeks =
+        `❓ *Bantuan Kinanti Bot*\n\n` +
+        `📚 *Daftar Menu:*\n` +
+        `*1.* 📝 Buat Tugas Baru\n` +
+        `*2.* 📢 Broadcast Tugas ke Kelas\n` +
+        `*3.* 📊 Rekap Excel Pengumpulan\n` +
+        `*4.* 👥 Lihat Daftar Siswa\n` +
+        `*5.* 🖼️ Gambar ke PDF\n` +
+        `*6.* ❓ Bantuan\n` +
+        `*0.* 🚪 Keluar\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `📞 *Kontak Admin Kinanti:*\n` +
+        `wa.me/62895378394020\n\n` +
+        `Jika ada kendala terkait penggunaan atau ada yang ingin ditanyakan, silakan hubungi nomor admin di atas.\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `Ketik *halo* untuk kembali ke menu utama.`;
+      return message.reply(bantuanTeks);
     }
 
     default:

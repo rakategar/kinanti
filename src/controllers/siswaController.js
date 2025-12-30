@@ -5,6 +5,8 @@
 const prismaMod = require("../config/prisma");
 const prisma = prismaMod?.prisma ?? prismaMod?.default ?? prismaMod;
 const { uploadPDFtoSupabase } = require("../utils/pdfUtils");
+const { getState, setState, clearState } = require("../services/state");
+const { normalizePhone } = require("../utils/phone");
 
 // ========== State pengumpulan (in-memory) ==========
 // key = JID pengirim → { step: "await_pdf", assignmentId: <tugas.id>, assignmentKode, requirePdf }
@@ -111,7 +113,13 @@ async function listDoneAssignments(student) {
     items.map(async (item) => {
       const submission = await prisma.assignmentSubmission.findFirst({
         where: { siswaId: student.id, tugasId: item.tugasId },
-        select: { grade: true, score: true },
+        select: {
+          grade: true,
+          score: true,
+          evaluation: true,
+          pdfUrl: true,
+          createdAt: true,
+        },
       });
       return { ...item, submission };
     })
@@ -142,7 +150,9 @@ async function findAssignmentForStudentByKode(student, kode) {
     const studentKelas = String(student.kelas);
     const tugasKelas = String(asg.kelas || "");
     if (tugasKelas !== studentKelas) {
-      console.log(`⚠️ Tugas ${kode} tidak sesuai kelas. Siswa: ${studentKelas}, Tugas: ${tugasKelas}`);
+      console.log(
+        `⚠️ Tugas ${kode} tidak sesuai kelas. Siswa: ${studentKelas}, Tugas: ${tugasKelas}`
+      );
       return null;
     }
   }
@@ -199,8 +209,15 @@ async function triggerAutoGrading(
 
     console.log(`✅ Webhook POST success: ${WEBHOOK_URL}`);
 
-    // Polling untuk mendapatkan hasil penilaian (max 30 detik)
-    await pollGradingResult(submissionId, message, 30);
+    // Start background polling for grading result (non-blocking)
+    // Poll in background and notify student when ready. We don't await here.
+    (async () => {
+      try {
+        await pollGradingResult(submissionId, message, 30);
+      } catch (err) {
+        console.error("[triggerAutoGrading] background poll error:", err);
+      }
+    })();
   } catch (err) {
     console.error("[triggerAutoGrading] Error:", err);
     await message.reply(
@@ -284,15 +301,240 @@ async function beginSubmission(message, student, assignment) {
     : "";
 
   await message.reply(
-    "📝 *Pengumpulan Tugas Baru!*\n" +
+    "📝 *Pengumpulan Tugas!*\n" +
       `📌 Kode: *${assignment.kode}*\n` +
       `📖 Judul: *${assignment.judul}*\n` +
       `⏰ Deadline: ${fmtDateWIB(assignment.deadline)}\n` +
       lampiran +
-      "\n\n👉 Kirim *PDF tugas* kamu di sini ya!" +
-      (requirePdf ? " (PDF *wajib* 🔒)" : " (PDF opsional 😎)") +
-      "\nKalau masih berupa foto, ketik *gambar ke pdf* dulu biar rapi ✨\n" +
-      "_Ketik *batal* kalau mau cancel 🙅_"
+      "\n\n👉 Kirim *PDF tugas* kamu di sini!\n" +
+      "Kalau masih foto, balik ke menu pilih *4. Gambar ke PDF* dulu.\n\n" +
+      "*0.* ❌ Batal\n\n" +
+      "📌 Kirim file PDF atau ketik *0* untuk batal."
+  );
+}
+
+// ========== Handler Kumpul Tugas Wizard ==========
+async function handleSiswaKumpulTugas(message, { student }) {
+  const phoneKey = normalizePhone(phoneFromJid(message.from));
+  const currentState = await getState(phoneKey);
+
+  // Jika sudah dalam wizard kumpul
+  if (currentState?.lastIntent === "siswa_kumpul_wizard") {
+    const raw = (message.body || "").trim();
+    const tugasList = currentState.slots?.tugasList || [];
+
+    // Opsi 0 = batal
+    if (raw === "0") {
+      PENDING.delete(message.from);
+      await clearState(phoneKey);
+      await setState(phoneKey, { menuMode: "siswa_menu_selection" });
+      return message.reply(
+        "❌ Pengumpulan dibatalkan.\n\n" +
+          "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
+      );
+    }
+
+    // Cek apakah input adalah nomor valid
+    const choice = parseInt(raw, 10);
+    if (isNaN(choice) || choice < 1 || choice > tugasList.length) {
+      return message.reply(
+        `⚠️ Pilihan tidak valid. Ketik angka *1-${tugasList.length}* atau *0* untuk batal.`
+      );
+    }
+
+    // Ambil tugas yang dipilih
+    const selectedTugas = tugasList[choice - 1];
+
+    // Ambil data assignment lengkap
+    const assignment = await prisma.assignment.findFirst({
+      where: { id: selectedTugas.tugasId },
+      include: { guru: true },
+    });
+
+    if (!assignment) {
+      await clearState(phoneKey);
+      await setState(phoneKey, { menuMode: "siswa_menu_selection" });
+      return message.reply("❌ Tugas tidak ditemukan. Silakan coba lagi.");
+    }
+
+    // Mulai sesi pengumpulan
+    await beginSubmission(message, student, assignment);
+    return true;
+  }
+
+  // Jika belum dalam wizard, tampilkan daftar tugas belum selesai
+  if (!student) {
+    student = await getStudentBySender(message.from);
+  }
+
+  if (!student) {
+    return message.reply(
+      "📵 Nomor kamu belum terdaftar sebagai *siswa*. Daftar di https://kinantiku.com ya ✨"
+    );
+  }
+
+  // Ambil tugas yang belum selesai
+  const items = await listOpenAssignments(student);
+
+  if (!items?.length) {
+    await setState(phoneKey, { menuMode: "siswa_menu_selection" });
+    return message.reply(
+      "✅ Tidak ada tugas yang belum selesai. Mantap! 🎉\n\n" +
+        "Ketik *halo* untuk kembali ke menu."
+    );
+  }
+
+  // Simpan state wizard
+  const tugasList = items.map((it) => ({
+    tugasId: it.tugas.id,
+    kode: it.tugas.kode,
+    judul: it.tugas.judul,
+    deadline: it.tugas.deadline,
+  }));
+
+  await setState(phoneKey, {
+    lastIntent: "siswa_kumpul_wizard",
+    slots: { tugasList },
+  });
+
+  // Tampilkan daftar tugas
+  let teks = "📝 *Pilih Tugas untuk Dikumpul:*\n";
+  items.forEach((it, i) => {
+    const tg = it.tugas;
+    const autoGradeIndicator = tg.kunciJawaban ? " 🟢" : "";
+    teks += `\n*${i + 1}.* ${tg.kode}${autoGradeIndicator} — ${tg.judul}`;
+    teks += `\n    ⏰ Deadline: ${fmtDateWIB(tg.deadline)}`;
+  });
+  teks += `\n\n*0.* ❌ Batal\n`;
+  teks += `\n🟢 = Dinilai otomatis`;
+  teks += `\n� *Balas dengan angka* untuk memilih tugas.`;
+
+  return message.reply(teks);
+}
+
+// --- Status Wizard: tampilkan riwayat dan detail per nomor ---
+async function handleSiswaStatusWizard(message, { student }) {
+  const phoneKey = normalizePhone(phoneFromJid(message.from));
+  const currentState = await getState(phoneKey);
+
+  // Jika sudah dalam wizard dan ada pilihan
+  if (currentState?.lastIntent === "siswa_status_wizard") {
+    const raw = (message.body || "").trim();
+    const list = currentState.slots?.doneList || [];
+
+    // Opsi 0 = batal
+    if (raw === "0") {
+      await clearState(phoneKey);
+      await setState(phoneKey, { menuMode: "siswa_menu_selection" });
+      return message.reply(
+        "❌ Batal.\n\nKetik angka untuk memilih menu lain, atau *0* untuk keluar."
+      );
+    }
+
+    const choice = parseInt(raw, 10);
+    if (isNaN(choice) || choice < 1 || choice > list.length) {
+      return message.reply(
+        `⚠️ Pilihan tidak valid. Ketik angka *1-${list.length}* atau *0* untuk batal.`
+      );
+    }
+
+    // Tampilkan detail tugas pada indeks
+    const item = list[choice - 1];
+    // Ambil submission dan assignment detail
+    const submission = await prisma.assignmentSubmission.findFirst({
+      where: { siswaId: student.id, tugasId: item.tugasId },
+      select: {
+        grade: true,
+        score: true,
+        evaluation: true,
+        pdfUrl: true,
+        createdAt: true,
+      },
+    });
+
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: item.tugasId },
+      select: { kode: true, judul: true, pdfUrl: true, kunciJawaban: true },
+    });
+
+    await clearState(phoneKey);
+    await setState(phoneKey, { menuMode: "siswa_menu_selection" });
+
+    let teks = `🧾 *Detail Riwayat - ${assignment.kode}*\n\n`;
+    teks += `• Judul: ${assignment.judul || "-"}\n`;
+    if (submission) {
+      teks += `• Grade: ${submission.grade || "-"}\n`;
+      teks += `• Score: ${submission.score ?? "-"}\n`;
+      teks += `• Waktu Kumpul: ${
+        submission.createdAt ? fmtDateWIB(submission.createdAt) : "-"
+      }\n`;
+      teks += `• File: ${submission.pdfUrl || "-"}\n`;
+      teks += `\n💬 *Evaluasi:*
+${submission.evaluation || "Tidak ada catatan."}\n`;
+    } else {
+      teks += "• Tidak ada submission terdaftar.\n";
+    }
+
+    // Lampiran guru (jika ada) — jangan tampilkan kunci jawaban
+    if (assignment.pdfUrl) {
+      teks += `\n📎 Lampiran Guru: ${assignment.pdfUrl}\n`;
+    }
+
+    teks += `\nKetik *halo* untuk kembali ke menu.`;
+    return message.reply(teks);
+  }
+
+  // Jika belum dalam wizard, tampilkan daftar riwayat dan simpan state
+  if (!student) {
+    student = await getStudentBySender(message.from);
+  }
+  if (!student) {
+    return message.reply(
+      "📵 Nomor kamu belum terdaftar sebagai *siswa*. Daftar di https://kinantiku.com ya ✨"
+    );
+  }
+
+  const items = await listDoneAssignments(student);
+  if (!items?.length) {
+    await setState(phoneKey, { menuMode: "siswa_menu_selection" });
+    return message.reply(
+      "📭 Belum ada tugas yang dikumpul. Semangat! 💪\n\nKetik *halo* untuk kembali ke menu."
+    );
+  }
+
+  // Simpan list ke state untuk pemilihan (PENTING: lastIntent harus ada untuk wizard)
+  const doneList = items.map((it) => ({
+    tugasId: it.tugas.id,
+    kode: it.tugas.kode,
+  }));
+  await setState(phoneKey, {
+    lastIntent: "siswa_status_wizard",
+    slots: { doneList },
+  });
+
+  const gradeEmoji = { A: "🌟", B: "⭐", C: "✨", D: "💫" };
+  const lines = items.slice(0, 20).map((it, i) => {
+    const tg = it.tugas;
+    const sub = it.submission || {};
+    let gradeInfo = "";
+    if (sub?.grade || sub?.score !== null) {
+      const emoji = gradeEmoji[sub?.grade] || "📊";
+      const gradeText = sub?.grade ? `${emoji} ${sub.grade}` : "";
+      const scoreText =
+        sub?.score !== null && sub?.score !== undefined ? `(${sub.score})` : "";
+      gradeInfo = ` | ${gradeText}${
+        gradeText && scoreText ? " " : ""
+      }${scoreText}`;
+    }
+    return `*${i + 1}.* ${tg.kode} — ${tg.judul}${gradeInfo}`;
+  });
+
+  // Jangan timpa state wizard dengan menuMode!
+  return message.reply(
+    `🧾 *Riwayat Tugas Selesai:*\n\n` +
+      `${lines.join("\n")}\n\n` +
+      `*0.* ❌ Kembali ke Menu\n\n` +
+      `📌 *Balas dengan angka* untuk lihat detail tugas.`
   );
 }
 
@@ -390,22 +632,28 @@ async function handleMediaWhilePending(message, pending, student) {
       data: { status: "SELESAI" },
     });
 
+    // PENTING: Clear semua state agar user bisa kembali ke menu
     PENDING.delete(message.from);
+    const phoneKey = normalizePhone(phoneFromJid(message.from));
+    await clearState(phoneKey);
+    await setState(phoneKey, { menuMode: "siswa_menu_selection" });
 
     // Cek apakah tugas dinilai otomatis
     const isAutoGraded = assignment?.kunciJawaban ? true : false;
 
     if (isAutoGraded) {
-      // Kirim notifikasi awal
+      // Kirim notifikasi dan langsung keluarkan user
       await message.reply(
         "🎉 *Tugas sukses terkumpul!*\n" +
           `📌 Kode: *${pending.assignmentKode}*\n` +
           `📂 File: ${fileName}\n\n` +
-          "🤖 *Tugas ini dinilai otomatis*\n" +
-          "⏳ Sedang diproses oleh AI... mohon tunggu sebentar."
+          "🤖 *Tugas ini dinilai otomatis oleh AI*\n" +
+          "⏳ Proses penilaian sedang berjalan...\n" +
+          "📬 Hasilnya akan dikirim otomatis ke chat ini.\n\n" +
+          "Ketik *halo* untuk kembali ke menu."
       );
 
-      // Trigger webhook ke n8n untuk penilaian otomatis (async)
+      // Trigger webhook ke n8n untuk penilaian otomatis (fire-and-forget)
       triggerAutoGrading(
         submissionRow.id,
         student.id,
@@ -421,8 +669,8 @@ async function handleMediaWhilePending(message, pending, student) {
       await message.reply(
         "🎉 *Tugas sukses terkumpul!*\n" +
           `📌 Kode: *${pending.assignmentKode}*\n` +
-          `📂 File: ${fileName}\n` +
-          "Mantap! 🚀 Cek status dengan ketik *status tugas*."
+          `📂 File: ${fileName}\n\n` +
+          "Mantap! 🚀 Ketik *halo* untuk kembali ke menu."
       );
     }
   } catch (e) {
@@ -505,11 +753,19 @@ async function handleSiswaCommand(message, opts = {}) {
         .trim()
         .toLowerCase();
 
-      // batal
-      if (bodyLower === "batal" || bodyLower === "cancel") {
+      // batal - support "0" juga
+      if (
+        bodyLower === "batal" ||
+        bodyLower === "cancel" ||
+        bodyLower === "0"
+      ) {
         PENDING.delete(message.from);
+        const phoneKey = normalizePhone(phoneFromJid(message.from));
+        await clearState(phoneKey);
+        await setState(phoneKey, { menuMode: "siswa_menu_selection" });
         await message.reply(
-          "❌ Pengumpulan dibatalkan. Ketik *kumpul <KODE>* lagi kalau mau mulai ulang."
+          "❌ Pengumpulan dibatalkan.\n\n" +
+            "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
         );
         return;
       }
@@ -535,11 +791,28 @@ async function handleSiswaCommand(message, opts = {}) {
 
       // selain itu, ingatkan untuk kirim PDF
       await message.reply(
-        "↪️ Kamu sedang dalam sesi *pengumpulan tugas*.\nSilakan kirim *file PDF*-nya di sini ya.\nKetik *batal* untuk keluar."
+        "↪️ Kamu sedang dalam sesi *pengumpulan tugas*.\n" +
+          "Silakan kirim *file PDF*-nya di sini ya.\n\n" +
+          "Ketik *0* untuk batal."
       );
       return;
     }
     // === END NEW ===
+
+    const phoneKey = normalizePhone(phoneFromJid(message.from));
+    const currentState = await getState(phoneKey);
+
+    // === Handler untuk wizard kumpul tugas ===
+    if (currentState?.lastIntent === "siswa_kumpul_wizard") {
+      const student = await getStudentBySender(message.from);
+      return handleSiswaKumpulTugas(message, { student });
+    }
+
+    // === Handler untuk wizard status tugas (riwayat detail) ===
+    if (currentState?.lastIntent === "siswa_status_wizard") {
+      const student = await getStudentBySender(message.from);
+      return handleSiswaStatusWizard(message, { student });
+    }
 
     const body = String(message.body || "");
     const lbody = body.toLowerCase();
@@ -592,9 +865,10 @@ async function handleSiswaCommand(message, opts = {}) {
     ) {
       const items = await listOpenAssignments(student);
       if (!items?.length) {
+        await setState(phoneKey, { menuMode: "siswa_menu_selection" });
         await message.reply(
-          "✅ Tidak ada tugas yang belum selesai. Gas terus belajarnya! " +
-            pickRandom(QUOTES)
+          "✅ Tidak ada tugas yang belum selesai. Mantap! 🎉\n\n" +
+            "Ketik *halo* untuk kembali ke menu."
         );
         return;
       }
@@ -603,17 +877,18 @@ async function handleSiswaCommand(message, opts = {}) {
         // Indikator tugas dinilai otomatis (ada kunci jawaban)
         const autoGradeIndicator = tg.kunciJawaban ? " 🟢" : "";
         return (
-          `${i + 1}. *${tg.kode}*${autoGradeIndicator} — ${tg.judul}\n` +
-          `   Guru: ${tg.guru?.nama || "-"} | Deadline: ${fmtDateWIB(
-            tg.deadline
-          )}`
+          `*${i + 1}.* ${tg.kode}${autoGradeIndicator} — ${tg.judul}\n` +
+          `    👨‍🏫 ${tg.guru?.nama || "-"} | ⏰ ${fmtDateWIB(tg.deadline)}`
         );
       });
+
+      await setState(phoneKey, { menuMode: "siswa_menu_selection" });
       await message.reply(
-        "📚 *Daftar Tugas Kamu* (pilih salah satu kodenya):\n\n" +
+        "📚 *Daftar Tugas Belum Selesai:*\n\n" +
           lines.join("\n") +
-          "\n\n🟢 = Dinilai otomatis\n" +
-          "Ketik *kode tugas* yang ingin direkap. Contoh: _TKJ-09_"
+          "\n\n🟢 = Dinilai otomatis\n\n" +
+          "Untuk kumpul tugas, pilih menu *3. Kumpul Tugas*\n" +
+          "Ketik *halo* untuk kembali ke menu."
       );
       return;
     }
@@ -623,50 +898,15 @@ async function handleSiswaCommand(message, opts = {}) {
       intent === "siswa_status_tugas" ||
       matchAny(lbody, ["status tugas", "riwayat tugas", "riwayat"])
     ) {
-      const items = await listDoneAssignments(student);
-      if (!items?.length) {
-        await message.reply("Belum ada tugas selesai. Semangat! 💪");
-        return;
-      }
-      
-      // Emoji untuk grade
-      const gradeEmoji = {
-        A: "🌟",
-        B: "⭐",
-        C: "✨",
-        D: "💫",
-      };
-      
-      const lines = items.slice(0, 10).map((it, i) => {
-        const tg = it.tugas;
-        const sub = it.submission;
-        
-        // Format nilai dan grade
-        let gradeInfo = "";
-        if (sub?.grade || sub?.score !== null) {
-          const emoji = gradeEmoji[sub?.grade] || "📊";
-          const gradeText = sub?.grade ? `${emoji} ${sub.grade}` : "";
-          const scoreText = sub?.score !== null && sub?.score !== undefined 
-            ? `(${sub.score})` 
-            : "";
-          
-          if (gradeText || scoreText) {
-            gradeInfo = ` | ${gradeText}${gradeText && scoreText ? " " : ""}${scoreText}`;
-          }
-        }
-        
-        return `${i + 1}. *${tg.kode}* — ${tg.judul}${gradeInfo}`;
-      });
-      
-      await message.reply(
-        "🧾 *Riwayat Tugas Selesai:*\n\n" + 
-        lines.join("\n") +
-        "\n\n_Nilai & grade muncul untuk tugas yang sudah dinilai_"
-      );
-      return;
+      return handleSiswaStatusWizard(message, { student });
     }
 
-    // C. Detail <KODE>
+    // C. Kumpul Tugas (menu berbasis wizard)
+    if (intent === "siswa_kumpul_tugas") {
+      return handleSiswaKumpulTugas(message, { student });
+    }
+
+    // D. Detail <KODE> - untuk backward compatibility
     let detailKode = null;
     if (intent === "siswa_detail_tugas") {
       detailKode = (
@@ -746,18 +986,26 @@ async function handleSiswaCommand(message, opts = {}) {
     }
     console.log("⚠️  No kumpulKode extracted, continuing to next handler...");
 
-    // E. Menu siswa (fallback bantuan)
+    // F. Menu siswa (fallback bantuan)
     if (
       intent === "siswa_help" ||
       matchAny(lbody, ["bantuan", "help", "menu", "siswa"])
     ) {
+      await setState(phoneKey, { menuMode: "siswa_menu_selection" });
       await message.reply(
-        "📚 *Menu Siswa:*\n" +
-          "• *tugas saya* — cek tugas belum selesai\n" +
-          "• *status tugas* — riwayat tugas selesai\n" +
-          "• *detail <KODE>* — lihat detail tugas\n" +
-          "• *kumpul <KODE>* — kumpulin tugas (PDF)\n" +
-          "• *gambar ke pdf* — ubah foto jadi PDF"
+        `❓ *Bantuan Kinanti Bot - Siswa*\n\n` +
+          `📚 *Daftar Menu:*\n` +
+          `*1.* 📚 Tugas Saya — Lihat tugas yang belum selesai\n` +
+          `*2.* ✅ Status Tugas — Lihat riwayat tugas yang sudah dikumpul\n` +
+          `*3.* 📝 Kumpul Tugas — Kumpulkan tugas dengan upload PDF\n` +
+          `*4.* 🖼️ Gambar ke PDF — Konversi foto menjadi file PDF\n` +
+          `*5.* ❓ Bantuan — Menampilkan halaman ini\n` +
+          `*0.* 🚪 Keluar — Keluar dari menu\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `📞 *Kontak Admin Kinanti:*\n` +
+          `wa.me/62895378394020\n\n` +
+          `Jika ada kendala, silakan hubungi nomor admin di atas.\n\n` +
+          `Ketik *halo* untuk kembali ke menu utama.`
       );
       return;
     }
@@ -765,8 +1013,12 @@ async function handleSiswaCommand(message, opts = {}) {
     // ===== Fallback =====
     console.log("❓ Reached fallback - perintah tidak dikenali");
     console.log("🎓 === SISWA CONTROLLER END (FALLBACK) ===\n");
+    await setState(phoneKey, { menuMode: "siswa_menu_selection" });
     await message.reply(
-      "🤷 Perintah ga dikenali.\nKetik *menu* buat lihat opsi atau *kumpul <KODE>* buat kumpul tugas."
+      "🤷 Perintah tidak dikenali.\n\n" +
+        "Ketik *halo* untuk melihat menu, atau pilih angka:\n" +
+        "*1.* Tugas Saya | *2.* Status Tugas | *3.* Kumpul Tugas\n" +
+        "*4.* Gambar ke PDF | *5.* Bantuan | *0.* Keluar"
     );
   } catch (e) {
     console.error("❌ handleSiswaCommand error:", e);

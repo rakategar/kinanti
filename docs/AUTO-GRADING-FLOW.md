@@ -113,7 +113,6 @@
 - **Manual Grading** (kunci jawaban tidak ada):
   - Tugas disimpan
   - Guru menilai manual via web dashboard
-  
 - **Auto Grading** (kunci jawaban ada):
   - Tugas disimpan
   - Webhook ke n8n
@@ -122,12 +121,12 @@
 
 ## Emoji Grade System
 
-| Grade | Score      | Emoji |
-|-------|------------|-------|
-| A     | 90 - 100   | 🌟    |
-| B     | 80 - 89    | ⭐    |
-| C     | 70 - 79    | ✨    |
-| D     | 0 - 69     | 💫    |
+| Grade | Score    | Emoji |
+| ----- | -------- | ----- |
+| A     | 90 - 100 | 🌟    |
+| B     | 80 - 89  | ⭐    |
+| C     | 70 - 79  | ✨    |
+| D     | 0 - 69   | 💫    |
 
 ## Timing
 

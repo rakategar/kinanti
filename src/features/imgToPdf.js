@@ -54,11 +54,12 @@ async function startImgToPdf(message) {
   });
 
   await message.reply(
-    "🖼️➡️📄 *Gambar ke PDF*\n" +
-      "Kirim *1 atau beberapa gambar* (JPG/PNG/WEBP). Bila sudah, ketik *selesai*.\n" +
-      "_Perintah opsional:_\n" +
-      "• *judul: <nama_file>* (tanpa spasi lebih aman)\n" +
-      "• *batal* untuk membatalkan\n\n" +
+    "🖼️➡️📄 *Gambar ke PDF*\n\n" +
+      "Kirim *1 atau beberapa gambar* (JPG/PNG/WEBP).\n\n" +
+      "📌 *Perintah:*\n" +
+      "*1.* ✅ Selesai & buat PDF\n" +
+      "*0.* ❌ Batal\n\n" +
+      "_Opsional:_ ketik *judul: <nama_file>* untuk nama PDF\n" +
       "_Catatan: hanya tersedia di chat pribadi._"
   );
   return true;
@@ -101,7 +102,9 @@ async function onIncomingMedia(message) {
 
   sess.images.push({ mimetype: media.mimetype, data: media.data }); // base64
   sess.startedAt = Date.now();
-  await message.reply(`✅ Gambar diterima. Total: *${sess.images.length}*`);
+  await message.reply(`✅ Gambar diterima. Total: *${sess.images.length}*\n\n📌 Perintah:
+1. ✅ Selesai & buat PDF
+0. ❌ Batal`);
   return true;
 }
 
@@ -115,10 +118,13 @@ async function onIncomingText(message) {
   // ❗ Tanpa sesi → JANGAN balas, biar alur lain (mis. penugasan) yang menangani
   if (!sess) return false;
 
-  // BATAL hanya jika ada sesi img2pdf (tidak ganggu penugasan)
-  if (b === "batal") {
+  // BATAL: ketik "0" atau "batal"
+  if (b === "0" || b === "batal") {
     sessions.delete(message.from);
-    await message.reply("❌ Dibatalkan. Tidak ada PDF yang dibuat.");
+    await message.reply(
+      "❌ Dibatalkan. Tidak ada PDF yang dibuat.\n\n" +
+        "Ketik *halo* untuk kembali ke menu."
+    );
     return true;
   }
 
@@ -133,10 +139,12 @@ async function onIncomingText(message) {
 
   // Flow per step
   if (sess.step === "upload_images") {
-    if (b === "selesai") {
+    // SELESAI: ketik "1" atau "selesai"
+    if (b === "1" || b === "selesai") {
       if (!sess.images.length) {
         await message.reply(
-          "⚠️ Belum ada gambar yang diterima. Kirim gambar dulu, lalu ketik *selesai*."
+          "⚠️ Belum ada gambar yang diterima.\n\n" +
+            "Kirim gambar dulu, lalu ketik *1* untuk selesai."
         );
         return true;
       }
@@ -144,8 +152,9 @@ async function onIncomingText(message) {
         sess.step = "request_filename";
         sess.startedAt = Date.now();
         await message.reply(
-          "📎 Silakan kirimkan *nama file* yang diinginkan untuk PDF.\n\n" +
-            "Gunakan nama file *tanpa spasi*.\nContoh: _Tugas_TKJ_"
+          "📎 Ketik *nama file* untuk PDF (tanpa spasi).\n" +
+            "Contoh: _Tugas_TKJ_\n\n" +
+            "Atau ketik *0* untuk batal."
         );
         return true;
       }
@@ -156,16 +165,18 @@ async function onIncomingText(message) {
     // Jika user masih memakai "simpan", beri arahan singkat (hanya saat sesi aktif)
     if (b === "simpan") {
       await message.reply(
-        'Perintah *"simpan"* tidak dipakai di sini. Gunakan *"selesai"* ya 🙏'
+        'Perintah *"simpan"* tidak dipakai di sini. Ketik *1* untuk selesai 🙏'
       );
       return true;
     }
 
     // Teks lain → hint
     await message.reply(
-      "Kirim *gambar/foto* sebanyak yang dibutuhkan, lalu ketik *selesai*.\n" +
-        "Opsional: *judul: <nama_file>* untuk nama PDF.\n" +
-        "Ketik *batal* untuk membatalkan."
+      "Kirim *gambar/foto* sebanyak yang dibutuhkan.\n\n" +
+        "📌 *Perintah:*\n" +
+        "*1.* ✅ Selesai & buat PDF\n" +
+        "*0.* ❌ Batal\n\n" +
+        "_Opsional:_ *judul: <nama_file>*"
     );
     return true;
   }
@@ -174,7 +185,9 @@ async function onIncomingText(message) {
     const name = sanitizeName(body);
     if (!name) {
       await message.reply(
-        "⚠️ Nama file tidak boleh kosong. Contoh: _Tugas_TKJ_"
+        "⚠️ Nama file tidak boleh kosong.\n" +
+          "Contoh: _Tugas_TKJ_\n\n" +
+          "Ketik *0* untuk batal."
       );
       return true;
     }
@@ -185,7 +198,7 @@ async function onIncomingText(message) {
 
   // fallback
   await message.reply(
-    "Ketik *batal* untuk membatalkan atau mulai ulang dengan *gambar ke pdf*."
+    "Ketik *0* untuk batal atau *halo* untuk kembali ke menu."
   );
   return true;
 }
@@ -210,7 +223,10 @@ async function finalizeAndSend(message, sess) {
     const chat = await message.getChat();
     await chat.sendMessage(media, {
       sendMediaAsDocument: true,
-      caption: `📄 *${fileName}*`,
+      caption:
+        `📄 *${fileName}*\n\n` +
+        `✅ PDF berhasil dibuat dari ${sess.images.length} gambar.\n\n` +
+        `Ketik *halo* untuk kembali ke menu.`,
     });
 
     // 4) Selesai → hapus sesi

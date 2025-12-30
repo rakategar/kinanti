@@ -1,0 +1,77 @@
+[30/12, 15.57] Raka: 3
+[30/12, 15.57] bot Kinanti: 📝 *Pilih Tugas untuk Dikumpul:*
+
+*1.* GEMOY-20 🟢 — tugas gemoy
+    ⏰ Deadline: 29/12/2025, 14.17
+
+*0.* ❌ Batal
+
+🟢 = Dinilai otomatis
+� *Balas dengan angka* untuk memilih tugas.
+[30/12, 15.58] Raka: 1
+[30/12, 15.58] bot Kinanti: 📝 *Pengumpulan Tugas!*
+📌 Kode: *GEMOY-20*
+📖 Judul: *tugas gemoy*
+⏰ Deadline: 29/12/2025, 14.17
+
+📎 Lampiran dari guru: https://wgdxgzraacfhfbxvxuzy.supabase.co/storage/v1/object/public/assignments/guru/GEMOY-20_20251228071735_2898669.pdf
+
+👉 Kirim *PDF tugas* kamu di sini!
+Kalau masih foto, balik ke menu pilih *4. Gambar ke PDF* dulu.
+
+*0.* ❌ Batal
+
+📌 Kirim file PDF atau ketik *0* untuk batal.
+[30/12, 16.03] bot Kinanti: 🎉 *Tugas sukses terkumpul!*
+📌 Kode: *GEMOY-20*
+📂 File: GEMOY-20_20251230_160320_2898669.pdf
+
+🤖 *Tugas ini dinilai otomatis*
+⏳ Sedang diproses oleh AI... mohon tunggu sebentar.
+[30/12, 16.03] bot Kinanti: ⏱️ Penilaian memakan waktu lebih lama. Hasilnya akan diupdate nanti ya! Cek status tugas secara berkala.
+[30/12, 16.04] Raka: hai
+[30/12, 16.04] bot Kinanti: ⚠️ Pilihan tidak valid. Ketik angka *1-1* atau *0* untuk batal.
+[30/12, 16.05] Raka: halo
+[30/12, 16.05] bot Kinanti: ⚠️ Pilihan tidak valid. Ketik angka *1-1* atau *0* untuk batal.
+[30/12, 16.05] Raka: 1
+[30/12, 16.05] Raka: 0
+[30/12, 16.05] bot Kinanti: ❌ Pengumpulan dibatalkan.
+
+Ketik angka untuk memilih menu lain, atau *0* untuk keluar.
+[30/12, 16.05] bot Kinanti: 📝 *Pengumpulan Tugas!*
+📌 Kode: *GEMOY-20*
+📖 Judul: *tugas gemoy*
+⏰ Deadline: 29/12/2025, 14.17
+
+📎 Lampiran dari guru: https://wgdxgzraacfhfbxvxuzy.supabase.co/storage/v1/object/public/assignments/guru/GEMOY-20_20251228071735_2898669.pdf
+
+👉 Kirim *PDF tugas* kamu di sini!
+Kalau masih foto, balik ke menu pilih *4. Gambar ke PDF* dulu.
+
+*0.* ❌ Batal
+
+📌 Kirim file PDF atau ketik *0* untuk batal.
+[30/12, 16.06] Raka: 0
+[30/12, 16.06] bot Kinanti: 👋 Sampai jumpa! Ketik *halo* kapan saja untuk kembali ke menu. 😊
+[30/12, 16.06] Raka: halo
+[30/12, 16.06] bot Kinanti: 👋 Halo, *Raka Tegar W*!
+
+Selamat datang di *Kinanti Bot*.
+
+🎒 *Menu Siswa:*
+*1.* 📚 Tugas Saya (Belum Selesai)
+*2.* ✅ Status Tugas (Riwayat)
+*3.* 📝 Kumpul Tugas
+*4.* 🖼️ Gambar ke PDF
+*5.* ❓ Bantuan
+*0.* 🚪 Keluar
+
+📌 *Balas dengan angka* untuk memilih menu.
+[30/12, 16.06] Raka: 2
+[30/12, 16.06] bot Kinanti: 🧾 *Riwayat Tugas Selesai:*
+
+*1.* GEMOY-20 — tugas gemoy | 🌟 A (100)
+
+_Nilai & grade muncul untuk tugas yang sudah dinilai_
+
+Ketik *halo* untuk kembali ke menu.

@@ -99,7 +99,25 @@ async function dialogManage(userPhone, intent, entities, rawText) {
     };
   }
 
-  await clearState(userPhone);
+  // Jangan clear state untuk wizard/state yang ditangani controller
+  const preserveStateIntents = [
+    "guru_buat_penugasan",
+    "guru_after_create",
+    "guru_rekap_wizard",
+    "guru_broadcast_wizard",
+    "guru_listsiswa_wizard",
+    "siswa_kumpul_wizard",
+    "siswa_imgtopdf",
+    "siswa_status_wizard",
+  ];
+
+  if (
+    !preserveStateIntents.includes(intent) &&
+    !preserveStateIntents.includes(state.lastIntent)
+  ) {
+    await clearState(userPhone);
+  }
+
   return { done: true, action: "ROUTE", to: intent, slots: state.slots };
 }
 

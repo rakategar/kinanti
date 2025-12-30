@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FiShare2, FiFileText, FiTrash2, FiX } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { FiShare2, FiFileText, FiTrash2, FiX, FiEdit3 } from "react-icons/fi";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
 
@@ -58,6 +59,7 @@ export default function GuruAssignmentsTable({
   onRekap,
   onDelete,
 }) {
+  const router = useRouter();
   const [uiBusy, setUiBusy] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusActiveTab, setStatusActiveTab] = useState("belum");
@@ -541,6 +543,18 @@ export default function GuruAssignmentsTable({
 
                     <td className="p-3">
                       <div className="flex items-center gap-2">
+                        <button
+                          className={`inline-flex items-center px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600 text-xs ${disableClass}`}
+                          onClick={() =>
+                            !uiBusy && router.push(`/guru/nilai/${a.id}`)
+                          }
+                          title="Nilai tugas siswa"
+                          disabled={uiBusy}
+                        >
+                          <FiEdit3 className="mr-1" />
+                          Nilai
+                        </button>
+
                         <button
                           className={`inline-flex items-center px-2 py-1 rounded bg-violet-600 text-white hover:bg-violet-700 text-xs ${disableClass}`}
                           onClick={() => !uiBusy && openBroadcastModal(a)}
