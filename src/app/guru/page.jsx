@@ -228,7 +228,21 @@ export default function GuruDashboard() {
     });
   }, [q, assessments]);
 
-  function handleLogout() {
+  async function handleLogout() {
+    const confirm = await Swal.fire({
+      title: "Keluar dari Dashboard?",
+      text: "Anda akan keluar dari akun guru.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Ya, Keluar",
+      cancelButtonText: "Batal",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      reverseButtons: true,
+    });
+
+    if (!confirm.isConfirmed) return;
+
     try {
       localStorage.removeItem("guruId");
       localStorage.removeItem("user");
@@ -324,7 +338,7 @@ export default function GuruDashboard() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-              Dashboard Guru
+              {`Hai ${session?.user?.name || "Guru"} 👋`}
             </h1>
             <p className="text-gray-600">
               Kelola penugasan, broadcast, rekap, dan penilaian kelas.

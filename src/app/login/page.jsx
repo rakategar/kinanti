@@ -225,14 +225,30 @@ export default function Home() {
             >
               {loading ? "Loading..." : "Log In"}
             </motion.button>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 2.1, duration: 0.8 }}
+              className="text-center mt-4"
+            >
+              <span className="text-gray-600">Belum punya akun? </span>
+              <Link href="/register" className="text-purple-500">
+                Daftar di sini
+              </Link>
+            </motion.div>
           </form>
         </div>
 
         {/* Footer */}
-        <div className="absolute bottom-6 flex flex-row justify-center items-center gap-2">
+        <a
+          href="https://wa.me/62895378394020?text=Permisi%20mas%20Raka"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-6 flex flex-row justify-center items-center gap-2 hover:opacity-70 transition cursor-pointer"
+        >
           <p className="opacity-80">Raka - Made with</p>
           <GoHeartFill color="magenta" />
-        </div>
+        </a>
       </motion.div>
     </div>
   );

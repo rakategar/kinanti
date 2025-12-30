@@ -249,18 +249,11 @@ export default function NilaiTugasPage() {
             {/* Left: Info */}
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <button
-                  onClick={handleExit}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition"
-                  title="Kembali"
-                >
-                  <FiArrowLeft className="w-5 h-5" />
-                </button>
                 <h1 className="text-xl md:text-2xl font-bold text-gray-800">
                   Penilaian Tugas
                 </h1>
               </div>
-              <div className="text-sm text-gray-600 space-y-1 ml-10">
+              <div className="text-sm text-gray-600 space-y-1 ">
                 <p>
                   <span className="font-semibold">Kode:</span>{" "}
                   {assignment?.kode || "—"} •{" "}
@@ -340,7 +333,7 @@ export default function NilaiTugasPage() {
                       key={row.siswaId}
                       className={`transition ${
                         isChanged
-                          ? "bg-yellow-50 hover:bg-yellow-100"
+                          ? "bg-yellow-100 hover:bg-yellow-100"
                           : "hover:bg-gray-50"
                       } ${!hasSubmission ? "bg-gray-50/50" : ""}`}
                     >
