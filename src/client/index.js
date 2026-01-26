@@ -12,7 +12,7 @@ const client = new Client({
       "--disable-accelerated-2d-canvas",
       "--no-first-run",
       "--no-zygote",
-
+      "--disable-gpu",
       "--disable-extensions",
       "--disable-background-networking",
       "--disable-default-apps",
@@ -27,6 +27,11 @@ const client = new Client({
       "--ignore-ssl-errors",
       "--ignore-certificate-errors-spki-list",
     ],
+  },
+  webVersionCache: {
+    type: "remote",
+    remotePath:
+      "https://raw.githubusercontent.com/AKASHAorg/webwhatsapp-versions/main/canary.json",
   },
   restartOnAuthFail: true,
 });

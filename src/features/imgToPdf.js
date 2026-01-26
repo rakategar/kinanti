@@ -8,6 +8,7 @@
 
 const { imagesToPdf } = require("../utils/pdfUtil");
 const { MessageMedia } = require("whatsapp-web.js");
+const { safeReply } = require("../utils/waHelper");
 
 // ===== In-memory session (key = JID pengirim) =====
 const sessions = new Map();
@@ -53,7 +54,7 @@ async function startImgToPdf(message) {
     startedAt: Date.now(),
   });
 
-  await message.reply(
+  await safeReply(message, 
     "🖼️➡️📄 *Gambar ke PDF*\n\n" +
       "Kirim *1 atau beberapa gambar* (JPG/PNG/WEBP).\n\n" +
       "📌 *Perintah:*\n" +
@@ -87,14 +88,14 @@ async function onIncomingMedia(message) {
     media = await message.downloadMedia();
   } catch (e) {
     console.error("[imgToPdf] downloadMedia error:", e);
-    await message.reply(
+    await safeReply(message, 
       "⚠️ Gagal mengambil media. Coba kirim ulang gambarnya ya."
     );
     return true;
   }
 
   if (!media || !/^image\//i.test(media.mimetype || "")) {
-    await message.reply(
+    await safeReply(message, 
       "⚠️ Hanya file *gambar/foto* yang diperbolehkan (JPG/PNG/WEBP)."
     );
     return true;
@@ -102,7 +103,7 @@ async function onIncomingMedia(message) {
 
   sess.images.push({ mimetype: media.mimetype, data: media.data }); // base64
   sess.startedAt = Date.now();
-  await message.reply(`✅ Gambar diterima. Total: *${sess.images.length}*\n\n📌 Perintah:
+  await safeReply(message, `✅ Gambar diterima. Total: *${sess.images.length}*\n\n📌 Perintah:
 1. ✅ Selesai & buat PDF
 0. ❌ Batal`);
   return true;
@@ -121,7 +122,7 @@ async function onIncomingText(message) {
   // BATAL: ketik "0" atau "batal"
   if (b === "0" || b === "batal") {
     sessions.delete(message.from);
-    await message.reply(
+    await safeReply(message, 
       "❌ Dibatalkan. Tidak ada PDF yang dibuat.\n\n" +
         "Ketik *halo* untuk kembali ke menu."
     );
@@ -133,7 +134,7 @@ async function onIncomingText(message) {
   if (mJudul) {
     sess.note = sanitizeName(mJudul[1].trim().slice(0, 60));
     sess.startedAt = Date.now();
-    await message.reply(`📝 Judul diset: *${sess.note}*`);
+    await safeReply(message, `📝 Judul diset: *${sess.note}*`);
     return true;
   }
 
@@ -142,7 +143,7 @@ async function onIncomingText(message) {
     // SELESAI: ketik "1" atau "selesai"
     if (b === "1" || b === "selesai") {
       if (!sess.images.length) {
-        await message.reply(
+        await safeReply(message, 
           "⚠️ Belum ada gambar yang diterima.\n\n" +
             "Kirim gambar dulu, lalu ketik *1* untuk selesai."
         );
@@ -151,7 +152,7 @@ async function onIncomingText(message) {
       if (!sess.note) {
         sess.step = "request_filename";
         sess.startedAt = Date.now();
-        await message.reply(
+        await safeReply(message, 
           "📎 Ketik *nama file* untuk PDF (tanpa spasi).\n" +
             "Contoh: _Tugas_TKJ_\n\n" +
             "Atau ketik *0* untuk batal."
@@ -164,14 +165,14 @@ async function onIncomingText(message) {
 
     // Jika user masih memakai "simpan", beri arahan singkat (hanya saat sesi aktif)
     if (b === "simpan") {
-      await message.reply(
+      await safeReply(message, 
         'Perintah *"simpan"* tidak dipakai di sini. Ketik *1* untuk selesai 🙏'
       );
       return true;
     }
 
     // Teks lain → hint
-    await message.reply(
+    await safeReply(message, 
       "Kirim *gambar/foto* sebanyak yang dibutuhkan.\n\n" +
         "📌 *Perintah:*\n" +
         "*1.* ✅ Selesai & buat PDF\n" +
@@ -184,7 +185,7 @@ async function onIncomingText(message) {
   if (sess.step === "request_filename") {
     const name = sanitizeName(body);
     if (!name) {
-      await message.reply(
+      await safeReply(message, 
         "⚠️ Nama file tidak boleh kosong.\n" +
           "Contoh: _Tugas_TKJ_\n\n" +
           "Ketik *0* untuk batal."
@@ -197,7 +198,7 @@ async function onIncomingText(message) {
   }
 
   // fallback
-  await message.reply(
+  await safeReply(message, 
     "Ketik *0* untuk batal atau *halo* untuk kembali ke menu."
   );
   return true;
@@ -206,7 +207,7 @@ async function onIncomingText(message) {
 // ===== Finalisasi: render PDF & kirim langsung ke user =====
 async function finalizeAndSend(message, sess) {
   try {
-    await message.reply("⏳ Memproses gambar menjadi PDF...");
+    await safeReply(message, "⏳ Memproses gambar menjadi PDF...");
 
     // 1) Render PDF (Buffer)
     const pdfBuffer = await imagesToPdf(sess.images);
@@ -233,7 +234,7 @@ async function finalizeAndSend(message, sess) {
     sessions.delete(message.from);
   } catch (err) {
     console.error("[imgToPdf] finalize error:", err);
-    await message.reply(
+    await safeReply(message, 
       "❌ Terjadi kesalahan saat membuat/kirim PDF. Coba lagi ya."
     );
   }

@@ -23,6 +23,27 @@ const {
 const { getState, setState, clearState } = require("./src/services/state");
 const { setupSchedules } = require("./src/controllers/scheduleController");
 const qrcode = require("qrcode-terminal");
+const { safeReply, safeSendMessage } = require("./src/utils/waHelper");
+
+// ===== Global Error Handlers =====
+process.on("unhandledRejection", (reason, promise) => {
+  // Ignore markedUnread errors
+  if (reason?.message?.includes("markedUnread")) {
+    console.log("⚠️ [global] Ignored unhandledRejection: markedUnread");
+    return;
+  }
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  // Ignore markedUnread errors
+  if (error?.message?.includes("markedUnread")) {
+    console.log("⚠️ [global] Ignored uncaughtException: markedUnread");
+    return;
+  }
+  console.error("Uncaught Exception:", error);
+  // Don't exit on markedUnread
+});
 
 // ===== Helpers =====
 function phoneFromJid(jid = "") {
@@ -170,6 +191,12 @@ async function clearGuruMenuMode(phone) {
 // =====================
 waClient.on("message", async (message) => {
   try {
+    // Abaikan pesan dari grup (JID berakhiran @g.us)
+    if (String(message.from || "").endsWith("@g.us")) {
+      console.log(`⏭️ [server] Skipping group message from: ${message.from}`);
+      return;
+    }
+
     const phone = phoneFromJid(message.from);
     const rawText = (message.body || "").trim();
 
@@ -231,8 +258,9 @@ waClient.on("message", async (message) => {
           // Handle exit menu
           if (selectedIntent === "guru_exit_menu") {
             await clearState(phone);
-            return message.reply(
-              "👋 Sampai jumpa! Ketik *halo* atau *mulai* kapan saja untuk kembali ke menu."
+            return safeReply(message,
+              "👋 Sampai jumpa! Ketik *halo* atau *mulai* kapan saja untuk kembali ke menu.",
+              waClient
             );
           }
 
@@ -245,7 +273,7 @@ waClient.on("message", async (message) => {
 
           // Handle guru_help - tampilkan bantuan detail
           if (selectedIntent === "guru_help") {
-            return message.reply(
+            return safeReply(message,
               "❓ *Bantuan Menu Guru*\n\n" +
                 "*1. Buat Tugas Baru*\n" +
                 "   Membuat tugas baru dengan form interaktif.\n" +
@@ -259,7 +287,8 @@ waClient.on("message", async (message) => {
                 "*5. Gambar ke PDF*\n" +
                 "   Menggabungkan beberapa gambar menjadi 1 file PDF.\n\n" +
                 "Kalau ada kendala yang lain, hubungi Admin yaa\n0895378394020 Raka (Admin) 😆\n\n" +
-                "📌 Ketik angka untuk memilih menu, atau *0* untuk keluar."
+                "📌 Ketik angka untuk memilih menu, atau *0* untuk keluar.",
+              waClient
             );
           }
 
@@ -276,12 +305,13 @@ waClient.on("message", async (message) => {
           });
         } else {
           // Input bukan angka menu yang valid
-          return message.reply(
+          return safeReply(message,
             "⚠️ Pilihan tidak valid.\n\n" +
               "📌 Balas dengan *angka 0-6* untuk memilih menu:\n" +
               "*1.* Buat Tugas | *2.* Broadcast | *3.* Rekap\n" +
               "*4.* Daftar Siswa | *5.* Gambar ke PDF | *6.* Bantuan\n" +
-              "*0.* Keluar"
+              "*0.* Keluar",
+            waClient
           );
         }
       }
@@ -302,7 +332,7 @@ waClient.on("message", async (message) => {
         });
         const userName = user?.nama || "Guru";
 
-        return message.reply(buildGreetingMessage(userName, "guru"));
+        return safeReply(message, buildGreetingMessage(userName, "guru"), waClient);
       }
     }
 
@@ -355,8 +385,9 @@ waClient.on("message", async (message) => {
           // Handle exit menu
           if (selectedIntent === "siswa_exit_menu") {
             await clearState(phone);
-            return message.reply(
-              "👋 Sampai jumpa! Ketik *halo* kapan saja untuk kembali ke menu. 😊"
+            return safeReply(message,
+              "👋 Sampai jumpa! Ketik *halo* kapan saja untuk kembali ke menu. 😊",
+              waClient
             );
           }
 
@@ -368,7 +399,7 @@ waClient.on("message", async (message) => {
 
           // Handle siswa_help
           if (selectedIntent === "siswa_help") {
-            return message.reply(
+            return safeReply(message,
               `❓ *Bantuan Kinanti Bot - Siswa*\n\n` +
                 `📚 *Daftar Menu:*\n` +
                 `*1.* 📚 Tugas Saya — Lihat tugas yang belum selesai\n` +
@@ -382,7 +413,8 @@ waClient.on("message", async (message) => {
                 `wa.me/62895378394020\n\n` +
                 `Jika ada kendala terkait penggunaan atau ada yang ingin ditanyakan, silakan hubungi nomor admin di atas.\n\n` +
                 `━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                `Ketik *halo* untuk kembali ke menu utama.`
+                `Ketik *halo* untuk kembali ke menu utama.`,
+              waClient
             );
           }
 
@@ -394,11 +426,12 @@ waClient.on("message", async (message) => {
           });
         } else {
           // Input bukan angka menu yang valid
-          return message.reply(
+          return safeReply(message,
             "⚠️ Pilihan tidak valid.\n\n" +
               "📌 Balas dengan *angka 0-5* untuk memilih menu:\n" +
               "*1.* Tugas Saya | *2.* Status Tugas | *3.* Kumpul Tugas\n" +
-              "*4.* Gambar ke PDF | *5.* Bantuan | *0.* Keluar"
+              "*4.* Gambar ke PDF | *5.* Bantuan | *0.* Keluar",
+            waClient
           );
         }
       }
@@ -419,7 +452,7 @@ waClient.on("message", async (message) => {
         });
         const userName = user?.nama || "Siswa";
 
-        return message.reply(buildGreetingMessage(userName, "siswa"));
+        return safeReply(message, buildGreetingMessage(userName, "siswa"), waClient);
       }
     }
 
@@ -442,7 +475,7 @@ waClient.on("message", async (message) => {
     const { dialog } = ctx;
 
     if (!dialog.done) {
-      return message.reply(dialog.message);
+      return safeReply(message, dialog.message, waClient);
     }
 
     const intent = dialog.to || "";
@@ -457,11 +490,12 @@ waClient.on("message", async (message) => {
 
       if (!user) {
         // User belum terdaftar
-        return message.reply(
+        return safeReply(message,
           "👋 Halo! Sepertinya kamu belum terdaftar di sistem Kinanti.\n\n" +
             "📝 Silakan daftar terlebih dahulu di:\n" +
             "🌐 *https://kinantiku.com*\n\n" +
-            "Setelah mendaftar, kamu bisa kembali ke sini dan mulai menggunakan bot ini! 😊"
+            "Setelah mendaftar, kamu bisa kembali ke sini dan mulai menggunakan bot ini! 😊",
+          waClient
         );
       }
 
@@ -476,7 +510,7 @@ waClient.on("message", async (message) => {
         await setGuruMenuMode(phone);
       }
 
-      return message.reply(buildGreetingMessage(userName, userRole));
+      return safeReply(message, buildGreetingMessage(userName, userRole), waClient);
     }
 
     if (intent === "img_to_pdf" || intent === "guru_img_to_pdf") {
@@ -496,9 +530,10 @@ waClient.on("message", async (message) => {
         });
       } else {
         // Siswa tidak bisa akses fitur guru
-        return message.reply(
+        return safeReply(message,
           "🔒 Maaf, fitur ini khusus untuk *Guru*.\n\n" +
-            "Ketik *halo* untuk melihat menu siswa. 📚"
+            "Ketik *halo* untuk melihat menu siswa. 📚",
+          waClient
         );
       }
     }
@@ -512,8 +547,17 @@ waClient.on("message", async (message) => {
       pdfUtil,
     });
   } catch (e) {
+    // Handle markedUnread error - pesan mungkin sudah terkirim
+    if (e?.message?.includes("markedUnread")) {
+      console.log("⚠️ [server] markedUnread error (ignored)");
+      return;
+    }
     console.error("NLP/handler error:", e);
-    return message.reply("Maaf, terjadi kesalahan. Coba lagi ya.");
+    try {
+      await safeReply(message, "Maaf, terjadi kesalahan. Coba lagi ya.", waClient);
+    } catch (replyErr) {
+      console.error("Failed to send error reply:", replyErr.message);
+    }
   }
 });
 

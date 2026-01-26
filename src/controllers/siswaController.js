@@ -7,6 +7,7 @@ const prisma = prismaMod?.prisma ?? prismaMod?.default ?? prismaMod;
 const { uploadPDFtoSupabase } = require("../utils/pdfUtils");
 const { getState, setState, clearState } = require("../services/state");
 const { normalizePhone } = require("../utils/phone");
+const { safeReply, safeSendMessage } = require("../utils/waHelper");
 
 // ========== State pengumpulan (in-memory) ==========
 // key = JID pengirim → { step: "await_pdf", assignmentId: <tugas.id>, assignmentKode, requirePdf }
@@ -201,7 +202,7 @@ async function triggerAutoGrading(
       console.warn(
         `Webhook POST failed (${res.status}): ${WEBHOOK_URL} - ${text}`
       );
-      await message.reply(
+      await safeReply(message, 
         "⚠️ Gagal memproses penilaian otomatis. Guru akan menilai manual."
       );
       return;
@@ -220,7 +221,7 @@ async function triggerAutoGrading(
     })();
   } catch (err) {
     console.error("[triggerAutoGrading] Error:", err);
-    await message.reply(
+    await safeReply(message, 
       "⚠️ Gagal memproses penilaian otomatis. Guru akan menilai manual."
     );
   }
@@ -261,7 +262,7 @@ async function pollGradingResult(submissionId, message, maxSeconds = 120) {
         const emoji = gradeEmoji[submission.grade] || "📊";
 
         // Kirim hasil ke siswa
-        await message.reply(
+        await safeReply(message, 
           `🎓 *HASIL PENILAIAN OTOMATIS*\n\n` +
             `${emoji} *Grade: ${submission.grade}*\n` +
             `📊 *Score: ${submission.score}/100*\n\n` +
@@ -280,7 +281,7 @@ async function pollGradingResult(submissionId, message, maxSeconds = 120) {
 
   // Timeout - hasil belum tersedia
   console.warn(`⏱️ Grading timeout for submission ${submissionId}`);
-  await message.reply(
+  await safeReply(message, 
     "⏱️ Penilaian memakan waktu lebih lama. Hasilnya akan diupdate nanti ya! Cek status tugas secara berkala."
   );
 }
@@ -300,7 +301,7 @@ async function beginSubmission(message, student, assignment) {
     ? `\n📎 Lampiran dari guru: ${assignment.pdfUrl}`
     : "";
 
-  await message.reply(
+  await safeReply(message, 
     "📝 *Pengumpulan Tugas!*\n" +
       `📌 Kode: *${assignment.kode}*\n` +
       `📖 Judul: *${assignment.judul}*\n` +
@@ -328,7 +329,7 @@ async function handleSiswaKumpulTugas(message, { student }) {
       PENDING.delete(message.from);
       await clearState(phoneKey);
       await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-      return message.reply(
+      return safeReply(message, 
         "❌ Pengumpulan dibatalkan.\n\n" +
           "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
       );
@@ -337,7 +338,7 @@ async function handleSiswaKumpulTugas(message, { student }) {
     // Cek apakah input adalah nomor valid
     const choice = parseInt(raw, 10);
     if (isNaN(choice) || choice < 1 || choice > tugasList.length) {
-      return message.reply(
+      return safeReply(message, 
         `⚠️ Pilihan tidak valid. Ketik angka *1-${tugasList.length}* atau *0* untuk batal.`
       );
     }
@@ -354,7 +355,7 @@ async function handleSiswaKumpulTugas(message, { student }) {
     if (!assignment) {
       await clearState(phoneKey);
       await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-      return message.reply("❌ Tugas tidak ditemukan. Silakan coba lagi.");
+      return safeReply(message, "❌ Tugas tidak ditemukan. Silakan coba lagi.");
     }
 
     // Mulai sesi pengumpulan
@@ -368,7 +369,7 @@ async function handleSiswaKumpulTugas(message, { student }) {
   }
 
   if (!student) {
-    return message.reply(
+    return safeReply(message, 
       "📵 Nomor kamu belum terdaftar sebagai *siswa*. Daftar di https://kinantiku.com ya ✨"
     );
   }
@@ -378,7 +379,7 @@ async function handleSiswaKumpulTugas(message, { student }) {
 
   if (!items?.length) {
     await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-    return message.reply(
+    return safeReply(message, 
       "✅ Tidak ada tugas yang belum selesai. Mantap! 🎉\n\n" +
         "Ketik *halo* untuk kembali ke menu."
     );
@@ -409,7 +410,7 @@ async function handleSiswaKumpulTugas(message, { student }) {
   teks += `\n🟢 = Dinilai otomatis`;
   teks += `\n� *Balas dengan angka* untuk memilih tugas.`;
 
-  return message.reply(teks);
+  return safeReply(message, teks);
 }
 
 // --- Status Wizard: tampilkan riwayat dan detail per nomor ---
@@ -426,14 +427,14 @@ async function handleSiswaStatusWizard(message, { student }) {
     if (raw === "0") {
       await clearState(phoneKey);
       await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-      return message.reply(
+      return safeReply(message, 
         "❌ Batal.\n\nKetik angka untuk memilih menu lain, atau *0* untuk keluar."
       );
     }
 
     const choice = parseInt(raw, 10);
     if (isNaN(choice) || choice < 1 || choice > list.length) {
-      return message.reply(
+      return safeReply(message, 
         `⚠️ Pilihan tidak valid. Ketik angka *1-${list.length}* atau *0* untuk batal.`
       );
     }
@@ -481,7 +482,7 @@ ${submission.evaluation || "Tidak ada catatan."}\n`;
     }
 
     teks += `\nKetik *halo* untuk kembali ke menu.`;
-    return message.reply(teks);
+    return safeReply(message, teks);
   }
 
   // Jika belum dalam wizard, tampilkan daftar riwayat dan simpan state
@@ -489,7 +490,7 @@ ${submission.evaluation || "Tidak ada catatan."}\n`;
     student = await getStudentBySender(message.from);
   }
   if (!student) {
-    return message.reply(
+    return safeReply(message, 
       "📵 Nomor kamu belum terdaftar sebagai *siswa*. Daftar di https://kinantiku.com ya ✨"
     );
   }
@@ -497,7 +498,7 @@ ${submission.evaluation || "Tidak ada catatan."}\n`;
   const items = await listDoneAssignments(student);
   if (!items?.length) {
     await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-    return message.reply(
+    return safeReply(message, 
       "📭 Belum ada tugas yang dikumpul. Semangat! 💪\n\nKetik *halo* untuk kembali ke menu."
     );
   }
@@ -530,7 +531,7 @@ ${submission.evaluation || "Tidak ada catatan."}\n`;
   });
 
   // Jangan timpa state wizard dengan menuMode!
-  return message.reply(
+  return safeReply(message, 
     `🧾 *Riwayat Tugas Selesai:*\n\n` +
       `${lines.join("\n")}\n\n` +
       `*0.* ❌ Kembali ke Menu\n\n` +
@@ -584,7 +585,7 @@ async function handleMediaWhilePending(message, pending, student) {
     /^application\/pdf$/i.test(mimeGuess);
 
   if (!isPdfLike) {
-    await message.reply(
+    await safeReply(message, 
       "⚠️ Format belum cocok. Kirim *PDF* ya. Kalau masih foto, ketik *gambar ke pdf* dulu."
     );
     return;
@@ -643,7 +644,7 @@ async function handleMediaWhilePending(message, pending, student) {
 
     if (isAutoGraded) {
       // Kirim notifikasi dan langsung keluarkan user
-      await message.reply(
+      await safeReply(message, 
         "🎉 *Tugas sukses terkumpul!*\n" +
           `📌 Kode: *${pending.assignmentKode}*\n` +
           `📂 File: ${fileName}\n\n` +
@@ -666,7 +667,7 @@ async function handleMediaWhilePending(message, pending, student) {
       });
     } else {
       // Tugas manual
-      await message.reply(
+      await safeReply(message, 
         "🎉 *Tugas sukses terkumpul!*\n" +
           `📌 Kode: *${pending.assignmentKode}*\n` +
           `📂 File: ${fileName}\n\n` +
@@ -675,7 +676,7 @@ async function handleMediaWhilePending(message, pending, student) {
     }
   } catch (e) {
     console.error("[siswaController] upload/DB error:", e);
-    await message.reply("😢 Oops, gagal simpan tugas. Coba lagi ya.");
+    await safeReply(message, "😢 Oops, gagal simpan tugas. Coba lagi ya.");
   }
 }
 
@@ -763,7 +764,7 @@ async function handleSiswaCommand(message, opts = {}) {
         const phoneKey = normalizePhone(phoneFromJid(message.from));
         await clearState(phoneKey);
         await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-        await message.reply(
+        await safeReply(message, 
           "❌ Pengumpulan dibatalkan.\n\n" +
             "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
         );
@@ -774,7 +775,7 @@ async function handleSiswaCommand(message, opts = {}) {
       const studentWhilePending = await getStudentBySender(message.from);
       if (!studentWhilePending) {
         PENDING.delete(message.from);
-        await message.reply(
+        await safeReply(message, 
           "📵 Nomor kamu belum terdaftar sebagai *siswa*. Daftar di https://kinantiku.com ya ✨"
         );
         return;
@@ -790,7 +791,7 @@ async function handleSiswaCommand(message, opts = {}) {
       }
 
       // selain itu, ingatkan untuk kirim PDF
-      await message.reply(
+      await safeReply(message, 
         "↪️ Kamu sedang dalam sesi *pengumpulan tugas*.\n" +
           "Silakan kirim *file PDF*-nya di sini ya.\n\n" +
           "Ketik *0* untuk batal."
@@ -844,7 +845,7 @@ async function handleSiswaCommand(message, opts = {}) {
     if (needsStudent()) {
       student = await getStudentBySender(message.from);
       if (!student) {
-        await message.reply(
+        await safeReply(message, 
           "📵 Nomor kamu belum terdaftar sebagai *siswa*. Daftar di https://kinantiku.com ya ✨"
         );
         return;
@@ -866,7 +867,7 @@ async function handleSiswaCommand(message, opts = {}) {
       const items = await listOpenAssignments(student);
       if (!items?.length) {
         await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-        await message.reply(
+        await safeReply(message, 
           "✅ Tidak ada tugas yang belum selesai. Mantap! 🎉\n\n" +
             "Ketik *halo* untuk kembali ke menu."
         );
@@ -883,7 +884,7 @@ async function handleSiswaCommand(message, opts = {}) {
       });
 
       await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-      await message.reply(
+      await safeReply(message, 
         "📚 *Daftar Tugas Belum Selesai:*\n\n" +
           lines.join("\n") +
           "\n\n🟢 = Dinilai otomatis\n\n" +
@@ -925,12 +926,12 @@ async function handleSiswaCommand(message, opts = {}) {
     if (detailKode) {
       const found = await findAssignmentForStudentByKode(student, detailKode);
       if (!found) {
-        await message.reply(`😕 Tugas dengan kode *${detailKode}* ga ketemu.`);
+        await safeReply(message, `😕 Tugas dengan kode *${detailKode}* ga ketemu.`);
         return;
       }
       const a = found.assignment;
       const lampiran = a.pdfUrl ? `\n📎 Lampiran: ${a.pdfUrl}` : "";
-      await message.reply(
+      await safeReply(message, 
         "ℹ️ *Detail Tugas:*\n" +
           `• Kode: *${a.kode}*\n` +
           `• Judul: *${a.judul}*\n` +
@@ -977,7 +978,7 @@ async function handleSiswaCommand(message, opts = {}) {
       const found = await findAssignmentForStudentByKode(student, kumpulKode);
       if (!found) {
         console.log("❌ Assignment not found");
-        await message.reply(`😕 Tugas dengan kode *${kumpulKode}* ga ketemu.`);
+        await safeReply(message, `😕 Tugas dengan kode *${kumpulKode}* ga ketemu.`);
         return;
       }
       console.log("✅ Assignment found, starting submission");
@@ -992,7 +993,7 @@ async function handleSiswaCommand(message, opts = {}) {
       matchAny(lbody, ["bantuan", "help", "menu", "siswa"])
     ) {
       await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-      await message.reply(
+      await safeReply(message, 
         `❓ *Bantuan Kinanti Bot - Siswa*\n\n` +
           `📚 *Daftar Menu:*\n` +
           `*1.* 📚 Tugas Saya — Lihat tugas yang belum selesai\n` +
@@ -1014,15 +1015,25 @@ async function handleSiswaCommand(message, opts = {}) {
     console.log("❓ Reached fallback - perintah tidak dikenali");
     console.log("🎓 === SISWA CONTROLLER END (FALLBACK) ===\n");
     await setState(phoneKey, { menuMode: "siswa_menu_selection" });
-    await message.reply(
+    await safeReply(
+      message,
       "🤷 Perintah tidak dikenali.\n\n" +
         "Ketik *halo* untuk melihat menu, atau pilih angka:\n" +
         "*1.* Tugas Saya | *2.* Status Tugas | *3.* Kumpul Tugas\n" +
         "*4.* Gambar ke PDF | *5.* Bantuan | *0.* Keluar"
     );
   } catch (e) {
+    // Handle markedUnread error - pesan mungkin sudah terkirim
+    if (e?.message?.includes("markedUnread")) {
+      console.log("⚠️ [siswaController] markedUnread error (pesan mungkin terkirim)");
+      return;
+    }
     console.error("❌ handleSiswaCommand error:", e);
-    await message.reply("😵 Aduh, ada error di fitur siswa. Coba lagi ya!");
+    try {
+      await safeReply(message, "😵 Aduh, ada error di fitur siswa. Coba lagi ya!");
+    } catch (replyErr) {
+      console.error("❌ Failed to send error reply:", replyErr.message);
+    }
   }
 }
 

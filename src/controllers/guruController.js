@@ -7,6 +7,7 @@ const { MessageMedia } = require("whatsapp-web.js");
 const { getState, setState, clearState } = require("../services/state");
 const { normalizePhone } = require("../utils/phone");
 const { uploadPDFtoSupabase } = require("../utils/pdfUtils");
+const { safeReply, safeSendMessage } = require("../utils/waHelper");
 
 const REKAP_WIZ = new Map();
 // Map<JID, { step: 'pick_code' | 'pick_class', guruId, kode?: string }>
@@ -132,11 +133,11 @@ async function handleGuruBuatPenugasan(message, { user, entities, waClient }) {
 - Deadline: ${s.deadlineHari ?? "N"} (hari)
 - Kelas: ${s.kelas ? `*${s.kelas}*` : "(ketik kelas, misal: XIITKJ2)"}`;
 
-  await message.reply(
+  await safeReply(message, 
     "🧭 *Progress pengisian form*\n" +
       "Ketik sesuai format berikut (boleh satu per satu)."
   );
-  return waClient.sendMessage(message.from, form);
+  return safeSendMessage(waClient, message.from, form);
 }
 
 // ===== Parser baris "Field: nilai" (toleran kurung, spasi, awalan "- ")
@@ -179,14 +180,14 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     if (message.hasMedia) {
       const media = await message.downloadMedia().catch(() => null);
       if (!media) {
-        await message.reply(
+        await safeReply(message, 
           "⚠️ Gagal mengunduh file. Coba kirim ulang PDF-nya."
         );
         return true;
       }
       const mime = media.mimetype || "";
       if (!/^application\/pdf$/i.test(mime)) {
-        await message.reply(
+        await safeReply(message, 
           "📎 File harus *PDF*. Kirim ulang dalam format PDF ya."
         );
         return true;
@@ -204,7 +205,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       await setState(user.phone, state);
 
       const recap = buildRecapText(s);
-      await message.reply(
+      await safeReply(message, 
         `✅ *PDF diterima:* ${s.guruPdfName}\n\n${recap}\n` +
           "*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan"
       );
@@ -224,13 +225,13 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       state.slots = { ...s };
       await setState(user.phone, state);
 
-      await message.reply(
+      await safeReply(message, 
         "➡️ Lampiran PDF dibatalkan.\n\n*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan semua"
       );
       return true;
     }
 
-    await message.reply(
+    await safeReply(message, 
       "⏳ Bot menunggu *file PDF* dari guru.\n\n" +
         "📎 Kirim file PDF sekarang (maks ~10MB)\n\n" +
         "*0.* Lewati (tidak melampirkan PDF)"
@@ -243,14 +244,14 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     if (message.hasMedia) {
       const media = await message.downloadMedia().catch(() => null);
       if (!media) {
-        await message.reply(
+        await safeReply(message, 
           "⚠️ Gagal mengunduh file. Coba kirim ulang kunci jawaban PDF-nya."
         );
         return true;
       }
       const mime = media.mimetype || "";
       if (!/^application\/pdf$/i.test(mime)) {
-        await message.reply(
+        await safeReply(message, 
           "🔑 Kunci jawaban harus *PDF*. Kirim ulang dalam format PDF ya."
         );
         return true;
@@ -268,7 +269,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       await setState(user.phone, state);
 
       const recap = buildRecapText(s);
-      await message.reply(
+      await safeReply(message, 
         `✅ *Kunci jawaban diterima:* ${s.kunciJawabanName} 🔑\n\n${recap}\n` +
           "*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan"
       );
@@ -288,14 +289,14 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       state.slots = { ...s };
       await setState(user.phone, state);
 
-      await message.reply(
+      await safeReply(message, 
         "➡️ Kunci jawaban dibatalkan. Tugas akan dinilai *manual* oleh guru.\n\n" +
           "*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan semua"
       );
       return true;
     }
 
-    await message.reply(
+    await safeReply(message, 
       "⏳ Bot menunggu *kunci jawaban PDF*.\n" +
         "🔑 Kirim file PDF sekarang\n\n" +
         "*0.* Lewati (penilaian manual)"
@@ -306,7 +307,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
   // Perintah batalkan semua (0 tanpa sedang menunggu PDF)
   if (/^0$/i.test(raw)) {
     await clearState(user.phone);
-    await message.reply("❎ Pembuatan penugasan dibatalkan.");
+    await safeReply(message, "❎ Pembuatan penugasan dibatalkan.");
     return true;
   }
 
@@ -326,7 +327,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       s.awaitingPdf = true;
       state.slots = { ...s };
       await setState(user.phone, state);
-      await message.reply(
+      await safeReply(message, 
         "⏳ Bot menunggu *file PDF* dari guru.\n\n" +
           "📎 Kirim file PDF sekarang (maks ~10MB)\n" +
           "*0.* Lewati (tidak melampirkan PDF)"
@@ -339,7 +340,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       s.awaitingKunciJawaban = true;
       state.slots = { ...s };
       await setState(user.phone, state);
-      await message.reply(
+      await safeReply(message, 
         "⏳ Bot menunggu *kunci jawaban PDF*.\n\n" +
           "🔑 Kirim file PDF sekarang\n" +
           "*0.* Lewati (penilaian manual)"
@@ -348,7 +349,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     }
 
     if (missing.length) {
-      await message.reply(
+      await safeReply(message, 
         `⚠️ Field belum lengkap: ${missing.join(", ")}.\n\n` +
           "Lengkapi dulu, lalu ketik *1* untuk simpan."
       );
@@ -362,7 +363,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       where: { kode: kodeFinal },
     });
     if (dup) {
-      await message.reply(
+      await safeReply(message, 
         [
           `🚫 *Tugas dengan kode ${kodeFinal} sudah ada.*`,
           `• Kode: *${dup.kode}*`,
@@ -493,7 +494,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       recap += `*1.* 📣 Kirim tugas ke kelas ${created.kelas}\n`;
       recap += `*2.* 🏠 Kembali ke menu utama`;
 
-      await message.reply(recap);
+      await safeReply(message, recap);
       return true;
     } catch (err) {
       // balapan → P2002
@@ -502,7 +503,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
           where: { kode: kodeFinal },
         });
         if (existing) {
-          await message.reply(
+          await safeReply(message, 
             [
               `🚫 *Tugas dengan kode ${kodeFinal} sudah ada.*`,
               `• Kode: *${existing.kode}*`,
@@ -534,10 +535,25 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     if (!parsed) continue;
 
     if (parsed.field === "kode") {
-      const m = /\b([a-z]{2,8})[-_]?(\d{1,4})\b/i.exec(parsed.value);
-      if (!m) continue;
-      s.kode = `${m[1].toUpperCase()}-${m[2]}`;
-      updated++;
+      // Support berbagai format kode:
+      // 1. MTK-01, RPL_02 (huruf + angka dengan separator)
+      // 2. MTK01, RPL02 (huruf + angka tanpa separator)
+      // 3. PAKYON, TUGAS1 (huruf saja atau kombinasi bebas)
+      const rawKode = parsed.value.trim();
+      
+      // Coba pattern huruf+angka dulu
+      const m = /\b([a-z]{2,8})[-_]?(\d{1,4})\b/i.exec(rawKode);
+      if (m) {
+        s.kode = `${m[1].toUpperCase()}_${m[2]}`;
+        updated++;
+      } else {
+        // Fallback: terima kode alfanumerik bebas (min 3 karakter)
+        const cleanKode = rawKode.replace(/[^a-zA-Z0-9_-]/g, "").toUpperCase();
+        if (cleanKode.length >= 3) {
+          s.kode = cleanKode;
+          updated++;
+        }
+      }
     } else if (parsed.field === "lampirPdf") {
       s.lampirPdf = /^(ya|yes|y)$/i.test(parsed.value) ? "ya" : "tidak";
       updated++;
@@ -590,7 +606,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
         state.slots = { ...(state.slots || {}), ...s };
         await setState(user.phone, state);
 
-        await message.reply(
+        await safeReply(message, 
           [
             `🚫 *Tugas dengan kode ${kodeCheck} sudah ada.*`,
             `• Kode: *${existed.kode}*`,
@@ -606,7 +622,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
         );
 
         if (s.awaitingPdf && !s.guruPdfReceived) {
-          await message.reply(
+          await safeReply(message, 
             "📎 *Lampirkan PDF di pesan berikutnya.* Kirim file *PDF* (maks ~10MB)."
           );
         }
@@ -618,7 +634,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     await setState(user.phone, state);
 
     if (s.awaitingPdf && !s.guruPdfReceived) {
-      await message.reply(
+      await safeReply(message, 
         "📎 *Lampirkan PDF di pesan berikutnya.*\n" +
           "Kirim file *PDF* (maks ~10MB).\n" +
           "*0.* Lewati (tidak melampirkan PDF)"
@@ -626,7 +642,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       return true;
     }
 
-    await message.reply(
+    await safeReply(message, 
       `✔️ *${updated} field* disimpan.\n\n*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan`
     );
     return true;
@@ -649,7 +665,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
       await setState(user.phone, state);
 
       const recap = buildRecapText(s2);
-      await message.reply(
+      await safeReply(message, 
         `✅ *PDF diterima:* ${s2.guruPdfName}\n\n${recap}\n` +
           "*1.* ✅ Simpan tugas\n*0.* ❌ Batalkan"
       );
@@ -657,7 +673,7 @@ async function handleGuruWizardMessage(message, { user, waClient }) {
     }
   }
 
-  await message.reply(
+  await safeReply(message, 
     "❓ Format tidak dikenali. Gunakan format: *Field: nilai* (misal: `Kode: BD-03`).\n" +
       "Contoh kirim sekaligus:\n" +
       "- Kode: MTK123\n- Judul: Tugas MTK\n- Deskripsi: …\n- Lampirkan PDF: ya\n- Deadline: 3\n- Kelas: XIITKJ2\n\n" +
@@ -682,7 +698,7 @@ async function handleGuruBroadcast(message, { entities, waClient, user }) {
     if (raw === "0") {
       await clearState(phoneKey);
       await setState(phoneKey, { menuMode: "guru_menu_selection" });
-      return message.reply(
+      return safeReply(message, 
         "❌ Broadcast dibatalkan.\n\n" +
           "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
       );
@@ -691,7 +707,7 @@ async function handleGuruBroadcast(message, { entities, waClient, user }) {
     // Cek apakah input adalah nomor valid
     const choice = parseInt(raw, 10);
     if (isNaN(choice) || choice < 1 || choice > tugasList.length) {
-      return message.reply(
+      return safeReply(message, 
         `⚠️ Pilihan tidak valid. Ketik angka *1-${tugasList.length}* atau *0* untuk batal.`
       );
     }
@@ -710,7 +726,7 @@ async function handleGuruBroadcast(message, { entities, waClient, user }) {
     });
 
     if (!asg) {
-      return message.reply(`❌ Tugas *${kode}* tidak ditemukan.`);
+      return safeReply(message, `❌ Tugas *${kode}* tidak ditemukan.`);
     }
 
     const siswa = await prisma.user.findMany({
@@ -718,7 +734,7 @@ async function handleGuruBroadcast(message, { entities, waClient, user }) {
     });
 
     if (!siswa.length) {
-      return message.reply(`ℹ️ Tidak ada siswa di kelas *${kelas}*.`);
+      return safeReply(message, `ℹ️ Tidak ada siswa di kelas *${kelas}*.`);
     }
 
     const guruNama = asg.guru?.nama || "Guru";
@@ -744,14 +760,14 @@ async function handleGuruBroadcast(message, { entities, waClient, user }) {
       if (!s.phone) continue;
       const jid = `${s.phone}@c.us`;
       try {
-        await waClient.sendMessage(jid, header);
+        await safeSendMessage(waClient, jid, header);
         sent++;
       } catch (e) {
         console.error("broadcast fail to", jid, e.message);
       }
     }
 
-    return message.reply(
+    return safeReply(message, 
       `✅ Tugas *${asg.kode}* berhasil dikirim ke *${sent}* siswa di kelas *${kelas}*! 📣\n\n` +
         `Ketik *halo* untuk kembali ke menu utama.`
     );
@@ -760,7 +776,7 @@ async function handleGuruBroadcast(message, { entities, waClient, user }) {
   // Jika belum dalam wizard, tampilkan daftar tugas guru
   const guru = user || (await getGuruByJid(message.from));
   if (!guru) {
-    return message.reply("🔒 Fitur ini khusus *Guru*.");
+    return safeReply(message, "🔒 Fitur ini khusus *Guru*.");
   }
 
   const tugas = await prisma.assignment.findMany({
@@ -771,7 +787,7 @@ async function handleGuruBroadcast(message, { entities, waClient, user }) {
   });
 
   if (!tugas.length) {
-    return message.reply(
+    return safeReply(message, 
       "ℹ️ Kamu belum punya tugas. Buat tugas dulu dengan menu *1. Buat Tugas Baru*."
     );
   }
@@ -790,7 +806,7 @@ async function handleGuruBroadcast(message, { entities, waClient, user }) {
   teks += `\n\n*0.* ❌ Batal\n`;
   teks += `\n📌 *Balas dengan angka* untuk memilih tugas.`;
 
-  return message.reply(teks);
+  return safeReply(message, teks);
 }
 
 // --- List Siswa: Tampilkan daftar kelas guru lalu siswa per kelas ---
@@ -809,7 +825,7 @@ async function handleGuruListSiswa(message, { user }) {
     if (raw === "0") {
       await clearState(phoneKey);
       await setState(phoneKey, { menuMode: "guru_menu_selection" });
-      return message.reply(
+      return safeReply(message, 
         "❌ Dibatalkan.\n\n" +
           "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
       );
@@ -819,7 +835,7 @@ async function handleGuruListSiswa(message, { user }) {
     const choice = parseInt(raw, 10);
 
     if (isNaN(choice) || choice < 1 || choice > kelasList.length) {
-      return message.reply(
+      return safeReply(message, 
         `⚠️ Pilihan tidak valid. Ketik angka *1-${kelasList.length}* atau *0* untuk batal.`
       );
     }
@@ -843,7 +859,7 @@ async function handleGuruListSiswa(message, { user }) {
     });
 
     if (!siswaList.length) {
-      return message.reply(`ℹ️ Tidak ada siswa di kelas *${selectedKelas}*.`);
+      return safeReply(message, `ℹ️ Tidak ada siswa di kelas *${selectedKelas}*.`);
     }
 
     // Format output
@@ -856,13 +872,13 @@ async function handleGuruListSiswa(message, { user }) {
 
     teks += `\nKetik *halo* untuk kembali ke menu.`;
 
-    return message.reply(teks);
+    return safeReply(message, teks);
   }
 
   // Jika belum dalam wizard, tampilkan daftar kelas
   const guru = user || (await getGuruByJid(message.from));
   if (!guru) {
-    return message.reply("🔒 Fitur ini khusus *Guru*.");
+    return safeReply(message, "🔒 Fitur ini khusus *Guru*.");
   }
 
   // Ambil daftar kelas unik dari tugas yang pernah dibuat guru
@@ -878,7 +894,7 @@ async function handleGuruListSiswa(message, { user }) {
     .sort();
 
   if (!kelasList.length) {
-    return message.reply(
+    return safeReply(message, 
       "ℹ️ Kamu belum punya tugas di kelas manapun.\n" +
         "Buat tugas dulu dengan menu *1. Buat Tugas Baru*."
     );
@@ -898,7 +914,7 @@ async function handleGuruListSiswa(message, { user }) {
   teks += `\n\n*0.* ❌ Batal\n`;
   teks += `\n📌 *Balas dengan angka* untuk memilih.`;
 
-  return message.reply(teks);
+  return safeReply(message, teks);
 }
 
 // --- Rekap Excel: Tampilkan list tugas untuk dipilih ---
@@ -917,7 +933,7 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
     if (raw === "0") {
       await clearState(phoneKey);
       await setState(phoneKey, { menuMode: "guru_menu_selection" });
-      return message.reply(
+      return safeReply(message, 
         "❌ Rekap dibatalkan.\n\n" +
           "Ketik angka untuk memilih menu lain, atau *0* untuk keluar."
       );
@@ -926,7 +942,7 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
     // Cek apakah input adalah nomor valid
     const choice = parseInt(raw, 10);
     if (isNaN(choice) || choice < 1 || choice > tugasList.length) {
-      return message.reply(
+      return safeReply(message, 
         `⚠️ Pilihan tidak valid. Ketik angka *1-${tugasList.length}* atau *0* untuk batal.`
       );
     }
@@ -939,7 +955,7 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
     await clearState(phoneKey);
 
     // Kirim notifikasi sedang memproses
-    await message.reply(`⏳ Sedang membuat rekap untuk tugas *${kode}*...`);
+    await safeReply(message, `⏳ Sedang membuat rekap untuk tugas *${kode}*...`);
 
     // Generate Excel rekap
     try {
@@ -956,7 +972,7 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
       });
 
       if (!assignment) {
-        return message.reply(`❌ Tugas *${kode}* tidak ditemukan.`);
+        return safeReply(message, `❌ Tugas *${kode}* tidak ditemukan.`);
       }
 
       // Parallel query
@@ -985,7 +1001,7 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
       ]);
 
       if (!students.length) {
-        return message.reply(`ℹ️ Tidak ada siswa di kelas *${kelas}*.`);
+        return safeReply(message, `ℹ️ Tidak ada siswa di kelas *${kelas}*.`);
       }
 
       // Build maps
@@ -1046,7 +1062,7 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
         `rekap_${kode}_${kelas}.xlsx`
       );
 
-      await message.reply(media, null, {
+      await safeReply(message, media, null, {
         caption:
           `📊 *Rekap Tugas ${kode}*\n\n` +
           `📚 Judul: ${assignment.judul}\n` +
@@ -1060,7 +1076,7 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
       return;
     } catch (err) {
       console.error("🔴 [guru_rekap] Error generating Excel:", err);
-      return message.reply(
+      return safeReply(message, 
         `❌ Gagal membuat rekap: ${err.message}\n\n` +
           `Silakan coba lagi dengan memilih menu *3*.`
       );
@@ -1070,7 +1086,7 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
   // Jika belum dalam wizard, tampilkan daftar tugas guru
   const guru = user || (await getGuruByJid(message.from));
   if (!guru) {
-    return message.reply("🔒 Fitur ini khusus *Guru*.");
+    return safeReply(message, "🔒 Fitur ini khusus *Guru*.");
   }
 
   const tugas = await prisma.assignment.findMany({
@@ -1081,7 +1097,7 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
   });
 
   if (!tugas.length) {
-    return message.reply(
+    return safeReply(message, 
       "ℹ️ Kamu belum punya tugas. Buat tugas dulu dengan menu *1. Buat Tugas Baru*."
     );
   }
@@ -1100,14 +1116,14 @@ async function handleGuruRekapExcel(message, { user, excelUtil }) {
   teks += `\n\n*0.* ❌ Batal\n`;
   teks += `\n📌 *Balas dengan angka* untuk memilih tugas.`;
 
-  return message.reply(teks);
+  return safeReply(message, teks);
 }
 
 // --- Langkah 1: mulai wizard / daftar kode tugas milik guru (OLD - kept for backward compatibility) ---
 async function startRekapWizard(message) {
   const guru = await getGuruByJid(message.from);
   if (!guru) {
-    return message.reply(
+    return safeReply(message, 
       "👋 Hai! Fitur ini khusus *guru*. Jika belum punya akun guru, silakan daftar dulu di https://kinantiku.com ✨"
     );
   }
@@ -1122,7 +1138,7 @@ async function startRekapWizard(message) {
   await setState(guru.phone, { lastIntent: "guru_rekap_wizard" });
 
   if (!tugas.length) {
-    return message.reply(
+    return safeReply(message, 
       "ℹ️ Kamu belum punya tugas yang terdata. Buat dulu ya. 🙂"
     );
   }
@@ -1136,7 +1152,7 @@ async function startRekapWizard(message) {
   teks += `\n\nKetik *kode tugas* yang ingin direkap. Contoh: _${tugas[0].kode}_`;
 
   REKAP_WIZ.set(message.from, { step: "pick_code", guruId: guru.id });
-  await message.reply(teks);
+  await safeReply(message, teks);
 }
 
 // --- Langkah 2: setelah guru ketik kode → minta kelas ---
@@ -1152,7 +1168,7 @@ async function onPickCode(message, excelUtil) {
   });
 
   if (!tugas) {
-    return message.reply(
+    return safeReply(message, 
       "😕 Kode tugas tidak ditemukan di daftar kamu. Ketik lagi ya (pastikan sesuai)."
     );
   }
@@ -1162,7 +1178,7 @@ async function onPickCode(message, excelUtil) {
   // Jika tugas punya kelas bawaan, tetap minta konfirmasi kelas (bisa beda paralel)
   let teks = `✅ Kode *${tugas.kode}* — ${tugas.judul}\n`;
   teks += "Kelas mana yang ingin direkap? (contoh: *XITKJ2* atau *XI TKJ 2*)";
-  return message.reply(teks);
+  return safeReply(message, teks);
 }
 
 // --- Langkah 3: setelah guru ketik kelas → kirim rekap belum kumpul + Excel ---
@@ -1179,7 +1195,7 @@ async function onPickClass(message, excelUtil) {
   });
   if (!tugas) {
     REKAP_WIZ.delete(message.from);
-    return message.reply(
+    return safeReply(message, 
       "😕 Tugasnya tidak ditemukan. Ulangi perintah *rekap* ya."
     );
   }
@@ -1195,7 +1211,7 @@ async function onPickClass(message, excelUtil) {
   });
   if (!siswaKelas.length) {
     REKAP_WIZ.delete(message.from);
-    return message.reply(`ℹ️ Tidak ada siswa di kelas *${kelasRaw}*.`);
+    return safeReply(message, `ℹ️ Tidak ada siswa di kelas *${kelasRaw}*.`);
   }
 
   // Ambil status & submission
@@ -1218,7 +1234,7 @@ async function onPickClass(message, excelUtil) {
 
   // Kirim daftar text
   if (!belum.length) {
-    await message.reply(
+    await safeReply(message, 
       `🎉 Semua siswa *${kelasRaw}* sudah mengumpulkan untuk *${tugas.kode}* — ${tugas.judul}.`
     );
   } else {
@@ -1226,7 +1242,7 @@ async function onPickClass(message, excelUtil) {
     belum.forEach((s, i) => {
       teks += `\n${i + 1}. ${s.nama}`;
     });
-    await message.reply(teks);
+    await safeReply(message, teks);
   }
 
   // Susun data Excel (lengkap: Kelas, Siswa, Kode, Judul, Status, Waktu)
@@ -1249,7 +1265,7 @@ async function onPickClass(message, excelUtil) {
     Buffer.from(buffer).toString("base64"),
     `rekap_${tugas.kode}_${kelas}.xlsx`
   );
-  await message.reply(media);
+  await safeReply(message, media);
 
   const guru = await getGuruByJid(message.from);
   if (guru?.phone) await clearState(guru.phone);
@@ -1264,7 +1280,7 @@ async function routeGuruRekap(message, { intent, entities, excelUtil }) {
     // hapus state wizard
     const guru = await getGuruByJid(message.from);
     if (guru?.phone) await clearState(guru.phone);
-    return message.reply("❎ Wizard rekap dibatalkan.");
+    return safeReply(message, "❎ Wizard rekap dibatalkan.");
   }
   // 1) Kalau sedang di legacy wizard (REKAP_WIZ Map), teruskan step
   if (REKAP_WIZ.has(message.from)) {
@@ -1288,7 +1304,7 @@ async function routeGuruRekap(message, { intent, entities, excelUtil }) {
   if (m) {
     const guru = await getGuruByJid(message.from);
     if (!guru) {
-      return message.reply(
+      return safeReply(message, 
         "👋 Hai! Fitur ini khusus *guru*. Jika belum punya akun guru, silakan daftar dulu di https://kinantiku.com ✨"
       );
     }
@@ -1297,7 +1313,7 @@ async function routeGuruRekap(message, { intent, entities, excelUtil }) {
       guruId: guru.id,
       kode: String(m[1]).toUpperCase(),
     });
-    return message.reply(
+    return safeReply(message, 
       "Oke! Kelas mana yang ingin direkap? (contoh: *XITKJ2* atau *XI TKJ 2*)"
     );
   }
@@ -1313,7 +1329,7 @@ async function handleGuruCommand(
   // ❌ Tolak grup: hanya chat pribadi
   const jid = String(message.from || "");
   if (/@g\.us$/i.test(jid)) {
-    await message.reply(
+    await safeReply(message, 
       "👋 Fitur guru hanya tersedia di *chat pribadi* dengan bot.\n" +
         "Silakan lanjutkan via pesan langsung, ya. 🙏"
     );
@@ -1336,7 +1352,7 @@ async function handleGuruCommand(
   } catch (e) {
     console.log("🔵 [handleGuruCommand] ensureGuru error:", e.code);
     if (e.code === "ROLE_FORBIDDEN") {
-      return message.reply("🔒 Fitur ini khusus *Guru*.");
+      return safeReply(message, "🔒 Fitur ini khusus *Guru*.");
     }
     throw e;
   }
@@ -1382,7 +1398,7 @@ async function handleGuruCommand(
 
         if (!asg) {
           await clearState(phoneKey);
-          return message.reply(
+          return safeReply(message, 
             `❌ Kode tugas *${createdKode}* tidak ditemukan.`
           );
         }
@@ -1395,7 +1411,7 @@ async function handleGuruCommand(
 
         if (!siswa.length) {
           await clearState(phoneKey);
-          return message.reply(
+          return safeReply(message, 
             `ℹ️ Tidak ada siswa di kelas *${createdKelas}*.`
           );
         }
@@ -1424,7 +1440,7 @@ async function handleGuruCommand(
           if (!st.phone) continue;
           const jidSiswa = `${st.phone}@c.us`;
           try {
-            await waClient.sendMessage(jidSiswa, header);
+            await safeSendMessage(waClient, jidSiswa, header);
             sent++;
             console.log(`🔵 [guru_after_create] Sent to ${jidSiswa}`);
           } catch (sendErr) {
@@ -1437,7 +1453,7 @@ async function handleGuruCommand(
 
         console.log("🔵 [guru_after_create] Clearing state and replying...");
         await clearState(phoneKey);
-        await message.reply(
+        await safeReply(message, 
           `✅ Tugas *${createdKode}* berhasil dikirim ke *${sent}* siswa di kelas *${createdKelas}*! 📣\n\n` +
             `Ketik *halo* untuk kembali ke menu utama.`
         );
@@ -1445,7 +1461,7 @@ async function handleGuruCommand(
         return;
       } catch (err) {
         console.error("🔴 [guru_after_create] Error:", err);
-        return message.reply(
+        return safeReply(message, 
           `❌ *Gagal mengirim tugas:* ${err.message}\n\n` +
             `Silakan coba lagi dengan mengetik *1* untuk kirim, atau *2* untuk kembali ke menu.`
         );
@@ -1472,11 +1488,11 @@ async function handleGuruCommand(
         `*6.* ❓ Bantuan\n` +
         `*0.* 🚪 Keluar\n\n` +
         `📌 *Balas dengan angka* untuk memilih menu.`;
-      return message.reply(menuGuru);
+      return safeReply(message, menuGuru);
     }
 
     // Input tidak valid
-    return message.reply(
+    return safeReply(message, 
       `⚠️ Pilihan tidak valid.\n\n` +
         `*1.* 📣 Kirim tugas ke kelas ${createdKelas}\n` +
         `*2.* 🏠 Kembali ke menu utama`
@@ -1548,7 +1564,7 @@ async function handleGuruCommand(
         `Jika ada kendala terkait penggunaan atau ada yang ingin ditanyakan, silakan hubungi nomor admin di atas.\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━\n\n` +
         `Ketik *halo* untuk kembali ke menu utama.`;
-      return message.reply(bantuanTeks);
+      return safeReply(message, bantuanTeks);
     }
 
     default:

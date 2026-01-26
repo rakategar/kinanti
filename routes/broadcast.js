@@ -1,6 +1,7 @@
 // routes/broadcast.js
 const express = require("express");
 const { MessageMedia } = require("whatsapp-web.js");
+const { safeSendMessage } = require("../src/utils/waHelper");
 
 function broadcastRouteFactory(waClient) {
   const router = express.Router();
@@ -47,16 +48,26 @@ function broadcastRouteFactory(waClient) {
         const jid = `${number}@c.us`;
 
         try {
-          await waClient.sendMessage(jid, header);
+          // Gunakan safeSendMessage untuk menghindari error markedUnread
+          await safeSendMessage(waClient, jid, header);
 
           if (pdfUrl) {
             const media = await MessageMedia.fromUrl(pdfUrl);
-            await waClient.sendMessage(jid, media, {
-              caption: `📎 Lampiran: ${judul || "Tugas"}`,
-            });
+            // Untuk media, masih gunakan sendMessage karena safeSendMessage hanya untuk text
+            try {
+              await waClient.sendMessage(jid, media, {
+                caption: `📎 Lampiran: ${judul || "Tugas"}`,
+              });
+            } catch (mediaErr) {
+              if (!mediaErr?.message?.includes("markedUnread")) {
+                console.error("Gagal kirim media ke", jid, mediaErr.message);
+              }
+            }
           }
         } catch (e) {
-          console.error("Gagal kirim ke", jid, e.message);
+          if (!e?.message?.includes("markedUnread")) {
+            console.error("Gagal kirim ke", jid, e.message);
+          }
         }
       }
 

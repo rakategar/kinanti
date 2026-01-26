@@ -1,6 +1,7 @@
 // src/controllers/scheduleController.js
 const cron = require("node-cron");
 const { client } = require("../client");
+const { safeSendMessage } = require("../utils/waHelper");
 
 // ===== Prisma import yang robust (default/named) =====
 const prismaMod = require("../config/prisma");
@@ -239,7 +240,7 @@ async function broadcastPagi() {
           body += `📝 *Tugas Lainnya:*\n${renderList(others)}\n`;
       }
 
-      await client.sendMessage(jid, body);
+      await safeSendMessage(client, jid, body);
       await sleep(WA_DELAY_MS);
     }
 
@@ -253,7 +254,7 @@ async function broadcastPagi() {
         `💬 _"${pickSemangat()}"_\n\n` +
         `✅ Tidak ada tugas yang perlu dikerjakan. Have a nice day! 🌟`;
 
-      await client.sendMessage(jid, body);
+      await safeSendMessage(client, jid, body);
       await sleep(WA_DELAY_MS);
     }
 
@@ -316,7 +317,7 @@ async function broadcastSore() {
       body += blocks.join("\n\n");
       body += `\n\n💬 Selesaikan sebelum deadline ya. Semangat! 🚀`;
 
-      await client.sendMessage(jid, body);
+      await safeSendMessage(client, jid, body);
       await sleep(WA_DELAY_MS);
     }
 
@@ -377,7 +378,7 @@ async function reminderDeadlineBesok() {
         `${renderList(g.tugas)}\n\n` +
         `💬 Segera selesaikan tugasmu ya biar tidak terlambat! Semangat! 🚀`;
 
-      await client.sendMessage(jid, body);
+      await safeSendMessage(client, jid, body);
       await sleep(WA_DELAY_MS);
     }
 
