@@ -1,34 +1,4 @@
-2026/01/26-21:15:22.204 5220 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/01/26-21:15:22.205 5220 Recovering log #142
-2026/01/26-21:15:22.380 5220 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000142.log 
-2026/01/26-21:15:24.785 5220 Level-0 table #150: started
-2026/01/26-21:15:25.009 5220 Level-0 table #150: 1054878 bytes OK
-2026/01/26-21:15:25.024 5220 Delete type=0 #142
-2026/01/26-21:15:25.027 522c Manual compaction at level-0 from '\x00%\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00&\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/01/26-21:15:25.189 5222 Compacting 1@1 + 4@2 files
-2026/01/26-21:15:25.579 5222 Generated table #151@1: 47790 keys, 2208708 bytes
-2026/01/26-21:15:25.773 5222 Generated table #152@1: 17090 keys, 2150604 bytes
-2026/01/26-21:15:25.938 5222 Generated table #153@1: 41184 keys, 2195148 bytes
-2026/01/26-21:15:26.002 5222 Generated table #154@1: 48530 keys, 944419 bytes
-2026/01/26-21:15:26.003 5222 Compacted 1@1 + 4@2 files => 7498879 bytes
-2026/01/26-21:15:26.010 5222 compacted to: files[ 0 0 4 0 0 0 0 ]
-2026/01/26-21:15:26.011 5222 Delete type=2 #150
-2026/01/26-21:15:26.011 5222 Delete type=2 #145
-2026/01/26-21:15:26.011 5222 Delete type=2 #146
-2026/01/26-21:15:26.011 5222 Delete type=2 #144
-2026/01/26-21:15:26.011 5222 Delete type=2 #147
-2026/01/26-21:15:31.529 5221 Level-0 table #156: started
-2026/01/26-21:15:31.615 5221 Level-0 table #156: 1164252 bytes OK
-2026/01/26-21:15:31.624 5221 Delete type=0 #149
-2026/01/26-21:15:31.675 5221 Compacting 1@1 + 4@2 files
-2026/01/26-21:15:31.863 5221 Generated table #157@1: 50190 keys, 2208386 bytes
-2026/01/26-21:15:32.028 5221 Generated table #158@1: 28249 keys, 2174283 bytes
-2026/01/26-21:15:32.202 5221 Generated table #159@1: 18845 keys, 2171502 bytes
-2026/01/26-21:15:32.336 5221 Generated table #160@1: 71439 keys, 1574536 bytes
-2026/01/26-21:15:32.336 5221 Compacted 1@1 + 4@2 files => 8128707 bytes
-2026/01/26-21:15:32.347 5221 compacted to: files[ 0 0 4 0 0 0 0 ]
-2026/01/26-21:15:32.348 5221 Delete type=2 #156
-2026/01/26-21:15:32.349 5221 Delete type=2 #152
-2026/01/26-21:15:32.349 5221 Delete type=2 #154
-2026/01/26-21:15:32.349 5221 Delete type=2 #153
-2026/01/26-21:15:32.349 5221 Delete type=2 #151
+2026/01/26-22:39:30.550 8ab4 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/26-22:39:30.551 8ab4 Recovering log #204
+2026/01/26-22:39:30.584 8ab4 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000204.log 
+2026/01/26-22:39:34.447 8ab6 Manual compaction at level-0 from '\x00-\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00.\x00\x00\x00' @ 0 : 0; will stop at (end)

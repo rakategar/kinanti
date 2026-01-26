@@ -47,7 +47,47 @@ process.on("uncaughtException", (error) => {
 
 // ===== Helpers =====
 function phoneFromJid(jid = "") {
-  return String(jid || "").replace(/@c\.us$/i, "");
+  // Handle both @c.us and @lid formats
+  return String(jid || "")
+    .replace(/@c\.us$/i, "")
+    .replace(/@lid$/i, "");
+}
+
+/**
+ * Resolve LID to phone number using WhatsApp client
+ * @param {Object} message - WhatsApp message object
+ * @returns {string} - Phone number or original JID
+ */
+async function resolvePhoneFromMessage(message) {
+  const jid = message.from || "";
+  
+  // If it's already @c.us format, extract phone directly
+  if (jid.endsWith("@c.us")) {
+    return phoneFromJid(jid);
+  }
+  
+  // If it's @lid format, try to get the actual phone number
+  if (jid.endsWith("@lid")) {
+    try {
+      // Method 1: Get from message author or contact
+      const contact = await message.getContact();
+      if (contact?.number) {
+        console.log(`🔄 [LID] Resolved ${jid} → ${contact.number}`);
+        return contact.number;
+      }
+      
+      // Method 2: Try to get from contact id
+      if (contact?.id?.user) {
+        console.log(`🔄 [LID] Resolved from id ${jid} → ${contact.id.user}`);
+        return contact.id.user;
+      }
+    } catch (err) {
+      console.warn(`⚠️ [LID] Failed to resolve ${jid}:`, err.message);
+    }
+  }
+  
+  // Fallback: return the ID part without suffix
+  return phoneFromJid(jid);
 }
 
 // Helper: retry database operation with exponential backoff
@@ -77,6 +117,24 @@ async function getUserRoleByJid(jid) {
     return user?.role ? String(user.role).toLowerCase() : null;
   } catch (e) {
     console.warn("[server] getUserRoleByJid error after retries:", e.message);
+    return null;
+  }
+}
+
+/**
+ * Get user role by phone number directly
+ */
+async function getUserRoleByPhone(phone) {
+  try {
+    if (!prisma?.user?.findFirst) return null;
+    if (!phone) return null;
+    
+    const user = await retryDbOperation(() =>
+      prisma.user.findFirst({ where: { phone } })
+    );
+    return user?.role ? String(user.role).toLowerCase() : null;
+  } catch (e) {
+    console.warn("[server] getUserRoleByPhone error:", e.message);
     return null;
   }
 }
@@ -197,11 +255,13 @@ waClient.on("message", async (message) => {
       return;
     }
 
-    const phone = phoneFromJid(message.from);
+    // Resolve phone number (handle both @c.us and @lid formats)
+    const phone = await resolvePhoneFromMessage(message);
     const rawText = (message.body || "").trim();
 
     // ========== CEK ROLE USER TERLEBIH DAHULU ==========
-    let role = await getUserRoleByJid(message.from);
+    // Use resolved phone number for database lookup
+    let role = await getUserRoleByPhone(phone);
     console.log(`🔵 [server] Phone: ${phone}, Role: ${role}`);
     if (role === "teacher") role = "guru";
     if (role === "student") role = "siswa";

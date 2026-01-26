@@ -111,6 +111,19 @@ async function safeSendMessage(client, to, text, options = {}) {
                 }
               }
 
+              // Jika chat masih tidak ditemukan, coba buat chat baru via sendTextMsgToChat
+              if (!chat) {
+                // Metode alternatif: gunakan Store.SendTextMsgToChat jika tersedia
+                if (window.Store?.SendTextMsgToChat) {
+                  const wid = window.Store?.WidFactory?.createWid(chatId);
+                  if (wid) {
+                    await window.Store.SendTextMsgToChat(wid, content);
+                    return { success: true, id: "sent-via-SendTextMsgToChat" };
+                  }
+                }
+                return { success: false, error: "Lid is missing in chat table" };
+              }
+
               if (chat) {
                 const msgResult = await window.WWebJS.sendMessage(chat, content, {}, {});
                 return {
@@ -129,18 +142,30 @@ async function safeSendMessage(client, to, text, options = {}) {
         );
 
         if (result.success) {
-          console.log(`✅ [safeSendMessage] Sent via pupPage to ${to}`);
+          console.log(`✅ [safeSendMessage] Sent to ${to}`);
           return result;
         }
         
-        console.log(`⚠️ [safeSendMessage] pupPage failed: ${result.error}, trying fallback`);
+        // pupPage gagal, coba fallback (tidak perlu log warning)
       } catch (pupErr) {
-        console.log(`⚠️ [safeSendMessage] pupPage error: ${pupErr.message}, trying fallback`);
+        // pupPage error, coba fallback (tidak perlu log warning)
       }
     }
     
-    // Fallback ke client.sendMessage
-    return await client.sendMessage(to, text, options);
+    // Fallback ke client.sendMessage - wrap dalam try-catch khusus markedUnread
+    try {
+      const msg = await client.sendMessage(to, text, options);
+      console.log(`✅ [safeSendMessage] Sent to ${to}`);
+      return msg;
+    } catch (fallbackErr) {
+      const errMsg = fallbackErr?.message || String(fallbackErr);
+      if (errMsg.includes("markedUnread")) {
+        // markedUnread error tapi pesan SUDAH TERKIRIM - anggap sukses
+        console.log(`✅ [safeSendMessage] Sent to ${to} (markedUnread ignored)`);
+        return { success: true, to };
+      }
+      throw fallbackErr;
+    }
   } catch (error) {
     const errorMsg = error?.message || String(error);
 
