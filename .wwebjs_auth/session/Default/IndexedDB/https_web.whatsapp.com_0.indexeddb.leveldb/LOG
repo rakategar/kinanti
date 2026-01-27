@@ -1,4 +1,19 @@
-2026/01/26-22:39:30.550 8ab4 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/01/26-22:39:30.551 8ab4 Recovering log #204
-2026/01/26-22:39:30.584 8ab4 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000204.log 
-2026/01/26-22:39:34.447 8ab6 Manual compaction at level-0 from '\x00-\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00.\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/26-22:42:52.267 8fbd Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/26-22:42:52.271 8fbd Recovering log #204
+2026/01/26-22:42:52.359 8fbd Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000204.log 
+2026/01/26-22:42:54.459 8fbd Level-0 table #212: started
+2026/01/26-22:42:54.484 8fbd Level-0 table #212: 554090 bytes OK
+2026/01/26-22:42:54.488 8fbd Delete type=0 #204
+2026/01/26-22:42:54.490 8fbd Manual compaction at level-0 from '\x00.\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00/\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/26-22:42:54.591 8fbf Compacting 1@1 + 4@2 files
+2026/01/26-22:42:54.831 8fbf Generated table #213@1: 47521 keys, 2213973 bytes
+2026/01/26-22:42:55.005 8fbf Generated table #214@1: 26092 keys, 2171079 bytes
+2026/01/26-22:42:55.150 8fbf Generated table #215@1: 19952 keys, 2174089 bytes
+2026/01/26-22:42:55.271 8fbf Generated table #216@1: 71709 keys, 1399948 bytes
+2026/01/26-22:42:55.271 8fbf Compacted 1@1 + 4@2 files => 7959089 bytes
+2026/01/26-22:42:55.273 8fbf compacted to: files[ 0 0 4 0 0 0 0 ]
+2026/01/26-22:42:55.274 8fbf Delete type=2 #206
+2026/01/26-22:42:55.274 8fbf Delete type=2 #212
+2026/01/26-22:42:55.274 8fbf Delete type=2 #208
+2026/01/26-22:42:55.274 8fbf Delete type=2 #207
+2026/01/26-22:42:55.274 8fbf Delete type=2 #209

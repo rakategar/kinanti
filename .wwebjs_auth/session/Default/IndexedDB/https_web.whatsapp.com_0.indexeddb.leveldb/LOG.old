@@ -1,19 +1,4 @@
-2026/01/26-22:26:58.812 78c9 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/01/26-22:26:58.813 78c9 Recovering log #197
-2026/01/26-22:26:58.866 78c9 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000197.log 
-2026/01/26-22:27:01.147 78d3 Level-0 table #205: started
-2026/01/26-22:27:01.175 78d3 Level-0 table #205: 299358 bytes OK
-2026/01/26-22:27:01.180 78d3 Delete type=0 #197
-2026/01/26-22:27:01.182 78c7 Manual compaction at level-0 from '\x00,\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00-\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/01/26-22:27:01.282 78c9 Compacting 1@1 + 4@2 files
-2026/01/26-22:27:01.423 78c9 Generated table #206@1: 46743 keys, 2211184 bytes
-2026/01/26-22:27:01.519 78c9 Generated table #207@1: 25334 keys, 2166904 bytes
-2026/01/26-22:27:01.589 78c9 Generated table #208@1: 23573 keys, 2177537 bytes
-2026/01/26-22:27:01.648 78c9 Generated table #209@1: 67479 keys, 1313634 bytes
-2026/01/26-22:27:01.649 78c9 Compacted 1@1 + 4@2 files => 7869259 bytes
-2026/01/26-22:27:01.650 78c9 compacted to: files[ 0 0 4 0 0 0 0 ]
-2026/01/26-22:27:01.650 78c9 Delete type=2 #199
-2026/01/26-22:27:01.651 78c9 Delete type=2 #202
-2026/01/26-22:27:01.651 78c9 Delete type=2 #205
-2026/01/26-22:27:01.651 78c9 Delete type=2 #201
-2026/01/26-22:27:01.651 78c9 Delete type=2 #200
+2026/01/26-22:39:30.550 8ab4 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/26-22:39:30.551 8ab4 Recovering log #204
+2026/01/26-22:39:30.584 8ab4 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000204.log 
+2026/01/26-22:39:34.447 8ab6 Manual compaction at level-0 from '\x00-\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00.\x00\x00\x00' @ 0 : 0; will stop at (end)
