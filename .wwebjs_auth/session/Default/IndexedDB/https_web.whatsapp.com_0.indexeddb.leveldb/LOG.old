@@ -1,4 +1,0 @@
-2026/01/26-22:39:30.550 8ab4 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/01/26-22:39:30.551 8ab4 Recovering log #204
-2026/01/26-22:39:30.584 8ab4 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000204.log 
-2026/01/26-22:39:34.447 8ab6 Manual compaction at level-0 from '\x00-\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00.\x00\x00\x00' @ 0 : 0; will stop at (end)

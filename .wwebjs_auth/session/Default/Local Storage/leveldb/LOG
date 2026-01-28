@@ -1,6 +1,0 @@
-2026/01/26-22:42:51.084 9005 Reusing MANIFEST /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
-2026/01/26-22:42:51.092 9005 Recovering log #4
-2026/01/26-22:42:51.096 9005 Reusing old log /home/raka/kinanti/kinantibaru/.wwebjs_auth/session/Default/Local Storage/leveldb/000004.log 
-2026/01/26-22:43:51.106 9007 Level-0 table #7: started
-2026/01/26-22:43:51.114 9007 Level-0 table #7: 16148 bytes OK
-2026/01/26-22:43:51.118 9007 Delete type=0 #4

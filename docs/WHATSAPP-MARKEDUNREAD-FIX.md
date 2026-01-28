@@ -3,6 +3,7 @@
 ## 🐛 Deskripsi Bug
 
 Bot WhatsApp crash dengan error:
+
 ```
 Error [TypeError]: Cannot read properties of undefined (reading 'markedUnread')
     at I (https://static.whatsapp.net/rsrc.php/v4iMny4/yo/l/en_GB-j/MIKtGDXrUmZ.js:1546:4178)
@@ -50,7 +51,8 @@ const client = new Client({
   // FIX: Gunakan webVersionCache untuk mengatasi masalah versi WA Web
   webVersionCache: {
     type: "remote",
-    remotePath: "https://raw.githubusercontent.com/AKASHAorg/webwhatsapp-versions/main/canary.json",
+    remotePath:
+      "https://raw.githubusercontent.com/AKASHAorg/webwhatsapp-versions/main/canary.json",
   },
 });
 
@@ -73,11 +75,11 @@ File: `src/utils/waHelper.js`
  */
 async function safeReply(message, text, clientOrOptions = {}) {
   const chatId = message.from;
-  
+
   // Determine if third param is a client or options object
   let client = message.client || message._client;
   let options = {};
-  
+
   if (clientOrOptions) {
     if (clientOrOptions.pupPage || clientOrOptions.initialize) {
       client = clientOrOptions;
@@ -85,7 +87,7 @@ async function safeReply(message, text, clientOrOptions = {}) {
       options = clientOrOptions;
     }
   }
-  
+
   try {
     // Coba kirim menggunakan pupPage.evaluate (bypass sendSeen yang bermasalah)
     if (client?.pupPage) {
@@ -103,33 +105,42 @@ async function safeReply(message, text, clientOrOptions = {}) {
               }
 
               if (chat) {
-                const msgResult = await window.WWebJS.sendMessage(chat, content, {}, {});
+                const msgResult = await window.WWebJS.sendMessage(
+                  chat,
+                  content,
+                  {},
+                  {},
+                );
                 return {
                   success: true,
                   id: msgResult?.id?._serialized || "sent",
                 };
               }
-              
+
               return { success: false, error: "Chat not found" };
             } catch (e) {
               return { success: false, error: e.message };
             }
           },
           chatId,
-          text
+          text,
         );
 
         if (result.success) {
           console.log(`✅ [safeReply] Sent via pupPage to ${chatId}`);
           return result;
         }
-        
-        console.log(`⚠️ [safeReply] pupPage failed: ${result.error}, trying fallback`);
+
+        console.log(
+          `⚠️ [safeReply] pupPage failed: ${result.error}, trying fallback`,
+        );
       } catch (pupErr) {
-        console.log(`⚠️ [safeReply] pupPage error: ${pupErr.message}, trying fallback`);
+        console.log(
+          `⚠️ [safeReply] pupPage error: ${pupErr.message}, trying fallback`,
+        );
       }
     }
-    
+
     // Fallback ke message.reply dengan try-catch
     return await message.reply(text, undefined, options);
   } catch (error) {
@@ -137,7 +148,9 @@ async function safeReply(message, text, clientOrOptions = {}) {
 
     // Jika error markedUnread, pesan kemungkinan sudah terkirim
     if (errorMsg.includes("markedUnread")) {
-      console.log(`⚠️ [safeReply] markedUnread error (ignored, pesan mungkin terkirim)`);
+      console.log(
+        `⚠️ [safeReply] markedUnread error (ignored, pesan mungkin terkirim)`,
+      );
       return { success: true, warning: "markedUnread" };
     }
 
@@ -170,33 +183,42 @@ async function safeSendMessage(client, to, text, options = {}) {
               }
 
               if (chat) {
-                const msgResult = await window.WWebJS.sendMessage(chat, content, {}, {});
+                const msgResult = await window.WWebJS.sendMessage(
+                  chat,
+                  content,
+                  {},
+                  {},
+                );
                 return {
                   success: true,
                   id: msgResult?.id?._serialized || "sent",
                 };
               }
-              
+
               return { success: false, error: "Chat not found" };
             } catch (e) {
               return { success: false, error: e.message };
             }
           },
           to,
-          text
+          text,
         );
 
         if (result.success) {
           console.log(`✅ [safeSendMessage] Sent via pupPage to ${to}`);
           return result;
         }
-        
-        console.log(`⚠️ [safeSendMessage] pupPage failed: ${result.error}, trying fallback`);
+
+        console.log(
+          `⚠️ [safeSendMessage] pupPage failed: ${result.error}, trying fallback`,
+        );
       } catch (pupErr) {
-        console.log(`⚠️ [safeSendMessage] pupPage error: ${pupErr.message}, trying fallback`);
+        console.log(
+          `⚠️ [safeSendMessage] pupPage error: ${pupErr.message}, trying fallback`,
+        );
       }
     }
-    
+
     // Fallback ke client.sendMessage
     return await client.sendMessage(to, text, options);
   } catch (error) {
@@ -246,12 +268,14 @@ process.on("uncaughtException", (error) => {
 ### 5. Ganti semua message.reply dan client.sendMessage
 
 **Sebelum:**
+
 ```javascript
 await message.reply("Halo!");
 await client.sendMessage(jid, "Pesan");
 ```
 
 **Sesudah:**
+
 ```javascript
 const { safeReply, safeSendMessage } = require("./src/utils/waHelper");
 
@@ -261,26 +285,26 @@ await safeSendMessage(client, jid, "Pesan");
 
 ## 📁 File yang Sudah Diupdate
 
-| File | Status | Perubahan |
-|------|--------|-----------|
-| `src/client/index.js` | ✅ | Tambah `webVersionCache` config |
-| `src/utils/waHelper.js` | ✅ | File baru dengan `safeReply` & `safeSendMessage` |
-| `server.js` | ✅ | Import waHelper, global error handlers, semua `message.reply` → `safeReply` |
-| `routes/broadcast.js` | ✅ | Import & gunakan `safeSendMessage` |
-| `src/controllers/scheduleController.js` | ✅ | Import & gunakan `safeSendMessage` |
-| `src/controllers/guruController.js` | ✅ | Import `safeReply` & `safeSendMessage`, semua `message.reply` → `safeReply` |
-| `src/controllers/siswaController.js` | ✅ | Import `safeReply` & `safeSendMessage`, semua `message.reply` → `safeReply` |
-| `src/features/imgToPdf.js` | ✅ | Import `safeReply`, semua `message.reply` → `safeReply` |
+| File                                    | Status | Perubahan                                                                   |
+| --------------------------------------- | ------ | --------------------------------------------------------------------------- |
+| `src/client/index.js`                   | ✅     | Tambah `webVersionCache` config                                             |
+| `src/utils/waHelper.js`                 | ✅     | File baru dengan `safeReply` & `safeSendMessage`                            |
+| `server.js`                             | ✅     | Import waHelper, global error handlers, semua `message.reply` → `safeReply` |
+| `routes/broadcast.js`                   | ✅     | Import & gunakan `safeSendMessage`                                          |
+| `src/controllers/scheduleController.js` | ✅     | Import & gunakan `safeSendMessage`                                          |
+| `src/controllers/guruController.js`     | ✅     | Import `safeReply` & `safeSendMessage`, semua `message.reply` → `safeReply` |
+| `src/controllers/siswaController.js`    | ✅     | Import `safeReply` & `safeSendMessage`, semua `message.reply` → `safeReply` |
+| `src/features/imgToPdf.js`              | ✅     | Import `safeReply`, semua `message.reply` → `safeReply`                     |
 
 ## 🔧 Catatan Penting
 
 1. **`safeReply(message, text, waClient)`** - Untuk membalas pesan dalam handler
    - Parameter ke-3 bisa `waClient` atau `options` object
-   
 2. **`safeSendMessage(client, jid, text)`** - Untuk mengirim pesan ke nomor tertentu
    - `jid` harus format `62xxx@c.us`
 
 3. **Media/File** - Untuk mengirim media, masih gunakan `client.sendMessage()` dengan try-catch:
+
    ```javascript
    try {
      await client.sendMessage(jid, media, { caption: "..." });

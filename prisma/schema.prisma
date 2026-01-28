@@ -155,5 +155,16 @@ model Question {
   createdAt    DateTime   @default(now())
 }
 
+// =================== PHONE TO JID MAPPING ===================
+// Menyimpan mapping nomor telepon ke WhatsApp JID
+// Diperlukan untuk handle @lid (Linked ID) pada device yang di-link
+model PhoneJidMapping {
+  id        Int      @id @default(autoincrement())
+  phone     String   @unique  // Nomor telepon (62xxx)
+  jid       String             // WhatsApp JID (xxx@c.us atau xxx@lid)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 
 

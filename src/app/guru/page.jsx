@@ -183,7 +183,7 @@ export default function GuruDashboard() {
         return;
       }
       const data = await res.json();
-      const list = Array.isArray(data) ? data : data?.data ?? [];
+      const list = Array.isArray(data) ? data : (data?.data ?? []);
       setAssessments(list);
     } catch (e) {
       console.error(e);
@@ -294,7 +294,7 @@ export default function GuruDashboard() {
 
       await notifySuccess(
         "Broadcast dikirim!",
-        `Pesan berhasil dikirim ke ${data.detail?.sent ?? "beberapa"} siswa.`
+        `Pesan berhasil dikirim ke ${data.detail?.sent ?? "beberapa"} siswa.`,
       );
       return true;
     } catch (e) {
