@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { GoHeartFill } from "react-icons/go";
@@ -17,46 +17,54 @@ function normalizePhone(input = "") {
 }
 
 export default function Home() {
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
+  const { data: session, status } = useSession();
 
-  async function fetchFreshSession() {
-    try {
-      const res = await fetch("/api/auth/session", { cache: "no-store" });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch {
-      return null;
+  // Redirect jika sudah login
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      const role = session.user.role?.toLowerCase?.() || "";
+      if (role === "guru") {
+        router.replace("/guru");
+      } else if (role === "siswa") {
+        router.replace("/dashboard");
+      }
     }
-  }
+  }, [status, session, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    
+    // Cegah double submit
+    if (isSubmitting || isRedirecting) return;
+    
+    setIsSubmitting(true);
 
     const norm = normalizePhone(phone);
     if (!norm.startsWith("62")) {
       Swal.fire({
-        title: "Warning!",
-        text: "Nomor HP harus diawali dengan 62.",
+        title: "Nomor HP Tidak Valid",
+        text: "Nomor HP harus diawali dengan 62 atau 08.",
         icon: "warning",
         confirmButtonText: "OK",
         confirmButtonColor: "#7e22ce",
       });
-      setLoading(false);
+      setIsSubmitting(false);
       return;
     }
     if (!password) {
       Swal.fire({
-        title: "Warning!",
-        text: "Password tidak boleh kosong.",
+        title: "Password Kosong",
+        text: "Silakan masukkan password Anda.",
         icon: "warning",
         confirmButtonText: "OK",
         confirmButtonColor: "#7e22ce",
       });
-      setLoading(false);
+      setIsSubmitting(false);
       return;
     }
 
@@ -67,66 +75,143 @@ export default function Home() {
         redirect: false,
       });
 
-      if (!res || res.error) {
-        const msg =
-          res?.error === "User not found"
-            ? "Nomor HP atau password salah!"
-            : res?.error || "Terjadi kesalahan. Coba lagi.";
+      console.log("[Login] signIn response:", res);
+
+      // Handle error dari signIn
+      if (!res) {
         Swal.fire({
-          title: "Error!",
-          text: msg,
+          title: "Gagal Login",
+          text: "Terjadi kesalahan koneksi. Silakan coba lagi.",
           icon: "error",
-          confirmButtonText: "OK",
+          confirmButtonText: "Coba Lagi",
           confirmButtonColor: "#7e22ce",
         });
-        setLoading(false);
+        setIsSubmitting(false);
         return;
       }
 
-      // Ambil session paling baru langsung dari API NextAuth
-      // (lebih stabil daripada getSession di App Router)
-      let s = null;
-      for (let i = 0; i < 4; i++) {
-        s = await fetchFreshSession();
-        if (s?.user?.id) break;
-        await new Promise((r) => setTimeout(r, 150));
+      if (res.error) {
+        // Error spesifik dari NextAuth
+        let errorTitle = "Login Gagal";
+        let errorMessage = "Silakan periksa kembali nomor HP dan password Anda.";
+        
+        if (res.error === "CredentialsSignin" || res.error === "User not found") {
+          errorTitle = "Nomor HP atau Password Salah";
+          errorMessage = "Pastikan nomor HP dan password yang Anda masukkan sudah benar.";
+        } else if (res.error.includes("fetch")) {
+          errorTitle = "Koneksi Bermasalah";
+          errorMessage = "Gagal terhubung ke server. Periksa koneksi internet Anda.";
+        }
+        
+        Swal.fire({
+          title: errorTitle,
+          text: errorMessage,
+          icon: "error",
+          confirmButtonText: "Coba Lagi",
+          confirmButtonColor: "#7e22ce",
+        });
+        setIsSubmitting(false);
+        return;
       }
 
-      const role = s?.user?.role?.toLowerCase?.() || "";
-      const uid = s?.user?.id || null;
+      // Login berhasil - jangan enable tombol lagi, langsung redirect
+      if (res.ok) {
+        setIsRedirecting(true);
+        
+        // Simpan ke localStorage sebagai fallback
+        try {
+          localStorage.setItem("loginPhone", norm);
+        } catch {}
 
-      // simpan ke localStorage sebagai fallback untuk halaman /guru
-      try {
-        if (s?.user) {
-          localStorage.setItem("user", JSON.stringify(s.user));
+        // Tampilkan loading saat redirect
+        Swal.fire({
+          title: "Login Berhasil!",
+          text: "Mengalihkan ke dashboard...",
+          icon: "success",
+          timer: 1500,
+          timerProgressBar: true,
+          showConfirmButton: false,
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+        });
+
+        // Fetch session untuk dapat role
+        let retries = 0;
+        let userRole = null;
+        let userId = null;
+        
+        while (retries < 5 && !userRole) {
+          await new Promise(r => setTimeout(r, 300));
+          try {
+            const sessionRes = await fetch("/api/auth/session", { 
+              cache: "no-store",
+              credentials: "include"
+            });
+            if (sessionRes.ok) {
+              const sessionData = await sessionRes.json();
+              console.log("[Login] Session data:", sessionData);
+              if (sessionData?.user?.role) {
+                userRole = sessionData.user.role.toLowerCase();
+                userId = sessionData.user.id;
+                
+                // Simpan ke localStorage
+                try {
+                  localStorage.setItem("user", JSON.stringify(sessionData.user));
+                  if (userRole === "guru" && userId) {
+                    localStorage.setItem("guruId", String(userId));
+                  }
+                } catch {}
+              }
+            }
+          } catch (err) {
+            console.log("[Login] Session fetch error:", err);
+          }
+          retries++;
         }
-        if (role === "guru" && uid) {
-          localStorage.setItem("guruId", String(uid));
+
+        // Redirect berdasarkan role
+        console.log("[Login] Redirecting, role:", userRole);
+        
+        // Gunakan window.location untuk redirect yang lebih reliable
+        if (userRole === "guru") {
+          window.location.href = "/guru";
+        } else if (userRole === "siswa") {
+          window.location.href = "/dashboard";
         } else {
-          localStorage.removeItem("guruId");
+          // Fallback: coba redirect ke dashboard dulu
+          window.location.href = "/dashboard";
         }
-      } catch {}
-
-      if (role === "guru") {
-        router.replace("/guru");
-      } else if (role === "siswa") {
-        router.replace("/");
-      } else {
-        router.replace("/login");
+        
+        return; // Jangan lanjutkan eksekusi
       }
+
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("[Login] Error:", error);
       Swal.fire({
-        title: "Error!",
-        text: "Terjadi kesalahan di server. Silakan coba lagi.",
+        title: "Terjadi Kesalahan",
+        text: "Gagal menghubungi server. Silakan coba lagi nanti.",
         icon: "error",
         confirmButtonText: "OK",
         confirmButtonColor: "#7e22ce",
       });
-    } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
+
+  // Tampilkan loading jika sedang cek session
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Disable form jika sedang submit atau redirect
+  const isDisabled = isSubmitting || isRedirecting;
 
   return (
     <div className="flex min-h-screen">
@@ -196,8 +281,8 @@ export default function Home() {
               name="phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              disabled={loading}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              disabled={isDisabled}
               inputMode="numeric"
               autoComplete="username"
             />
@@ -210,8 +295,8 @@ export default function Home() {
               name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              disabled={loading}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              disabled={isDisabled}
               autoComplete="current-password"
             />
 
@@ -220,10 +305,28 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.5, duration: 0.8 }}
               type="submit"
-              className="w-full py-2 px-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-60"
-              disabled={loading}
+              className="w-full py-2 px-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={isDisabled}
             >
-              {loading ? "Loading..." : "Log In"}
+              {isRedirecting ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Mengalihkan...</span>
+                </>
+              ) : isSubmitting ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Memproses...</span>
+                </>
+              ) : (
+                "Log In"
+              )}
             </motion.button>
             <motion.div
               initial={{ opacity: 0, y: 20 }}

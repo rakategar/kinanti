@@ -12,13 +12,13 @@ export async function middleware(req) {
 
   const role = (token.role || "").toLowerCase();
 
-  // Jika siswa mencoba akses /guru → arahkan ke /
+  // Jika siswa mencoba akses /guru → arahkan ke /dashboard
   if (pathname.startsWith("/guru") && role === "siswa") {
-    return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Jika guru mencoba akses / (halaman siswa) → arahkan ke /guru
-  if ((pathname === "/" || pathname.startsWith("/siswa")) && role === "guru") {
+  // Jika guru mencoba akses /dashboard atau / → arahkan ke /guru
+  if ((pathname === "/" || pathname === "/dashboard" || pathname.startsWith("/siswa")) && role === "guru") {
     return NextResponse.redirect(new URL("/guru", req.url));
   }
 
@@ -27,5 +27,5 @@ export async function middleware(req) {
 }
 
 export const config = {
-  matcher: ["/", "/guru/:path*"], // lindungi kedua jalur
+  matcher: ["/", "/dashboard/:path*", "/guru/:path*"], // lindungi semua jalur protected
 };
