@@ -38,10 +38,10 @@ export default function Home() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Cegah double submit
     if (isSubmitting || isRedirecting) return;
-    
+
     setIsSubmitting(true);
 
     const norm = normalizePhone(phone);
@@ -93,16 +93,22 @@ export default function Home() {
       if (res.error) {
         // Error spesifik dari NextAuth
         let errorTitle = "Login Gagal";
-        let errorMessage = "Silakan periksa kembali nomor HP dan password Anda.";
-        
-        if (res.error === "CredentialsSignin" || res.error === "User not found") {
+        let errorMessage =
+          "Silakan periksa kembali nomor HP dan password Anda.";
+
+        if (
+          res.error === "CredentialsSignin" ||
+          res.error === "User not found"
+        ) {
           errorTitle = "Nomor HP atau Password Salah";
-          errorMessage = "Pastikan nomor HP dan password yang Anda masukkan sudah benar.";
+          errorMessage =
+            "Pastikan nomor HP dan password yang Anda masukkan sudah benar.";
         } else if (res.error.includes("fetch")) {
           errorTitle = "Koneksi Bermasalah";
-          errorMessage = "Gagal terhubung ke server. Periksa koneksi internet Anda.";
+          errorMessage =
+            "Gagal terhubung ke server. Periksa koneksi internet Anda.";
         }
-        
+
         Swal.fire({
           title: errorTitle,
           text: errorMessage,
@@ -117,7 +123,7 @@ export default function Home() {
       // Login berhasil - jangan enable tombol lagi, langsung redirect
       if (res.ok) {
         setIsRedirecting(true);
-        
+
         // Simpan ke localStorage sebagai fallback
         try {
           localStorage.setItem("loginPhone", norm);
@@ -139,13 +145,13 @@ export default function Home() {
         let retries = 0;
         let userRole = null;
         let userId = null;
-        
+
         while (retries < 5 && !userRole) {
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise((r) => setTimeout(r, 300));
           try {
-            const sessionRes = await fetch("/api/auth/session", { 
+            const sessionRes = await fetch("/api/auth/session", {
               cache: "no-store",
-              credentials: "include"
+              credentials: "include",
             });
             if (sessionRes.ok) {
               const sessionData = await sessionRes.json();
@@ -153,10 +159,13 @@ export default function Home() {
               if (sessionData?.user?.role) {
                 userRole = sessionData.user.role.toLowerCase();
                 userId = sessionData.user.id;
-                
+
                 // Simpan ke localStorage
                 try {
-                  localStorage.setItem("user", JSON.stringify(sessionData.user));
+                  localStorage.setItem(
+                    "user",
+                    JSON.stringify(sessionData.user),
+                  );
                   if (userRole === "guru" && userId) {
                     localStorage.setItem("guruId", String(userId));
                   }
@@ -171,7 +180,7 @@ export default function Home() {
 
         // Redirect berdasarkan role
         console.log("[Login] Redirecting, role:", userRole);
-        
+
         // Gunakan window.location untuk redirect yang lebih reliable
         if (userRole === "guru") {
           window.location.href = "/guru";
@@ -181,10 +190,9 @@ export default function Home() {
           // Fallback: coba redirect ke dashboard dulu
           window.location.href = "/dashboard";
         }
-        
+
         return; // Jangan lanjutkan eksekusi
       }
-
     } catch (error) {
       console.error("[Login] Error:", error);
       Swal.fire({
@@ -310,17 +318,49 @@ export default function Home() {
             >
               {isRedirecting ? (
                 <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   <span>Mengalihkan...</span>
                 </>
               ) : isSubmitting ? (
                 <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   <span>Memproses...</span>
                 </>

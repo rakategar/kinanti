@@ -18,7 +18,12 @@ export async function middleware(req) {
   }
 
   // Jika guru mencoba akses /dashboard atau / → arahkan ke /guru
-  if ((pathname === "/" || pathname === "/dashboard" || pathname.startsWith("/siswa")) && role === "guru") {
+  if (
+    (pathname === "/" ||
+      pathname === "/dashboard" ||
+      pathname.startsWith("/siswa")) &&
+    role === "guru"
+  ) {
     return NextResponse.redirect(new URL("/guru", req.url));
   }
 

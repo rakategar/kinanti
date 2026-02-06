@@ -21,6 +21,7 @@
 **Kinanti** adalah Learning Management System (LMS) berbasis web yang terintegrasi dengan WhatsApp Bot. Sistem ini dirancang untuk memudahkan interaksi antara guru dan siswa dalam pengelolaan tugas, pengumpulan, dan penilaian.
 
 ### Keunikan Kinanti:
+
 - 🤖 **WhatsApp-First**: Siswa dapat berinteraksi melalui WhatsApp tanpa perlu akses web
 - 🧠 **NLP-Powered**: Bot memahami bahasa natural dalam Bahasa Indonesia
 - 📱 **Mobile Friendly**: Interface responsif untuk akses dari berbagai perangkat
@@ -74,12 +75,12 @@
 
 ### Komponen Utama:
 
-| Komponen | Deskripsi | Lokasi |
-|----------|-----------|--------|
-| **Web App** | Dashboard untuk guru, halaman login/register | `/src/app/` |
-| **WhatsApp Bot** | Bot untuk interaksi siswa & guru via WA | `/bot kinanti/` |
-| **Database** | PostgreSQL hosted di Supabase | Cloud |
-| **Tunnel** | Cloudflare Tunnel untuk expose bot | Local |
+| Komponen         | Deskripsi                                    | Lokasi          |
+| ---------------- | -------------------------------------------- | --------------- |
+| **Web App**      | Dashboard untuk guru, halaman login/register | `/src/app/`     |
+| **WhatsApp Bot** | Bot untuk interaksi siswa & guru via WA      | `/bot kinanti/` |
+| **Database**     | PostgreSQL hosted di Supabase                | Cloud           |
+| **Tunnel**       | Cloudflare Tunnel untuk expose bot           | Local           |
 
 ---
 
@@ -87,43 +88,43 @@
 
 ### 🌐 Web Application
 
-| Teknologi | Versi | Fungsi |
-|-----------|-------|--------|
-| **Next.js** | 15.5.9 | React framework dengan App Router |
-| **React** | 19.0.0 | UI library |
-| **Tailwind CSS** | 4.0.9 | Utility-first CSS framework |
-| **NextAuth.js** | 4.24.11 | Authentication |
-| **SweetAlert2** | 11.17.2 | Modal & alerts |
-| **React Dropzone** | 14.3.8 | File upload |
-| **Motion** | 12.5.0 | Animasi |
+| Teknologi          | Versi   | Fungsi                            |
+| ------------------ | ------- | --------------------------------- |
+| **Next.js**        | 15.5.9  | React framework dengan App Router |
+| **React**          | 19.0.0  | UI library                        |
+| **Tailwind CSS**   | 4.0.9   | Utility-first CSS framework       |
+| **NextAuth.js**    | 4.24.11 | Authentication                    |
+| **SweetAlert2**    | 11.17.2 | Modal & alerts                    |
+| **React Dropzone** | 14.3.8  | File upload                       |
+| **Motion**         | 12.5.0  | Animasi                           |
 
 ### 🤖 WhatsApp Bot
 
-| Teknologi | Versi | Fungsi |
-|-----------|-------|--------|
-| **Node.js** | ≥18.0.0 | Runtime |
-| **whatsapp-web.js** | 1.34.4 | WhatsApp Web client |
-| **Express** | 5.1.0 | HTTP server untuk API broadcast |
-| **node-cron** | 3.0.3 | Scheduled tasks (reminder) |
-| **pdf-lib** | 1.17.1 | Generate/manipulate PDF |
-| **ExcelJS** | 4.4.0 | Export rekap ke Excel |
-| **Sharp** | 0.33.5 | Image processing |
+| Teknologi           | Versi   | Fungsi                          |
+| ------------------- | ------- | ------------------------------- |
+| **Node.js**         | ≥18.0.0 | Runtime                         |
+| **whatsapp-web.js** | 1.34.4  | WhatsApp Web client             |
+| **Express**         | 5.1.0   | HTTP server untuk API broadcast |
+| **node-cron**       | 3.0.3   | Scheduled tasks (reminder)      |
+| **pdf-lib**         | 1.17.1  | Generate/manipulate PDF         |
+| **ExcelJS**         | 4.4.0   | Export rekap ke Excel           |
+| **Sharp**           | 0.33.5  | Image processing                |
 
 ### 🗄️ Database & ORM
 
-| Teknologi | Versi | Fungsi |
-|-----------|-------|--------|
-| **PostgreSQL** | - | Database utama |
-| **Supabase** | - | Database hosting & storage |
-| **Prisma** | 6.4.1 | ORM & database toolkit |
+| Teknologi      | Versi | Fungsi                     |
+| -------------- | ----- | -------------------------- |
+| **PostgreSQL** | -     | Database utama             |
+| **Supabase**   | -     | Database hosting & storage |
+| **Prisma**     | 6.4.1 | ORM & database toolkit     |
 
 ### 🚀 Deployment & Infrastructure
 
-| Teknologi | Fungsi |
-|-----------|--------|
-| **Vercel** | Hosting web app (Next.js) |
-| **Cloudflare Tunnel** | Expose bot ke internet |
-| **Google Chrome** | Headless browser untuk WA |
+| Teknologi             | Fungsi                    |
+| --------------------- | ------------------------- |
+| **Vercel**            | Hosting web app (Next.js) |
+| **Cloudflare Tunnel** | Expose bot ke internet    |
+| **Google Chrome**     | Headless browser untuk WA |
 
 ---
 
@@ -212,45 +213,48 @@ kinantibaru/
 ### 👨‍🏫 Fitur Guru
 
 #### Via Web Dashboard
-| Fitur | Deskripsi |
-|-------|-----------|
-| **Buat Tugas** | Membuat tugas baru dengan kode unik, judul, deskripsi, deadline |
-| **Upload PDF** | Melampirkan file PDF sebagai materi tugas |
-| **Lihat Rekap** | Melihat daftar siswa yang sudah/belum mengumpulkan |
-| **Broadcast** | Kirim notifikasi tugas ke semua siswa via WhatsApp |
-| **Penilaian** | Memberikan nilai dan feedback untuk submission |
-| **Export Excel** | Download rekap dalam format Excel |
-| **Buat Assessment** | Membuat soal ujian/quiz online |
+
+| Fitur               | Deskripsi                                                       |
+| ------------------- | --------------------------------------------------------------- |
+| **Buat Tugas**      | Membuat tugas baru dengan kode unik, judul, deskripsi, deadline |
+| **Upload PDF**      | Melampirkan file PDF sebagai materi tugas                       |
+| **Lihat Rekap**     | Melihat daftar siswa yang sudah/belum mengumpulkan              |
+| **Broadcast**       | Kirim notifikasi tugas ke semua siswa via WhatsApp              |
+| **Penilaian**       | Memberikan nilai dan feedback untuk submission                  |
+| **Export Excel**    | Download rekap dalam format Excel                               |
+| **Buat Assessment** | Membuat soal ujian/quiz online                                  |
 
 #### Via WhatsApp Bot
-| Command | Deskripsi |
-|---------|-----------|
-| `buat tugas [kode]` | Mulai wizard pembuatan tugas |
-| `lihat tugas` | Daftar tugas yang sudah dibuat |
-| `rekap [kode]` | Lihat rekap pengumpulan |
-| `status tugas [kode]` | Detail status tugas tertentu |
-| `gambar ke pdf` | Convert gambar ke PDF |
+
+| Command               | Deskripsi                      |
+| --------------------- | ------------------------------ |
+| `buat tugas [kode]`   | Mulai wizard pembuatan tugas   |
+| `lihat tugas`         | Daftar tugas yang sudah dibuat |
+| `rekap [kode]`        | Lihat rekap pengumpulan        |
+| `status tugas [kode]` | Detail status tugas tertentu   |
+| `gambar ke pdf`       | Convert gambar ke PDF          |
 
 ### 👨‍🎓 Fitur Siswa
 
 #### Via WhatsApp Bot
-| Command | Deskripsi |
-|---------|-----------|
+
+| Command                       | Deskripsi                         |
+| ----------------------------- | --------------------------------- |
 | `tugas saya` / `daftar tugas` | Lihat tugas yang belum dikerjakan |
-| `kumpulkan [kode]` | Mulai proses pengumpulan tugas |
-| `status tugas` | Lihat status semua tugas |
-| `gambar ke pdf` | Convert gambar ke PDF |
-| `help` / `bantuan` | Tampilkan menu bantuan |
+| `kumpulkan [kode]`            | Mulai proses pengumpulan tugas    |
+| `status tugas`                | Lihat status semua tugas          |
+| `gambar ke pdf`               | Convert gambar ke PDF             |
+| `help` / `bantuan`            | Tampilkan menu bantuan            |
 
 ### 🤖 Fitur Bot Umum
 
-| Fitur | Deskripsi |
-|-------|-----------|
-| **Natural Language Understanding** | Bot memahami perintah dalam bahasa natural |
-| **Auto Greeting** | Respons sapaan otomatis |
-| **Deadline Reminder** | Notifikasi otomatis H-1 deadline |
-| **Image to PDF** | Konversi multiple gambar ke satu file PDF |
-| **LID Support** | Support WhatsApp Linked Device (multi-device) |
+| Fitur                              | Deskripsi                                     |
+| ---------------------------------- | --------------------------------------------- |
+| **Natural Language Understanding** | Bot memahami perintah dalam bahasa natural    |
+| **Auto Greeting**                  | Respons sapaan otomatis                       |
+| **Deadline Reminder**              | Notifikasi otomatis H-1 deadline              |
+| **Image to PDF**                   | Konversi multiple gambar ke satu file PDF     |
+| **LID Support**                    | Support WhatsApp Linked Device (multi-device) |
 
 ---
 
@@ -347,52 +351,52 @@ enum TugasStatus {
 
 ### Authentication
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| POST | `/api/auth/[...nextauth]` | NextAuth handler |
-| POST | `/api/register` | Registrasi user baru |
+| Method | Endpoint                  | Deskripsi            |
+| ------ | ------------------------- | -------------------- |
+| POST   | `/api/auth/[...nextauth]` | NextAuth handler     |
+| POST   | `/api/register`           | Registrasi user baru |
 
 ### Assignments (Tugas)
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/assignments` | List semua tugas |
-| POST | `/api/assignments` | Buat tugas baru |
-| GET | `/api/assignments/check-kode?kode=XXX` | Cek ketersediaan kode |
-| POST | `/api/assignments/duplicate` | Duplikat tugas |
+| Method | Endpoint                               | Deskripsi             |
+| ------ | -------------------------------------- | --------------------- |
+| GET    | `/api/assignments`                     | List semua tugas      |
+| POST   | `/api/assignments`                     | Buat tugas baru       |
+| GET    | `/api/assignments/check-kode?kode=XXX` | Cek ketersediaan kode |
+| POST   | `/api/assignments/duplicate`           | Duplikat tugas        |
 
 ### Guru Dashboard
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/guru/assignments` | List tugas guru |
-| POST | `/api/guru/create-assignment` | Buat tugas (dengan upload) |
-| GET | `/api/guru/rekap?kode=XXX` | Rekap pengumpulan |
-| POST | `/api/guru/broadcast` | Broadcast ke WhatsApp |
-| GET/POST | `/api/guru/penilaian` | Penilaian submission |
+| Method   | Endpoint                      | Deskripsi                  |
+| -------- | ----------------------------- | -------------------------- |
+| GET      | `/api/guru/assignments`       | List tugas guru            |
+| POST     | `/api/guru/create-assignment` | Buat tugas (dengan upload) |
+| GET      | `/api/guru/rekap?kode=XXX`    | Rekap pengumpulan          |
+| POST     | `/api/guru/broadcast`         | Broadcast ke WhatsApp      |
+| GET/POST | `/api/guru/penilaian`         | Penilaian submission       |
 
 ### Assessments (Ujian)
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| GET | `/api/guru/assessments` | List assessment |
-| POST | `/api/guru/assessments` | Buat assessment baru |
-| GET | `/api/guru/assessments/[code]` | Detail assessment |
-| GET | `/api/guru/assessments/[code]/questions` | List soal |
-| POST | `/api/guru/assessments/[code]/questions` | Tambah soal |
+| Method | Endpoint                                 | Deskripsi            |
+| ------ | ---------------------------------------- | -------------------- |
+| GET    | `/api/guru/assessments`                  | List assessment      |
+| POST   | `/api/guru/assessments`                  | Buat assessment baru |
+| GET    | `/api/guru/assessments/[code]`           | Detail assessment    |
+| GET    | `/api/guru/assessments/[code]/questions` | List soal            |
+| POST   | `/api/guru/assessments/[code]/questions` | Tambah soal          |
 
 ### Submission
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| POST | `/api/upload-tugas` | Upload submission siswa |
-| GET | `/api/submission-detail?id=XXX` | Detail submission |
+| Method | Endpoint                        | Deskripsi               |
+| ------ | ------------------------------- | ----------------------- |
+| POST   | `/api/upload-tugas`             | Upload submission siswa |
+| GET    | `/api/submission-detail?id=XXX` | Detail submission       |
 
 ### Bot API (Internal)
 
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| POST | `http://bot.kinantiku.com/broadcast` | Broadcast pesan WA |
+| Method | Endpoint                             | Deskripsi          |
+| ------ | ------------------------------------ | ------------------ |
+| POST   | `http://bot.kinantiku.com/broadcast` | Broadcast pesan WA |
 
 ---
 
@@ -439,10 +443,10 @@ WhatsApp Linked Device menggunakan format JID berbeda (`@lid` vs `@c.us`). Bot m
 
 ```javascript
 // Saat user chat pertama kali
-setPhoneJid("62895396334564", "183154702835811@lid")
+setPhoneJid("62895396334564", "183154702835811@lid");
 
 // Saat broadcast, lookup mapping
-const jid = getJidByPhone("62895396334564") 
+const jid = getJidByPhone("62895396334564");
 // → "183154702835811@lid"
 ```
 
@@ -510,25 +514,28 @@ const jid = getJidByPhone("62895396334564")
 ### Daftar Intent
 
 #### Intent Umum
-| Intent | Keywords | Deskripsi |
-|--------|----------|-----------|
-| `sapaan_help` | halo, hai, bantuan, menu | Sapaan & help |
-| `img_to_pdf` | gambar ke pdf, foto ke pdf | Convert gambar |
+
+| Intent        | Keywords                   | Deskripsi      |
+| ------------- | -------------------------- | -------------- |
+| `sapaan_help` | halo, hai, bantuan, menu   | Sapaan & help  |
+| `img_to_pdf`  | gambar ke pdf, foto ke pdf | Convert gambar |
 
 #### Intent Siswa
-| Intent | Keywords | Deskripsi |
-|--------|----------|-----------|
-| `siswa_list_tugas` | tugas saya, daftar tugas | Lihat tugas |
+
+| Intent               | Keywords                 | Deskripsi    |
+| -------------------- | ------------------------ | ------------ |
+| `siswa_list_tugas`   | tugas saya, daftar tugas | Lihat tugas  |
 | `siswa_kumpul_tugas` | kumpulkan, submit, kirim | Kumpul tugas |
-| `siswa_status_tugas` | status tugas | Cek status |
+| `siswa_status_tugas` | status tugas             | Cek status   |
 
 #### Intent Guru
-| Intent | Keywords | Deskripsi |
-|--------|----------|-----------|
-| `guru_buat_tugas` | buat tugas, tambah tugas | Wizard buat tugas |
-| `guru_list_tugas` | daftar tugas, lihat tugas | List tugas |
-| `guru_rekap` | rekap, lihat rekap | Rekap pengumpulan |
-| `guru_status_tugas` | status tugas | Detail status |
+
+| Intent              | Keywords                  | Deskripsi         |
+| ------------------- | ------------------------- | ----------------- |
+| `guru_buat_tugas`   | buat tugas, tambah tugas  | Wizard buat tugas |
+| `guru_list_tugas`   | daftar tugas, lihat tugas | List tugas        |
+| `guru_rekap`        | rekap, lihat rekap        | Rekap pengumpulan |
+| `guru_status_tugas` | status tugas              | Detail status     |
 
 ---
 
@@ -545,6 +552,7 @@ pnpm build
 ```
 
 **Environment di Vercel:**
+
 - `DATABASE_URL`
 - `SUPABASE_URL`
 - `SUPABASE_KEY`
@@ -649,7 +657,7 @@ Mengatasi bug `markedUnread` di whatsapp-web.js:
 async function safeSendMessage(client, phoneNumber, text) {
   // 1. Lookup JID mapping
   const jid = getJidByPhone(phoneNumber) || phoneNumber + "@c.us";
-  
+
   // 2. Try pupPage.evaluate (bypass sendSeen)
   // 3. Fallback to client.sendMessage
   // 4. Ignore markedUnread errors
@@ -661,7 +669,7 @@ async function safeSendMessage(client, phoneNumber, text) {
 ```javascript
 // scheduleController.js
 // Reminder H-1 deadline setiap jam 8 pagi
-cron.schedule('0 8 * * *', () => {
+cron.schedule("0 8 * * *", () => {
   // Cek tugas dengan deadline besok
   // Kirim reminder ke siswa yang belum kumpul
 });
@@ -674,10 +682,11 @@ cron.schedule('0 8 * * *', () => {
 **Kinanti LMS** dikembangkan untuk memudahkan proses pembelajaran di SMK dengan pendekatan WhatsApp-first.
 
 ### Links
+
 - **Web**: https://kinantiku.com
 - **Bot**: https://bot.kinantiku.com
 - **Repository**: https://github.com/rakategar/kinanti
 
 ---
 
-*Dokumentasi ini dibuat pada Februari 2026*
+_Dokumentasi ini dibuat pada Februari 2026_
