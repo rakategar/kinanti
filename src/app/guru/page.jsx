@@ -6,8 +6,6 @@ import { motion } from "framer-motion";
 import { FiPlus, FiRefreshCw, FiLogOut } from "react-icons/fi";
 import GuruAssignmentsTable from "./partials/AssignmentsTable";
 import AssignmentFormModal from "./partials/AssignmentFormModal";
-import AssessmentsTable from "./partials/AssessmentsTable";
-import AssessmentFormModal from "./partials/AssessmentFormModal";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
 import KinantiBanner from "../components/KinantiBanner";
@@ -86,12 +84,8 @@ export default function GuruDashboard() {
 
   const [items, setItems] = useState([]);
   const [loadingAssign, setLoadingAssign] = useState(true);
+
   const [showForm, setShowForm] = useState(false);
-
-  const [assessments, setAssessments] = useState([]);
-  const [loadingAssess, setLoadingAssess] = useState(true);
-  const [showAssessmentForm, setShowAssessmentForm] = useState(false);
-
   const [q, setQ] = useState("");
   const [broadcasting, setBroadcasting] = useState(false);
 
@@ -145,11 +139,9 @@ export default function GuruDashboard() {
   useEffect(() => {
     if (!guruId) {
       setLoadingAssign(false);
-      setLoadingAssess(false);
       return;
     }
     fetchAssignments();
-    fetchAssessments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guruId]);
 
@@ -173,27 +165,6 @@ export default function GuruDashboard() {
     }
   }
 
-  async function fetchAssessments() {
-    try {
-      setLoadingAssess(true);
-      const res = await fetch(`/api/guru/assessments?guruId=${guruId}`);
-      if (!res.ok) {
-        setAssessments([]);
-        await toastError("Gagal memuat data penilaian.");
-        return;
-      }
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data?.data ?? []);
-      setAssessments(list);
-    } catch (e) {
-      console.error(e);
-      setAssessments([]);
-      await toastError("Gagal terhubung ke server (penilaian).");
-    } finally {
-      setLoadingAssess(false);
-    }
-  }
-
   const filteredAssignments = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return items;
@@ -210,23 +181,6 @@ export default function GuruDashboard() {
       );
     });
   }, [q, items]);
-
-  const filteredAssessments = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return assessments;
-    return assessments.filter((a) => {
-      const kode = (a.kode || a.code || "").toLowerCase();
-      const judul = (a.judul || a.title || "").toLowerCase();
-      const kelas = (a.kelas || a.className || "").toLowerCase();
-      const status = (a.status || "").toLowerCase();
-      return (
-        kode.includes(s) ||
-        judul.includes(s) ||
-        kelas.includes(s) ||
-        status.includes(s)
-      );
-    });
-  }, [q, assessments]);
 
   async function handleLogout() {
     const confirm = await Swal.fire({
@@ -348,7 +302,6 @@ export default function GuruDashboard() {
             <button
               onClick={() => {
                 fetchAssignments();
-                fetchAssessments();
               }}
               className="inline-flex items-center px-3 py-2 rounded-md border bg-white hover:bg-gray-50 disabled:opacity-50"
               title="Refresh"
@@ -366,15 +319,6 @@ export default function GuruDashboard() {
               <FiPlus className="mr-2" />
               Buat Tugas
             </button>
-
-            {/* <button
-              onClick={() => setShowAssessmentForm(true)}
-              className="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-              disabled={!guruId || broadcasting}
-            >
-              <FiPlus className="mr-2" />
-              Buat Penilaian
-            </button> */}
 
             <button
               onClick={handleLogout}
@@ -414,14 +358,6 @@ export default function GuruDashboard() {
           )}
         </div>
 
-        {/* Tabel Penilaian */}
-        {/* <div className="mt-6">
-          {loadingAssess ? (
-            <div className="animate-pulse h-56 bg-gray-200 rounded" />
-          ) : (
-            <AssessmentsTable data={filteredAssessments} />
-          )}
-        </div> */}
       </div>
 
       {showForm && (
@@ -431,17 +367,6 @@ export default function GuruDashboard() {
           onCreated={() => {
             setShowForm(false);
             fetchAssignments();
-          }}
-        />
-      )}
-
-      {showAssessmentForm && (
-        <AssessmentFormModal
-          guruId={guruId}
-          onClose={() => setShowAssessmentForm(false)}
-          onCreated={() => {
-            setShowAssessmentForm(false);
-            fetchAssessments();
           }}
         />
       )}
