@@ -31,7 +31,7 @@ export default function Home() {
       if (role === "guru") {
         router.replace("/guru");
       } else if (role === "siswa") {
-        router.replace("/dashboard");
+        router.replace("/");
       }
     }
   }, [status, session, router]);
@@ -185,10 +185,10 @@ export default function Home() {
         if (userRole === "guru") {
           window.location.href = "/guru";
         } else if (userRole === "siswa") {
-          window.location.href = "/dashboard";
+          window.location.href = "/";
         } else {
-          // Fallback: coba redirect ke dashboard dulu
-          window.location.href = "/dashboard";
+          // Fallback: redirect ke halaman utama (siswa)
+          window.location.href = "/";
         }
 
         return; // Jangan lanjutkan eksekusi
