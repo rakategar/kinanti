@@ -357,7 +357,6 @@ export default function GuruDashboard() {
             />
           )}
         </div>
-
       </div>
 
       {showForm && (

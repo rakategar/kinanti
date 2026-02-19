@@ -6,8 +6,22 @@ import { useState, useEffect, useMemo } from "react";
 
 /* ====== Floating School Items (buku, pensil, penggaris, dll) ====== */
 const SCHOOL_ITEMS = [
-  "📚", "✏️", "📖", "🎒", "📝", "📐", "🔬", "🎓",
-  "📏", "🖊️", "📓", "💡", "🧮", "📎", "✂️", "🖍️",
+  "📚",
+  "✏️",
+  "📖",
+  "🎒",
+  "📝",
+  "📐",
+  "🔬",
+  "🎓",
+  "📏",
+  "🖊️",
+  "📓",
+  "💡",
+  "🧮",
+  "📎",
+  "✂️",
+  "🖍️",
 ];
 
 function FloatingItems() {
@@ -36,7 +50,12 @@ function FloatingItems() {
           animate={{
             y: [0, -30, 0],
             x: [0, 10, -10, 0],
-            rotate: [item.rotate, item.rotate + 20, item.rotate - 20, item.rotate],
+            rotate: [
+              item.rotate,
+              item.rotate + 20,
+              item.rotate - 20,
+              item.rotate,
+            ],
             opacity: [0.15, 0.4, 0.15],
           }}
           transition={{
@@ -93,7 +112,14 @@ function OpenBook() {
       />
 
       {/* spine */}
-      <line x1="100" y1="28" x2="100" y2="132" stroke="#b45309" strokeWidth="2" />
+      <line
+        x1="100"
+        y1="28"
+        x2="100"
+        y2="132"
+        stroke="#b45309"
+        strokeWidth="2"
+      />
 
       {/* left page lines */}
       {[48, 58, 68, 78, 88, 98].map((y, i) => (
@@ -152,9 +178,25 @@ function WritingPencil() {
           animate={{ x: [0, 4, -2, 0], y: [0, 2, -1, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <rect x="25" y="8" width="10" height="55" rx="1" fill="#f59e0b" transform="rotate(25, 30, 35)" />
-          <polygon points="20,58 30,70 40,58" fill="#fbbf24" transform="rotate(25, 30, 35)" />
-          <polygon points="27,66 30,73 33,66" fill="#374151" transform="rotate(25, 30, 35)" />
+          <rect
+            x="25"
+            y="8"
+            width="10"
+            height="55"
+            rx="1"
+            fill="#f59e0b"
+            transform="rotate(25, 30, 35)"
+          />
+          <polygon
+            points="20,58 30,70 40,58"
+            fill="#fbbf24"
+            transform="rotate(25, 30, 35)"
+          />
+          <polygon
+            points="27,66 30,73 33,66"
+            fill="#374151"
+            transform="rotate(25, 30, 35)"
+          />
         </motion.g>
       </svg>
     </motion.div>
@@ -168,7 +210,12 @@ const digitVariants = {
     y: 0,
     opacity: 1,
     scale: 1,
-    transition: { type: "spring", stiffness: 150, damping: 12, delay: 0.4 + i * 0.12 },
+    transition: {
+      type: "spring",
+      stiffness: 150,
+      damping: 12,
+      delay: 0.4 + i * 0.12,
+    },
   }),
 };
 
@@ -216,7 +263,8 @@ export default function NotFound() {
               animate="visible"
               className="text-7xl md:text-9xl font-black"
               style={{
-                background: "linear-gradient(135deg, #92400e 0%, #d97706 40%, #f59e0b 100%)",
+                background:
+                  "linear-gradient(135deg, #92400e 0%, #d97706 40%, #f59e0b 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 filter: "drop-shadow(0 4px 8px rgba(146,64,14,0.2))",
@@ -244,7 +292,8 @@ export default function NotFound() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1 }}
         >
-          Seperti buku yang hilang dari perpustakaan, halaman yang kamu cari tidak ada di rak ini.
+          Seperti buku yang hilang dari perpustakaan, halaman yang kamu cari
+          tidak ada di rak ini.
         </motion.p>
 
         {/* rotating tips */}
@@ -284,7 +333,11 @@ export default function NotFound() {
               stroke="currentColor"
               strokeWidth={2.5}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
             </svg>
             Kembali ke Beranda
           </Link>
@@ -319,7 +372,12 @@ export default function NotFound() {
       >
         <svg viewBox="0 0 80 80" fill="none" className="w-full h-full">
           <path d="M80 0 L80 80 L0 0Z" fill="rgba(217,119,6,0.06)" />
-          <path d="M80 0 L80 80 L0 0Z" fill="none" stroke="rgba(217,119,6,0.1)" strokeWidth="1" />
+          <path
+            d="M80 0 L80 80 L0 0Z"
+            fill="none"
+            stroke="rgba(217,119,6,0.1)"
+            strokeWidth="1"
+          />
         </svg>
       </motion.div>
 
