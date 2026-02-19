@@ -441,14 +441,14 @@ export default function TugasTable({ assignments, userId }) {
       {/* Modal Detail Submission */}
       {isDetailModalOpen && (
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden">
+          <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-xl shadow-2xl overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 shrink-0">
               <h2 className="text-2xl font-bold">📝 Detail Tugas Saya</h2>
             </div>
 
             {/* Content */}
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1 min-h-0">
               {loadingDetail ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -504,9 +504,11 @@ export default function TugasTable({ assignments, userId }) {
                     <p className="text-sm font-semibold text-gray-700 mb-2">
                       📋 Evaluasi
                     </p>
-                    <p className="text-gray-800 whitespace-pre-wrap">
-                      {submissionDetail.evaluation || "—"}
-                    </p>
+                    <div className="max-h-48 overflow-y-auto pr-1">
+                      <p className="text-gray-800 whitespace-pre-wrap">
+                        {submissionDetail.evaluation || "—"}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Preview PDF */}
@@ -533,7 +535,7 @@ export default function TugasTable({ assignments, userId }) {
             </div>
 
             {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end">
+            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end shrink-0">
               <button
                 onClick={closeDetailModal}
                 className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
