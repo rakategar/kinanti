@@ -118,7 +118,7 @@ export default function TugasTable({ assignments, userId }) {
 
     try {
       const res = await fetch(
-        `/api/submission-detail?userId=${userId}&tugasId=${assignment.id}`
+        `/api/submission-detail?userId=${userId}&tugasId=${assignment.id}`,
       );
       const data = await res.json();
 
@@ -399,7 +399,7 @@ export default function TugasTable({ assignments, userId }) {
                 <p className="text-gray-700">
                   <strong>Tanggal:</strong>{" "}
                   {new Date(uploadedFile.lastModified).toLocaleDateString(
-                    "id-ID"
+                    "id-ID",
                   )}
                 </p>
               </div>
