@@ -47,7 +47,7 @@ export async function POST(req) {
       select: { id: true, nama: true, phone: true },
     });
 
-    // Panggil API bot
+    // Panggil API bot (fire-and-forget agar tidak timeout)
     const botUrl =
       process.env.BOT_INTERNAL_URL || "http://localhost:4000/broadcast";
     const headers = { "Content-Type": "application/json" };
@@ -55,31 +55,27 @@ export async function POST(req) {
       headers["Authorization"] = `Bearer ${process.env.BOT_SECRET}`;
     }
 
-    const resp = await fetch(botUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        kode,
-        kelas,
-        siswa: students,
-        judul: assignment.judul,
-        deadline: assignment.deadline,
-        pdfUrl: assignment.pdfUrl,
-      }),
+    const botPayload = JSON.stringify({
+      kode,
+      kelas,
+      siswa: students,
+      judul: assignment.judul,
+      deadline: assignment.deadline,
+      pdfUrl: assignment.pdfUrl,
     });
 
-    const result = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      console.error("Bot response error:", result);
-      return NextResponse.json(
-        { error: result?.error || "Gagal kirim ke bot." },
-        { status: 500 }
-      );
-    }
+    // Kirim ke bot tanpa await — langsung respond ke frontend
+    fetch(botUrl, {
+      method: "POST",
+      headers,
+      body: botPayload,
+    }).catch((err) => {
+      console.error("Bot broadcast fetch error (background):", err);
+    });
 
     return NextResponse.json({
       message: "Broadcast diproses oleh bot.",
-      detail: result,
+      detail: { sent: students.length },
     });
   } catch (err) {
     console.error("POST /api/guru/broadcast error:", err);
