@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
 import { GoHeartFill } from "react-icons/go";
@@ -19,6 +19,16 @@ export default function Register() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [appMode, setAppMode] = useState("production");
+
+  const isDev = appMode === "development";
+
+  useEffect(() => {
+    fetch("/api/app-mode")
+      .then((res) => res.json())
+      .then((data) => setAppMode(data.mode))
+      .catch(() => setAppMode("production"));
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -49,7 +59,7 @@ export default function Register() {
       html: `
         <div class="text-left">
           <p><strong>Nama:</strong> ${formData.nama}</p>
-          <p><strong>Kelas:</strong> ${formData.kelas}</p>
+          ${isDev ? `<p><strong>Role:</strong> Guru</p>` : `<p><strong>Kelas:</strong> ${formData.kelas}</p>`}
           <p><strong>Nomor WhatsApp:</strong> ${formData.phone}</p>
         </div>
       `,
@@ -68,10 +78,14 @@ export default function Register() {
     }
 
     try {
+      const payload = isDev
+        ? { nama: formData.nama, phone: formData.phone, password: formData.password }
+        : formData;
+
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -89,14 +103,16 @@ export default function Register() {
       // Tampilkan SweetAlert2 untuk notifikasi sukses
       await Swal.fire({
         title: "Sukses!",
-        text: "Registrasi berhasil. Anda akan diarahkan ke halaman utama.",
+        text: isDev
+          ? "Registrasi berhasil sebagai Guru. Anda akan diarahkan ke dashboard guru."
+          : "Registrasi berhasil. Anda akan diarahkan ke halaman utama.",
         icon: "success",
         confirmButtonText: "OK",
         confirmButtonColor: "#7e22ce", // Warna ungu
       });
 
       // ✅ Redirect ke dashboard setelah login
-      router.replace("/");
+      router.replace(isDev ? "/guru" : "/");
     } catch (err) {
       setError(err.message);
       // Tampilkan SweetAlert2 untuk notifikasi error
@@ -181,26 +197,28 @@ export default function Register() {
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               disabled={loading}
             />
-            <motion.select
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1.1, duration: 0.8 }}
-              id="kelas"
-              value={formData.kelas}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="" disabled>
-                Pilih Kelas
-              </option>
-              <option value="XTKJ1">X TKJ 1</option>
-              <option value="XTKJ2">X TKJ 2</option>
-              <option value="XITKJ1">XI TKJ 1</option>
-              <option value="XITKJ2">XI TKJ 2</option>
-              <option value="XIITKJ1">XII TKJ 1</option>
-              <option value="XIITKJ2">XII TKJ 2</option>
-              <option value="TPTUP">TPTUP</option>
-            </motion.select>
+            {!isDev && (
+              <motion.select
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.1, duration: 0.8 }}
+                id="kelas"
+                value={formData.kelas}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="" disabled>
+                  Pilih Kelas
+                </option>
+                <option value="XTKJ1">X TKJ 1</option>
+                <option value="XTKJ2">X TKJ 2</option>
+                <option value="XITKJ1">XI TKJ 1</option>
+                <option value="XITKJ2">XI TKJ 2</option>
+                <option value="XIITKJ1">XII TKJ 1</option>
+                <option value="XIITKJ2">XII TKJ 2</option>
+                <option value="TPTUP">TPTUP</option>
+              </motion.select>
+            )}
             <motion.input
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}

@@ -5,23 +5,32 @@ const prisma = new PrismaClient();
 
 export async function POST(req) {
   try {
-    const { nama, phone, password, kelas } = await req.json();
+    const body = await req.json();
+    const { nama, phone, password } = body;
+    const isDev = (process.env.APP_MODE || "production") === "development";
 
-    // Pastikan kelas yang dikirim sesuai dengan enum
-    const kelasEnum = [
-      "XTKJ1",
-      "XTKJ2",
-      "XITKJ1",
-      "XITKJ2",
-      "XIITKJ1",
-      "XIITKJ2",
-      "TPTUP"
-    ];
-    if (!kelasEnum.includes(kelas)) {
-      return new Response(
-        JSON.stringify({ message: "❌ Kelas tidak valid." }),
-        { status: 400 }
-      );
+    let kelas = null;
+    let role = "guru";
+
+    // Mode production: validasi kelas, role = siswa
+    if (!isDev) {
+      const kelasEnum = [
+        "XTKJ1",
+        "XTKJ2",
+        "XITKJ1",
+        "XITKJ2",
+        "XIITKJ1",
+        "XIITKJ2",
+        "TPTUP"
+      ];
+      if (!kelasEnum.includes(body.kelas)) {
+        return new Response(
+          JSON.stringify({ message: "❌ Kelas tidak valid." }),
+          { status: 400 }
+        );
+      }
+      kelas = body.kelas;
+      role = "siswa";
     }
 
     // Cek apakah nomor WhatsApp sudah terdaftar
@@ -39,14 +48,14 @@ export async function POST(req) {
     // Hash password sebelum menyimpan ke database
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Simpan user baru dengan kelas sebagai enum
+    // Simpan user baru
     const newUser = await prisma.user.create({
       data: {
         nama,
         phone,
         password: hashedPassword,
-        role: "siswa", // Default sebagai siswa
-        kelas, // Simpan sebagai enum
+        role,
+        kelas,
       },
     });
 
