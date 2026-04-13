@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { writeFile } from "fs/promises";
-import { join } from "path";
+import { isValidKelas, normalizeKelas } from "../../../utils/kelas";
 
 // Prisma singleton (aman untuk Next.js)
 const g = globalThis;
@@ -179,11 +178,30 @@ export async function POST(req) {
       );
     }
 
+    const normalizedKelas = normalizeKelas(kelas);
+    if (!isValidKelas(normalizedKelas)) {
+      return NextResponse.json(
+        { error: "Kelas tidak tersedia" },
+        { status: 400 }
+      );
+    }
+
     // Hitung deadline
     let deadline = null;
     if (deadlineHari && !isNaN(Number(deadlineHari))) {
       const hari = Number(deadlineHari);
+      if (!Number.isInteger(hari) || hari < 0) {
+        return NextResponse.json(
+          { error: "Deadline harus berupa angka 0 atau lebih" },
+          { status: 400 }
+        );
+      }
       deadline = new Date(Date.now() + hari * 24 * 60 * 60 * 1000);
+    } else if (deadlineHari) {
+      return NextResponse.json(
+        { error: "Deadline harus berupa angka 0 atau lebih" },
+        { status: 400 }
+      );
     }
 
     let pdfUrl = null;
@@ -227,7 +245,7 @@ export async function POST(req) {
         kode: kode.toUpperCase(),
         judul,
         deskripsi,
-        kelas: kelas.toUpperCase(),
+        kelas: normalizedKelas,
         guruId,
         deadline,
         pdfUrl,
@@ -240,7 +258,7 @@ export async function POST(req) {
     const siswaList = await prisma.user.findMany({
       where: {
         role: "siswa",
-        kelas: kelas.toUpperCase(),
+        kelas: normalizedKelas,
       },
       select: { id: true },
     });

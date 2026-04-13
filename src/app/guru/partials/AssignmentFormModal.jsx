@@ -1,7 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { SiGooglegemini } from "react-icons/si";
+import {
+  KELAS_OPTIONS,
+  isValidKelas,
+  normalizeKelas,
+} from "../../../utils/kelas";
 
 function toast({ icon = "info", title = "", text = "", timer = 2200 }) {
   return Swal.fire({
@@ -16,22 +21,12 @@ function toast({ icon = "info", title = "", text = "", timer = 2200 }) {
   });
 }
 
-// Daftar kelas yang tersedia
-const KELAS_OPTIONS = [
-  "XTKJ1",
-  "XTKJ2",
-  "XITKJ1",
-  "XITKJ2",
-  "XIITKJ1",
-  "XIITKJ2",
-  "TPTUP",
-];
-
 export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
   const [kode, setKode] = useState("");
   const [judul, setJudul] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
   const [kelas, setKelas] = useState("");
+  const [kelasOptions, setKelasOptions] = useState(KELAS_OPTIONS);
   const [kelasDropdownOpen, setKelasDropdownOpen] = useState(false);
   const [deadlineHari, setDeadlineHari] = useState("");
   const [lampirPdf, setLampirPdf] = useState(false);
@@ -43,9 +38,43 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
   const [kodeStatus, setKodeStatus] = useState(null); // 'available' | 'taken' | null
 
   // Filter kelas berdasarkan input
-  const filteredKelas = KELAS_OPTIONS.filter((k) =>
+  const normalizedKelas = useMemo(() => normalizeKelas(kelas), [kelas]);
+  const kelasValid = isValidKelas(normalizedKelas, kelasOptions);
+  const deadlineHariNumber = deadlineHari === "" ? null : Number(deadlineHari);
+  const deadlineHariInvalid =
+    deadlineHari !== "" &&
+    (!Number.isInteger(deadlineHariNumber) || deadlineHariNumber < 0);
+  const filteredKelas = kelasOptions.filter((k) =>
     k.toLowerCase().includes(kelas.toLowerCase())
   );
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadKelasOptions() {
+      try {
+        const res = await fetch("/api/enums/kelas", { cache: "no-store" });
+        const data = await res.json();
+        if (!res.ok || !data?.ok || !Array.isArray(data.data)) return;
+
+        const normalizedOptions = data.data
+          .map((item) => normalizeKelas(item))
+          .filter(Boolean);
+
+        if (!ignore && normalizedOptions.length > 0) {
+          setKelasOptions(normalizedOptions);
+        }
+      } catch (err) {
+        console.error("Error loading kelas options:", err);
+      }
+    }
+
+    loadKelasOptions();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Pengecekan kode tugas
   async function checkKodeTugas(kodeValue) {
@@ -96,6 +125,18 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
   function selectKelas(kelasValue) {
     setKelas(kelasValue);
     setKelasDropdownOpen(false);
+  }
+
+  function handleDeadlineChange(e) {
+    const value = e.target.value;
+    if (value === "") {
+      setDeadlineHari("");
+      return;
+    }
+
+    if (/^\d+$/.test(value)) {
+      setDeadlineHari(value);
+    }
   }
 
   function handleKunciJawabanChange(e) {
@@ -154,6 +195,24 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
       return;
     }
 
+    if (!kelasValid) {
+      toast({
+        icon: "warning",
+        title: "Kelas Tidak Valid",
+        text: "Pilih kelas dari daftar yang tersedia",
+      });
+      return;
+    }
+
+    if (deadlineHariInvalid) {
+      toast({
+        icon: "warning",
+        title: "Deadline Tidak Valid",
+        text: "Deadline harus berupa angka 0 atau lebih",
+      });
+      return;
+    }
+
     if (lampirPdf && !file) {
       toast({
         icon: "warning",
@@ -179,7 +238,7 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
       formData.append("kode", kode);
       formData.append("judul", judul);
       formData.append("deskripsi", deskripsi);
-      formData.append("kelas", kelas.toUpperCase().replace(/\s+/g, ""));
+      formData.append("kelas", normalizedKelas);
       formData.append("deadlineHari", deadlineHari || "");
       formData.append("lampirPdf", lampirPdf);
 
@@ -312,7 +371,13 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
               </label>
               <input
                 type="text"
-                className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                className={`w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 transition-all ${
+                  !kelas
+                    ? "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+                    : kelasValid
+                    ? "border-green-500 focus:border-green-500 focus:ring-green-200"
+                    : "border-red-500 focus:border-red-500 focus:ring-red-200"
+                }`}
                 placeholder="Ketik atau pilih kelas..."
                 value={kelas}
                 onChange={handleKelasChange}
@@ -339,9 +404,20 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
                 </div>
               )}
 
+              {kelasDropdownOpen && kelas && filteredKelas.length === 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg px-4 py-2.5 text-sm text-gray-500">
+                  Kelas tidak ditemukan
+                </div>
+              )}
+
               <p className="text-xs text-gray-500 mt-1">
                 💡 Ketik untuk mencari atau pilih dari dropdown
               </p>
+              {kelas && !kelasValid && (
+                <p className="text-xs text-red-600 mt-1">
+                  Pilih kelas yang tersedia dari daftar.
+                </p>
+              )}
             </div>
 
             {/* Deadline */}
@@ -351,11 +427,22 @@ export default function AssignmentFormModal({ guruId, onClose, onCreated }) {
               </label>
               <input
                 type="number"
-                className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                min="0"
+                step="1"
+                className={`w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 transition-all ${
+                  deadlineHariInvalid
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+                }`}
                 placeholder="Contoh: 7"
                 value={deadlineHari}
-                onChange={(e) => setDeadlineHari(e.target.value)}
+                onChange={handleDeadlineChange}
               />
+              {deadlineHariInvalid && (
+                <p className="text-xs text-red-600 mt-1">
+                  Deadline tidak boleh minus.
+                </p>
+              )}
             </div>
           </div>
 

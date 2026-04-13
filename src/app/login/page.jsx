@@ -50,7 +50,7 @@ export default function Home() {
     if (!norm.startsWith("62")) {
       Swal.fire({
         title: "Nomor HP Tidak Valid",
-        text: "Nomor HP harus diawali dengan 62 atau 08.",
+        text: "Nomor HP harus diawali dengan 628",
         icon: "warning",
         confirmButtonText: "OK",
         confirmButtonColor: "#7e22ce",

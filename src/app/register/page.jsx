@@ -45,7 +45,7 @@ export default function Register() {
     if (!/^628\d{8,12}$/.test(formData.phone)) {
       Swal.fire({
         title: "Warning!",
-        text: "Nomor HP harus diawali dengan 62.",
+        text: "Nomor HP harus diawali dengan 628",
         icon: "warning",
         confirmButtonText: "OK",
       });
@@ -79,7 +79,11 @@ export default function Register() {
 
     try {
       const payload = isDev
-        ? { nama: formData.nama, phone: formData.phone, password: formData.password }
+        ? {
+            nama: formData.nama,
+            phone: formData.phone,
+            password: formData.password,
+          }
         : formData;
 
       const res = await fetch("/api/register", {
