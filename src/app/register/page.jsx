@@ -2,10 +2,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
 import { GoHeartFill } from "react-icons/go";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import Swal from "sweetalert2";
 
 export default function Register() {
@@ -17,6 +18,17 @@ export default function Register() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [appMode, setAppMode] = useState("production");
+
+  const isDev = appMode === "development";
+
+  useEffect(() => {
+    fetch("/api/app-mode")
+      .then((res) => res.json())
+      .then((data) => setAppMode(data.mode))
+      .catch(() => setAppMode("production"));
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -33,7 +45,7 @@ export default function Register() {
     if (!/^628\d{8,12}$/.test(formData.phone)) {
       Swal.fire({
         title: "Warning!",
-        text: "Nomor HP harus diawali dengan 62.",
+        text: "Nomor HP harus diawali dengan 628",
         icon: "warning",
         confirmButtonText: "OK",
       });
@@ -47,7 +59,7 @@ export default function Register() {
       html: `
         <div class="text-left">
           <p><strong>Nama:</strong> ${formData.nama}</p>
-          <p><strong>Kelas:</strong> ${formData.kelas}</p>
+          ${isDev ? `<p><strong>Role:</strong> Guru</p>` : `<p><strong>Kelas:</strong> ${formData.kelas}</p>`}
           <p><strong>Nomor WhatsApp:</strong> ${formData.phone}</p>
         </div>
       `,
@@ -66,10 +78,18 @@ export default function Register() {
     }
 
     try {
+      const payload = isDev
+        ? {
+            nama: formData.nama,
+            phone: formData.phone,
+            password: formData.password,
+          }
+        : formData;
+
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -87,14 +107,16 @@ export default function Register() {
       // Tampilkan SweetAlert2 untuk notifikasi sukses
       await Swal.fire({
         title: "Sukses!",
-        text: "Registrasi berhasil. Anda akan diarahkan ke halaman utama.",
+        text: isDev
+          ? "Registrasi berhasil sebagai Guru. Anda akan diarahkan ke dashboard guru."
+          : "Registrasi berhasil. Anda akan diarahkan ke halaman utama.",
         icon: "success",
         confirmButtonText: "OK",
         confirmButtonColor: "#7e22ce", // Warna ungu
       });
 
       // ✅ Redirect ke dashboard setelah login
-      router.replace("/");
+      router.replace(isDev ? "/guru" : "/");
     } catch (err) {
       setError(err.message);
       // Tampilkan SweetAlert2 untuk notifikasi error
@@ -179,26 +201,28 @@ export default function Register() {
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               disabled={loading}
             />
-            <motion.select
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1.1, duration: 0.8 }}
-              id="kelas"
-              value={formData.kelas}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="" disabled>
-                Pilih Kelas
-              </option>
-              <option value="XTKJ1">X TKJ 1</option>
-              <option value="XTKJ2">X TKJ 2</option>
-              <option value="XITKJ1">XI TKJ 1</option>
-              <option value="XITKJ2">XI TKJ 2</option>
-              <option value="XIITKJ1">XII TKJ 1</option>
-              <option value="XIITKJ2">XII TKJ 2</option>
-              <option value="TPTUP">TPTUP</option>
-            </motion.select>
+            {!isDev && (
+              <motion.select
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.1, duration: 0.8 }}
+                id="kelas"
+                value={formData.kelas}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="" disabled>
+                  Pilih Kelas
+                </option>
+                <option value="XTKJ1">X TKJ 1</option>
+                <option value="XTKJ2">X TKJ 2</option>
+                <option value="XITKJ1">XI TKJ 1</option>
+                <option value="XITKJ2">XI TKJ 2</option>
+                <option value="XIITKJ1">XII TKJ 1</option>
+                <option value="XIITKJ2">XII TKJ 2</option>
+                <option value="TPTUP">TPTUP</option>
+              </motion.select>
+            )}
             <motion.input
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -211,18 +235,30 @@ export default function Register() {
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               disabled={loading}
             />
-            <motion.input
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 1.5, duration: 0.8 }}
-              type="password"
-              id="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              disabled={loading}
-            />
+              className="relative"
+            >
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                tabIndex={-1}
+              >
+                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
+            </motion.div>
             <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

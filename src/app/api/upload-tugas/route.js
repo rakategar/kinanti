@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
+import { dispatchGrading } from "../../../utils/grading";
 
 // ---- Prisma singleton ----
 const globalForPrisma = globalThis;
@@ -11,13 +12,12 @@ const prisma =
   });
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-// ---- Supabase ----
-// Pindahkan KEY & URL ke ENV di production!
-// Di sini tetap gunakan konstanta agar konsisten dengan upload URL.
-const SUPABASE_URL = "https://wgdxgzraacfhfbxvxuzy.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnZHhnenJhYWNmaGZieHZ4dXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTAzNjM5OCwiZXhwIjoyMDU2NjEyMzk4fQ._dVS_wha-keEbaBb1xapdAeSpgJwwEAnWcrdnjDQ9nA";
-// NOTE: gunakan bucket bernama "submissions" (public).
+// ---- Supabase (ambil dari .env melalui process.env) ----
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error("SUPABASE_URL atau SUPABASE_KEY tidak ditemukan di env");
+}
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export async function POST(req) {
@@ -33,11 +33,11 @@ export async function POST(req) {
     if (!file || Number.isNaN(userId) || Number.isNaN(tugasId)) {
       return NextResponse.json(
         { error: "Data tidak lengkap." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Validasi assignment & user ada
+    // Validasi assignment & user ada (ambil juga kunci jawaban)
     const [user, tugas] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
@@ -45,26 +45,26 @@ export async function POST(req) {
       }),
       prisma.assignment.findUnique({
         where: { id: tugasId },
-        select: { id: true, kode: true },
+        select: { id: true, kode: true, kunciJawaban: true },
       }),
     ]);
     if (!user)
       return NextResponse.json(
         { error: "User tidak ditemukan." },
-        { status: 404 }
+        { status: 404 },
       );
     if (!tugas)
       return NextResponse.json(
         { error: "Tugas tidak ditemukan." },
-        { status: 404 }
+        { status: 404 },
       );
 
-    // Validasi file
+    // Validasi file PDF
     const type = file.type || "";
     if (!type.includes("pdf")) {
       return NextResponse.json(
         { error: "Hanya file PDF yang diperbolehkan." },
-        { status: 415 }
+        { status: 415 },
       );
     }
 
@@ -83,36 +83,37 @@ export async function POST(req) {
       .from("submissions")
       .upload(path, buffer, {
         contentType: "application/pdf",
-        upsert: true, // jika file sama di-path sama, timpa
+        upsert: true,
       });
 
     if (upErr) {
       console.error("Supabase upload error:", upErr);
       return NextResponse.json(
         { error: "Gagal mengunggah ke storage." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    // URL publik (gunakan konstanta SUPABASE_URL biar ga mismatch)
+    // URL publik
     const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/submissions/${path}`;
 
-    // Simpan ke AssignmentSubmission:
-    // - Jika sudah ada submission siswa untuk tugas ini → update (biar idempoten)
-    // - Jika belum ada → create
+    // Simpan ke AssignmentSubmission (create atau update)
     const existing = await prisma.assignmentSubmission.findFirst({
       where: { siswaId: userId, tugasId },
       select: { id: true },
     });
 
+    let submissionRow;
     if (existing) {
-      await prisma.assignmentSubmission.update({
+      submissionRow = await prisma.assignmentSubmission.update({
         where: { id: existing.id },
         data: { pdfUrl: publicUrl },
+        select: { id: true, siswaId: true, tugasId: true, pdfUrl: true },
       });
     } else {
-      await prisma.assignmentSubmission.create({
+      submissionRow = await prisma.assignmentSubmission.create({
         data: { siswaId: userId, tugasId, pdfUrl: publicUrl },
+        select: { id: true, siswaId: true, tugasId: true, pdfUrl: true },
       });
     }
 
@@ -133,15 +134,29 @@ export async function POST(req) {
       });
     }
 
+    // --- Penilaian otomatis (background, non-blocking) ---
+    // Coba n8n dulu; jika gagal/offline → fallback penilaian native (Gemini) di kode.
+    dispatchGrading(prisma, {
+      id: submissionRow.id,
+      siswaId: submissionRow.siswaId,
+      tugasId: submissionRow.tugasId,
+      pdfUrl: submissionRow.pdfUrl,
+      answerKeyUrl: tugas.kunciJawaban || null,
+    }).catch((e) => console.error("dispatchGrading error:", e));
+
     return NextResponse.json(
-      { message: "Tugas berhasil dikumpulkan!", url: publicUrl },
-      { status: 200 }
+      {
+        message: "Tugas berhasil dikumpulkan!",
+        url: publicUrl,
+        submission: submissionRow,
+      },
+      { status: 200 },
     );
   } catch (error) {
     console.error("Upload Error:", error);
     return NextResponse.json(
       { error: "Gagal mengunggah tugas." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

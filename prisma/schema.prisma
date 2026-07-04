@@ -33,6 +33,7 @@ model Assignment {
   deadline    DateTime? // Kolom baru untuk menyimpan deadline (opsional)
   status      AssignmentStatus[] // Relasi ke status tugas siswa
   submissions AssignmentSubmission[] // Relasi ke tugas yang dikumpulkan siswa
+  kunciJawaban String? // Kunci jawaban untuk tugas (opsional)
 }
 
 // Model untuk menyimpan status tugas siswa (apakah selesai atau belum)
@@ -40,7 +41,7 @@ model AssignmentStatus {
   id        Int      @id @default(autoincrement())
   siswa     User     @relation(fields: [siswaId], references: [id])
   siswaId   Int
-  tugas     Assignment @relation(fields: [tugasId], references: [id])
+  tugas    Assignment @relation(fields: [tugasId], references: [id], onDelete: Cascade)
   tugasId   Int
   status    TugasStatus @default(BELUM_SELESAI)
 }
@@ -50,12 +51,15 @@ model AssignmentSubmission {
   id        Int      @id @default(autoincrement())
   siswa     User     @relation(fields: [siswaId], references: [id])
   siswaId   Int
-  tugas     Assignment @relation(fields: [tugasId], references: [id])
+  tugas    Assignment @relation(fields: [tugasId], references: [id], onDelete: Cascade)
   tugasId   Int
   pdfUrl    String?  // Bisa null jika tidak ada lampiran
   status    TugasStatus @default(SELESAI) // Status tugas (opsional)
   createdAt DateTime @default(now()) 
   updatedAt  DateTime @updatedAt
+  evaluation String? // Feedback atau evaluasi dari guru/AI (opsional)
+  grade     String?  // Nilai tugas (opsional)
+  score    Int?   // Skor tugas (opsional)
 }
 
 enum Role {
@@ -95,3 +99,18 @@ model NlpLog {
   entities   Json?
   createdAt  DateTime @default(now())
 }
+
+
+// =================== PHONE TO JID MAPPING ===================
+// Menyimpan mapping nomor telepon ke WhatsApp JID
+// Diperlukan untuk handle @lid (Linked ID) pada device yang di-link
+model PhoneJidMapping {
+  id        Int      @id @default(autoincrement())
+  phone     String   @unique  // Nomor telepon (62xxx)
+  jid       String             // WhatsApp JID (xxx@c.us atau xxx@lid)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+
