@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
+import { dispatchGrading } from "../../../utils/grading";
 
 // ---- Prisma singleton ----
 const globalForPrisma = globalThis;
@@ -18,10 +19,6 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("SUPABASE_URL atau SUPABASE_KEY tidak ditemukan di env");
 }
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// Webhook target (bisa override via env WEBHOOK_TUGAS_URL)
-const WEBHOOK_URL =
-  process.env.WEBHOOK_TUGAS_URL || "http://0.0.0.0:5678/webhook/nilai-tugas";
 
 export async function POST(req) {
   try {
@@ -137,36 +134,15 @@ export async function POST(req) {
       });
     }
 
-    // --- Kirim webhook ke service eksternal ---
-    // payload: { id, siswaId, tugasId, pdfUrl, answerKeyUrl }
-    (async () => {
-      try {
-        const payload = {
-          id: submissionRow.id,
-          siswaId: submissionRow.siswaId,
-          tugasId: submissionRow.tugasId,
-          pdfUrl: submissionRow.pdfUrl,
-          answerKeyUrl: tugas.kunciJawaban || null,
-        };
-
-        const res = await fetch(WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          console.warn(
-            `Webhook POST failed (${res.status}): ${WEBHOOK_URL} - ${text}`,
-          );
-        } else {
-          console.log(`Webhook POST success: ${WEBHOOK_URL}`);
-        }
-      } catch (whErr) {
-        console.error("Webhook error:", whErr);
-      }
-    })();
+    // --- Penilaian otomatis (background, non-blocking) ---
+    // Coba n8n dulu; jika gagal/offline → fallback penilaian native (Gemini) di kode.
+    dispatchGrading(prisma, {
+      id: submissionRow.id,
+      siswaId: submissionRow.siswaId,
+      tugasId: submissionRow.tugasId,
+      pdfUrl: submissionRow.pdfUrl,
+      answerKeyUrl: tugas.kunciJawaban || null,
+    }).catch((e) => console.error("dispatchGrading error:", e));
 
     return NextResponse.json(
       {

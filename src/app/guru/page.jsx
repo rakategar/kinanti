@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { FiPlus, FiRefreshCw, FiLogOut } from "react-icons/fi";
 import GuruAssignmentsTable from "./partials/AssignmentsTable";
 import AssignmentFormModal from "./partials/AssignmentFormModal";
+import HotsFormModal from "./partials/HotsFormModal";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
 import KinantiBanner from "../components/KinantiBanner";
@@ -86,6 +87,7 @@ export default function GuruDashboard() {
   const [loadingAssign, setLoadingAssign] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
+  const [showHots, setShowHots] = useState(false);
   const [q, setQ] = useState("");
   const [broadcasting, setBroadcasting] = useState(false);
 
@@ -321,6 +323,15 @@ export default function GuruDashboard() {
             </button>
 
             <button
+              onClick={() => setShowHots(true)}
+              className="inline-flex items-center px-3 py-2 rounded-md bg-indigo-700 text-white hover:bg-indigo-800 disabled:opacity-50"
+              disabled={!guruId || broadcasting}
+            >
+              <span className="mr-2">🧠</span>
+              Buat HOTS
+            </button>
+
+            <button
               onClick={handleLogout}
               className="inline-flex items-center px-3 py-2 rounded-md bg-gray-800 text-white hover:bg-black disabled:opacity-50"
               title="Keluar"
@@ -369,6 +380,8 @@ export default function GuruDashboard() {
           }}
         />
       )}
+
+      {showHots && <HotsFormModal onClose={() => setShowHots(false)} />}
     </motion.div>
   );
 }
