@@ -43,4 +43,5 @@ yarn-error.log*
 next-env.d.ts
 
 .wwebjs_auth
-.wwebjs_cache
+.wwebjs_cachelogs/
+app.pid

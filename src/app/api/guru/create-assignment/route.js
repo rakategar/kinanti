@@ -7,10 +7,9 @@ const g = globalThis;
 const prisma = g.__prisma || new PrismaClient({});
 if (process.env.NODE_ENV !== "production") g.__prisma = prisma;
 
-// Supabase (gunakan .env di produksi; disini konstan agar konsisten URL publik)
-const SUPABASE_URL = "https://wgdxgzraacfhfbxvxuzy.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnZHhnenJhYWNmaGZieHZ4dXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTAzNjM5OCwiZXhwIjoyMDU2NjEyMzk4fQ._dVS_wha-keEbaBb1xapdAeSpgJwwEAnWcrdnjDQ9nA";
+// Supabase (dari .env — mengarah ke Supabase lokal)
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // bucket untuk lampiran guru
 const ASSIGN_BUCKET = "assignments";

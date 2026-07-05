@@ -29,7 +29,27 @@ export async function GET() {
     let foundEnumType = null;
 
     if (pg) {
+      // Prioritas: enum "Kelas" milik schema public (Prisma). Hindari enum lain
+      // (Role/TugasStatus, atau enum bawaan schema storage/net di Supabase).
+      try {
+        const kelasRows = await prisma.$queryRawUnsafe(
+          `
+          SELECT e.enumlabel AS label
+          FROM pg_type t
+          JOIN pg_enum e ON t.oid = e.enumtypid
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE n.nspname = 'public' AND t.typname = 'Kelas'
+          ORDER BY e.enumsortorder;
+          `
+        );
+        if (Array.isArray(kelasRows) && kelasRows.length) {
+          values = kelasRows.map((r) => r.label);
+          foundEnumType = "Kelas";
+        }
+      } catch (_) {}
+
       // POSTGRES: cari tipe user-defined (enum) dari kolomnya
+      if (!values.length)
       outer: for (const tbl of tableCandidates) {
         for (const col of colCandidates) {
           try {
@@ -109,6 +129,8 @@ export async function GET() {
           SELECT t.typname AS enum_name, e.enumlabel AS label, e.enumsortorder
           FROM pg_type t
           JOIN pg_enum e ON t.oid = e.enumtypid
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE n.nspname = 'public' AND t.typname = 'Kelas'
           ORDER BY t.typname, e.enumsortorder;
           `
         );
