@@ -29,6 +29,7 @@ export default function HotsFormModal({ onClose }) {
     jumlahSoal: 5,
   });
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
@@ -86,9 +87,16 @@ export default function HotsFormModal({ onClose }) {
       }
 
       setResult(json.data);
-      // Generate + download 2 PDF otomatis: soal & kunci jawaban
-      generateHotsPdf(json.data, form);
-      toast("success", "Soal HOTS berhasil dibuat & diunduh (2 file).");
+      // Generate + download 2 PDF otomatis: soal & kunci jawaban.
+      // (async: menunggu font Unicode ter-load agar rumus & kode ter-render benar)
+      try {
+        await generateHotsPdf(json.data, form);
+        toast("success", "Soal HOTS berhasil dibuat & diunduh (2 file).");
+      } catch (pdfErr) {
+        const m = "Soal berhasil dibuat, tetapi gagal membuat PDF. Coba unduh ulang.";
+        setError(m);
+        toast("error", m);
+      }
     } catch (err) {
       const m = "Terjadi kesalahan jaringan. Coba lagi.";
       setError(m);
@@ -98,12 +106,28 @@ export default function HotsFormModal({ onClose }) {
     }
   }
 
-  function handleDownloadSoal() {
-    if (result) generateHotsSoalPdf(result, form);
+  async function handleDownloadSoal() {
+    if (!result || downloading) return;
+    setDownloading(true);
+    try {
+      await generateHotsSoalPdf(result, form);
+    } catch (e) {
+      toast("error", "Gagal membuat PDF Soal. Coba lagi.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
-  function handleDownloadKunci() {
-    if (result) generateHotsKunciPdf(result, form);
+  async function handleDownloadKunci() {
+    if (!result || downloading) return;
+    setDownloading(true);
+    try {
+      await generateHotsKunciPdf(result, form);
+    } catch (e) {
+      toast("error", "Gagal membuat PDF Kunci Jawaban. Coba lagi.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   return (
@@ -132,7 +156,8 @@ export default function HotsFormModal({ onClose }) {
         >
           <p className="text-sm text-gray-600 mb-5">
             Soal dibuat otomatis berbasis taksonomi Bloom (C4 Analisis, C5
-            Evaluasi, C6 Kreasi) lalu diunduh sebagai PDF.
+            Evaluasi, C6 Kreasi) lalu diunduh sebagai PDF. Rumus matematika &
+            potongan kode dirender rapi di dalam PDF.
           </p>
 
           {/* Mata Pelajaran */}
@@ -227,16 +252,18 @@ export default function HotsFormModal({ onClose }) {
                 <button
                   type="button"
                   onClick={handleDownloadSoal}
-                  className="inline-flex items-center px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 text-sm whitespace-nowrap"
+                  disabled={downloading}
+                  className="inline-flex items-center px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60 text-sm whitespace-nowrap"
                 >
-                  ⬇ Download PDF Soal
+                  {downloading ? "⏳ Menyiapkan..." : "⬇ Download PDF Soal"}
                 </button>
                 <button
                   type="button"
                   onClick={handleDownloadKunci}
-                  className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 text-sm whitespace-nowrap"
+                  disabled={downloading}
+                  className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 text-sm whitespace-nowrap"
                 >
-                  ⬇ Download PDF Kunci Jawaban
+                  {downloading ? "⏳ Menyiapkan..." : "⬇ Download PDF Kunci Jawaban"}
                 </button>
               </div>
             </div>

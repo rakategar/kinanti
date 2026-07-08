@@ -4,7 +4,133 @@
 
    ▲ Next.js 15.5.9
    - Local:        http://localhost:3400
-   - Network:      http://31.97.107.224:3400
+   - Network:      http://103.93.160.127:3400
 
  ✓ Starting...
- ✓ Ready in 431ms
+ ✓ Ready in 1651ms
+[grading] n8n tidak terjangkau (TypeError: fetch failed) — fallback native untuk submission 34
+[grading native] Submission 34 dinilai: grade=A score=90
+[Error: Failed to find Server Action "x". This request might be from an older or newer deployment.
+Read more: https://nextjs.org/docs/messages/failed-to-find-server-action]
+[Error: Failed to find Server Action "x". This request might be from an older or newer deployment.
+Read more: https://nextjs.org/docs/messages/failed-to-find-server-action]
+[grading] n8n tidak terjangkau (TypeError: fetch failed) — fallback native untuk submission 35
+[grading native] Submission 35 dinilai: grade=D score=0
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+[grading] n8n tidak terjangkau (TypeError: fetch failed) — fallback native untuk submission 36
+[grading native] Submission 36 dinilai: grade=A score=100
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+[grading] n8n tidak terjangkau (TypeError: fetch failed) — fallback native untuk submission 37
+[grading native] Submission 37 dinilai: grade=D score=0
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+[grading] n8n tidak terjangkau (TypeError: fetch failed) — fallback native untuk submission 38
+[grading native] Submission 38 dinilai: grade=D score=0
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+GET /api/guru/assignments error: Error [PrismaClientUnknownRequestError]: 
+Invalid `prisma.assignment.findMany()` invocation:
+
+
+Error in connector: Error querying the database: FATAL: could not write init file: No space left on device
+    at async z (.next/server/app/api/guru/assignments/route.js:1:4071)
+    at async k (.next/server/app/api/guru/assignments/route.js:1:8827)
+    at async g (.next/server/app/api/guru/assignments/route.js:1:9830)
+    at async G (.next/server/app/api/guru/assignments/route.js:1:10952) {
+  clientVersion: '6.4.1'
+}
+Bot broadcast fetch error (background): [TypeError: fetch failed] {
+  [cause]: [Error [HeadersTimeoutError]: Headers Timeout Error] {
+    code: 'UND_ERR_HEADERS_TIMEOUT'
+  }
+}
+ ⨯ Failed to write image to cache ed_C4Yjm2Xqty3XYWkjB0goWeOe_AjEIL1bQzhhNjAU [Error: ENOENT: no such file or directory, mkdir '/opt/kinanti/.next/cache/images/ed_C4Yjm2Xqty3XYWkjB0goWeOe_AjEIL1bQzhhNjAU'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'mkdir',
+  path: '/opt/kinanti/.next/cache/images/ed_C4Yjm2Xqty3XYWkjB0goWeOe_AjEIL1bQzhhNjAU'
+}

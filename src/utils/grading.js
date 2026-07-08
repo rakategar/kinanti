@@ -8,6 +8,21 @@ const DEFAULT_WEBHOOK_URL = "http://0.0.0.0:5678/webhook/nilai-tugas";
 const N8N_TIMEOUT_MS = 4000;
 const MAX_PDF_BYTES = 15 * 1024 * 1024; // 15MB per dokumen (batas aman inline data Gemini)
 
+// Model penilaian: utama kualitas baik & kuota longgar; cadangan bila kena limit/overload.
+const GRADING_MODELS = [
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash-lite",
+  "gemini-flash-latest",
+];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Error sementara/limit dari Gemini (429 kuota, 503 overload) → coba model berikutnya.
+function isTransient(err) {
+  const m = String(err?.message || "");
+  return /\b(429|500|503|quota|overloaded|high demand|Service Unavailable|unavailable|rate limit)\b/i.test(m);
+}
+
 // Prompt validator — verbatim dari workflow n8n "Analyze document".
 const VALIDATOR_PROMPT = `Anda adalah Validator Akademik Kritis. Tugas Anda membandingkan Kunci Jawaban vs Jawaban Siswa.
 
@@ -102,18 +117,39 @@ export async function gradeSubmissionNative(prisma, { id, pdfUrl, answerKeyUrl }
     ]);
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" },
-    });
-
-    const result = await model.generateContent([
+    const parts = [
       { text: VALIDATOR_PROMPT + DOC_NOTE },
       studentDoc, // dokumen ke-1: jawaban siswa
       keyDoc, // dokumen ke-2: kunci jawaban
-    ]);
+    ];
 
-    const rawText = result.response.text();
+    // Coba tiap model berurutan; pada error limit/overload pindah ke cadangan.
+    let rawText = null;
+    let lastErr = null;
+    outer: for (const name of GRADING_MODELS) {
+      const model = genAI.getGenerativeModel({
+        model: name,
+        generationConfig: { responseMimeType: "application/json" },
+      });
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const result = await model.generateContent(parts);
+          rawText = result.response.text();
+          break outer;
+        } catch (e) {
+          lastErr = e;
+          if (isTransient(e)) {
+            if (attempt < 1) await sleep(1000);
+          } else {
+            break; // error permanen pada model ini → coba model berikutnya
+          }
+        }
+      }
+    }
+
+    if (rawText == null) {
+      throw lastErr || new Error("Semua model penilaian gagal merespons.");
+    }
 
     let data;
     try {
